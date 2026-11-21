@@ -148,7 +148,12 @@ UInt32 XenonEthernet::sendTxPacket(mbuf_t packet) {
   descStart->address = segments[0].location;
   descStart->length  = segments[0].length;
 
-  packetLength = OSSwapLittleToHostInt32(descStart->length);
+  packetLength = OSSwapLittleToHostInt32(segments[0].length);
+
+  // The end marker belongs to the final slot in the ring, even when a packet wraps.
+  if (index == kXenonEthernetTxDescCount - 1) {
+    descStart->length |= OSSwapHostToLittleInt32(kXenonEthernetDescLengthEnd);
+  }
 
   if (_txWriteIndex < 10)
   XEDBGLOG("Packet[%u] %p, segments: %u, seg[0]: 0x%X (length 0x%X)",
@@ -168,7 +173,10 @@ UInt32 XenonEthernet::sendTxPacket(mbuf_t packet) {
     XEDBGLOG("Packet[%u] %p, segments: %u, seg[%u]: 0x%X (length 0x%X)",
       index, packet, segmentCount, i, OSSwapLittleToHostInt32(segments[i].location), OSSwapLittleToHostInt32(segments[i].length));
 
-    packetLength += OSSwapLittleToHostInt32(desc->length);
+    packetLength += OSSwapLittleToHostInt32(segments[i].length);
+    if (index == kXenonEthernetTxDescCount - 1) {
+      desc->length |= OSSwapHostToLittleInt32(kXenonEthernetDescLengthEnd);
+    }
   }
 
   _txDescStates[_txWriteIndex].packet = packet;
@@ -178,9 +186,6 @@ UInt32 XenonEthernet::sendTxPacket(mbuf_t packet) {
 
     if (_txWriteIndex < 10) XEDBGLOG("Total packet length 0x%X", packetLength);
 
-  if (_txWriteIndex == (kXenonEthernetTxDescCount - 1)) {
-    desc->length |= OSSwapHostToLittleInt32(kXenonEthernetDescLengthEnd);
-  }
   _txWriteIndex = TX_NEXT(index);
 
   // Hand off ownership and signal the hardware of the new packet.
