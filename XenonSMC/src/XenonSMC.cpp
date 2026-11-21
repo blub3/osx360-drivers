@@ -7,6 +7,7 @@
 
 #include <IOKit/IOPlatformExpert.h>
 #include "XenonSMC.hpp"
+#include "NativeHDMI.h"
 
 OSDefineMetaClassAndStructors(XenonSMC, super);
 
@@ -58,6 +59,10 @@ bool XenonSMC::start(IOService *provider) {
   }
   IOLockInit(_rtcLock);
 
+  _hdmiI2CLock = IOLockAlloc();
+  if (_hdmiI2CLock == NULL)
+    return false;
+
   //
   // Configure interrupt.
   //
@@ -101,6 +106,8 @@ void XenonSMC::free(void) {
   _gXenonSMC = NULL;
 
   OSSafeReleaseNULL(_intEventSource);
+  if (_hdmiI2CLock != NULL)
+    IOLockFree(_hdmiI2CLock);
   if (_rtcLock != NULL) {
     IOLockFree(_rtcLock);
     _rtcLock = NULL;
@@ -125,6 +132,12 @@ IOReturn XenonSMC::callPlatformFunction(const OSSymbol *functionName, bool waitF
     return ejectTray();
   } else if (functionName->isEqualTo(kXenonFuncSMCMuteAudio)) {
     return muteAudio((bool)param1);
+  } else if (functionName->isEqualTo(XENON_HDMI_I2C_FUNCTION)) {
+    XenonSMCMessage *message = static_cast<XenonSMCMessage *>(param1);
+    if (!message || message->command != XENON_HDMI_I2C_COMMAND ||
+        (message->data[2] != 0xbd && message->data[2] != 0xf0))
+      return kIOReturnBadArgument;
+    return exchangeHdmiI2C(message);
   }
 
   return super::callPlatformFunction(functionName, waitForFunction, param1, param2, param3, param4);

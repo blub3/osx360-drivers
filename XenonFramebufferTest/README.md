@@ -1,23 +1,24 @@
-# XenonFramebufferTest 0.0.4
+# XenonFramebufferTest 0.0.5d1
 
-This experimental Tiger kext takes ownership of the Xbox 360 Slim's inherited 1920 × 1080 framebuffer. It offers 1920 × 1080 and 1280 × 720 as desktop modes. In 1280 × 720 mode, the Xenos scaler fills the 1920 × 1080 HDMI output. The HDMI link stays at 1080p60 in both modes, using the audio setup established by OpenBIOS.
+This Xbox 360 Slim test changes the native HDMI output between 1280 × 720 at 60 Hz and 1920 × 1080 at 60 Hz from Tiger’s Displays settings. OpenBIOS captures the Slim’s initial 720p timing before bringing up 1080p. Tiger uses both timing profiles and reapplies the working HDMI PCM setup after each switch.
 
 ## Xbox 360 Slim test results
 
-Tested on an Xbox 360 Slim connected over HDMI, running Mac OS X 10.4.11 from a USB 2.0 SSD. The test used [OpenBIOS with USB 2.0 autoboot and the 1080p HDMI audio setup](https://github.com/blub3/openbios/tree/859256055b918cfa69bb7b5b3d999bfb702b4b78).
+Tested on one Xbox 360 Slim running Mac OS X 10.4.11 from a USB 2.0 SSD, with a TV connected over HDMI.
 
-- After one cold boot, the probe used the Xenos framebuffer at `0x1f000000` when Tiger reported a zero console base. The I/O Registry showed `display0` attached to `XenonFramebufferTest`.
-- Quartz listed both resolutions as usable desktop modes. A session test switched 1920 × 1080 → 1280 × 720 → 1920 × 1080 without rebooting. Finder reported the expected desktop bounds at each step, and the framebuffer driver logged both transitions.
-- The console owner heard iTunes music over HDMI at both desktop resolutions. The scripted system alerts were inaudible. The HDMI audio result comes from the iTunes playback test.
+- Tiger exposed both modes. The test switched 1920 × 1080 → 1280 × 720 → 1920 × 1080 in one boot. Finder reported the expected desktop bounds, and the TV’s input information reported 720p and 1080p as the mode changed.
+- The same short iTunes clip was audible over HDMI in both modes. The driver read back `0x11` from the transmitter’s PCM enable register after each transition.
+- The separate scaler test offers the same desktop sizes with a fixed 1080p HDMI signal. [Scaler test](https://github.com/blub3/osx360-drivers/tree/xenon-framebuffer-test/XenonFramebufferTest)
 
-## Build and boot the test
+## Build and boot
 
-Use the PowerPC toolchain and the `MacPPCKernelSDK` checkout at the repository root. See the [project build instructions](../BUILDING.md). The tested build used GCC 4.2.1, the classic PowerPC linker, and [MacPPCKernelSDK commit `12b9fac`](https://github.com/Goldfish64/MacPPCKernelSDK/tree/12b9fac01a05c4ceeb27e42af53c76b810c135e7).
+Use the PowerPC toolchain and the `MacPPCKernelSDK` checkout at the repository root. See the [project build instructions](../BUILDING.md). The tested kexts were built with GCC 4.2.1, the classic PowerPC linker, and [MacPPCKernelSDK commit `12b9fac`](https://github.com/Goldfish64/MacPPCKernelSDK/tree/12b9fac01a05c4ceeb27e42af53c76b810c135e7).
 
 ```sh
 make -C XenonFramebufferTest OSX_VERSION=tiger
+make -C XenonSMC OSX_VERSION=tiger
 ```
 
-The build writes `XenonFramebufferTest/build_kext_tiger/XenonFramebufferTest.kext`. For the boot test, include it and the target installation's Tiger `IOGraphicsFamily` 1.4.2 in a separate startup mkext alongside the existing Xbox drivers, including `XenonCoreGraphics`. Point a test OpenBIOS ELF at that archive and keep the working ELF, startup mkext, boot configuration and 720p backup for rollback. Boot once with the test archive, then select the desktop mode in **System Preferences → Displays**.
+Build the companion OpenBIOS branch for `xbox360-ppc`. On the boot volume, give its ELF a separate XeLL entry and place `NativeHD.mkext` beside it. The test archive contains the two kexts built above, the target Tiger installation’s `IOGraphicsFamily` 1.4.2, and the other working Xbox drivers, including `XenonCoreGraphics` and `XenonAudio`. Keep the existing boot entries and archives for rollback. [Companion OpenBIOS branch](https://github.com/blub3/openbios/tree/codex/native-hdmi-test)
 
-The scaler settings follow the two-tap configuration documented in the [XSDK hardware tests](https://github.com/xenosworks/xsdk/blob/9e6de98f6b5d737bce0fecd2864edae94bdd2637/docs/HARDWARE.md#the-built-in-2-tap-filter-scales-1280x720-to-1920x1080-whole-2026-10-10).
+Cold boot with the test entry, then select a mode in **System Preferences → Displays**. OpenBIOS publishes the profiles when it starts from the expected 720p HDMI signal and completes the boot-time transition to 1080p.

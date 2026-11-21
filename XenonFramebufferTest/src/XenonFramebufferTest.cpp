@@ -1,56 +1,85 @@
 #include <IOKit/IOPlatformExpert.h>
+#include <IOKit/IODeviceTreeSupport.h>
 #include <IOKit/graphics/IOFramebuffer.h>
 #include <libkern/OSAtomic.h>
+#include "NativeHDMI.h"
 #include "XenosRegs.hpp"
 
 namespace {
 const IODisplayModeID kBootMode = 100;
-const IODisplayModeID kScaledMode = 101;
+const IODisplayModeID k720pMode = 101;
 const UInt32 kWidth = 1920;
 const UInt32 kHeight = 1080;
-const UInt32 kScaledWidth = 1280;
-const UInt32 kScaledHeight = 720;
+const UInt32 k720pWidth = 1280;
+const UInt32 k720pHeight = 720;
 const UInt32 kRowBytes = kWidth * sizeof(UInt32);
 // Keep the 1080p stride: XenonCoreGraphics copies the same surface in both modes.
 const IOPhysicalAddress kLinearFramebuffer = 0x20000000 - 2 * kXenosFramebufferLength;
 const char kPixelFormats[] = IO32BitDirectPixels "\0";
 
 enum {
-    kCrtcHorizontalTotal = 0x6000,
+    kCrtcUpdate = 0x60e8,
     kCrtcApply = 0x60ec,
     kSurfacePitch = 0x6120,
     kSurfaceEndX = 0x6134,
     kSurfaceEndY = 0x6138,
+    kSurfaceUpdate = 0x6144,
+    kDesktopHeight = 0x652c,
     kViewportStart = 0x6580,
+    kViewportSize = 0x6584,
+    kScalerEnable = 0x6590,
     kScalerUpdate = 0x65cc,
+    kViewportWidth = 0x65e8,
     kScalerUpdateLock = 0x10000,
     kApplyTimeoutMs = 100,
 };
 
-enum ScalerField {
-    kScalerEnable,
-    kScalerTaps,
-    kViewportSize,
-    kViewportWidth,
-    kHorizontalFilter,
-    kHorizontalScale,
-    kHorizontalPhase,
-    kVerticalFilter,
-    kVerticalScale,
-    kVerticalPhase,
-    kScalerFieldCount,
+// Restore the stereo PCM setup used by the working OpenBIOS build.
+const struct { uint8_t reg, value; } kAudioSetup[] = {
+    {0x14, 0x11}, {0x02, 0x03}, {0x03, 0x00}, {0x04, 0x18}, {0x05, 0x00},
+    {0x1d, 0x40}, {0x21, 0x02}, {0x22, 0x2b}, {0x2f, 0x01}, {0x3e, 0x3f}, {0xdf, 0x10},
 };
 
-const UInt32 kScalerRegisters[kScalerFieldCount] = {
-    0x6590, 0x6594, 0x6584, 0x65e8,
-    0x65b0, 0x65b4, 0x65b8, 0x65c0, 0x65c4, 0x65c8,
-};
-// Xenos built-in two-tap filter for a 2:3 source/output ratio.
-// The scale (8.24) and phase (16.16) are rounded to the register precision.
-const UInt32 kTwoTaps = 0x101;
-const UInt32 kBuiltInFilter = 0x100;
-const UInt32 kTwoThirdsScale = 0x00aaaaa0;
-const UInt32 kTwoThirdsPhase = 0x0001d400;
+bool transmit(IOService *smc, uint8_t (&message)[16])
+{
+    const IOReturn error = smc->callPlatformFunction(XENON_HDMI_I2C_FUNCTION, false,
+                                                      message, NULL, NULL, NULL);
+    if (error != kIOReturnSuccess) {
+        IOLog("XenonFramebufferTest: HDMI I2C request failed (0x%08lx)\n",
+              static_cast<unsigned long>(error));
+        return false;
+    }
+    return true;
+}
+
+bool readAna(IOService *smc, uint8_t reg, uint32_t *value)
+{
+    uint8_t message[16] = {XENON_HDMI_I2C_COMMAND, 0x10, 5, 0xf0, 0, 0xf0, reg};
+    if (!transmit(smc, message))
+        return false;
+    *value = message[4] | (uint32_t(message[5]) << 8) |
+             (uint32_t(message[6]) << 16) | (uint32_t(message[7]) << 24);
+    return true;
+}
+
+bool writeAna(IOService *smc, uint8_t reg, uint32_t value)
+{
+    uint8_t message[16] = {XENON_HDMI_I2C_COMMAND, 0x60, 0, 0xf0, 0, 0, reg, 0,
+                           uint8_t(value), uint8_t(value >> 8), uint8_t(value >> 16), uint8_t(value >> 24)};
+    return transmit(smc, message);
+}
+
+bool writeHdmi(IOService *smc, uint8_t reg, uint8_t value)
+{
+    uint8_t message[16] = {XENON_HDMI_I2C_COMMAND, 0x20, 0, 0xbd, 0, 0, reg, value};
+    return transmit(smc, message);
+}
+
+bool verifyHdmi(IOService *smc, uint8_t reg, uint8_t value)
+{
+    uint8_t message[16] = {XENON_HDMI_I2C_COMMAND, 0x10, 1, 0xbd, 0, 0xbd, reg};
+    return transmit(smc, message) && message[3] == value;
+}
 }
 
 class XenonFramebufferTest : public IOFramebuffer {
@@ -78,12 +107,13 @@ private:
     IODeviceMemory *framebuffer;
     IOMemoryMap *displayMap;
     volatile void *displayRegisters;
-    bool scaledModeAvailable;
+    bool nativeModeAvailable;
     IODisplayModeID currentMode;
-    UInt32 bootScaler[kScalerFieldCount];
+    XenonHDMIProfiles profiles;
 
-    void prepareScaledMode();
-    bool applyMode(IODisplayModeID mode);
+    void prepareNativeModes();
+    bool applyMode(IOService *smc, IODisplayModeID mode);
+    bool applyScanout(const XenonHDMIProfile &profile, UInt32 width, UInt32 height);
     bool supportsMode(IODisplayModeID mode) const;
     bool waitForDisplayUpdate() const;
     UInt32 readDisplay(UInt32 reg) const;
@@ -131,7 +161,7 @@ bool XenonFramebufferTest::start(IOService *provider)
         return false;
     }
     currentMode = kBootMode;
-    prepareScaledMode();
+    prepareNativeModes();
     if (!IOFramebuffer::start(provider)) {
         IOLog("XenonFramebufferTest: IOFramebuffer::start failed\n");
         return false;
@@ -169,20 +199,20 @@ const char *XenonFramebufferTest::getPixelFormats()
 
 IOItemCount XenonFramebufferTest::getDisplayModeCount()
 {
-    return scaledModeAvailable ? 2 : 1;
+    return nativeModeAvailable ? 2 : 1;
 }
 
 IOReturn XenonFramebufferTest::getDisplayModes(IODisplayModeID *modes)
 {
     modes[0] = kBootMode;
-    if (scaledModeAvailable)
-        modes[1] = kScaledMode;
+    if (nativeModeAvailable)
+        modes[1] = k720pMode;
     return kIOReturnSuccess;
 }
 
 bool XenonFramebufferTest::supportsMode(IODisplayModeID mode) const
 {
-    return mode == kBootMode || (scaledModeAvailable && mode == kScaledMode);
+    return mode == kBootMode || (nativeModeAvailable && mode == k720pMode);
 }
 
 IOReturn XenonFramebufferTest::getInformationForDisplayMode(IODisplayModeID mode,
@@ -191,8 +221,8 @@ IOReturn XenonFramebufferTest::getInformationForDisplayMode(IODisplayModeID mode
     if (!supportsMode(mode))
         return kIOReturnUnsupportedMode;
     bzero(info, sizeof(*info));
-    info->nominalWidth = mode == kBootMode ? kWidth : kScaledWidth;
-    info->nominalHeight = mode == kBootMode ? kHeight : kScaledHeight;
+    info->nominalWidth = mode == kBootMode ? kWidth : k720pWidth;
+    info->nominalHeight = mode == kBootMode ? kHeight : k720pHeight;
     info->refreshRate = 60 << 16;
     return kIOReturnSuccess;
 }
@@ -252,20 +282,27 @@ IOReturn XenonFramebufferTest::setDisplayMode(IODisplayModeID mode, IOIndex dept
         return kIOReturnSuccess;
     if (!waitForDisplayUpdate())
         return kIOReturnTimeout;
-    if (!applyMode(mode)) {
-        const bool restored = applyMode(currentMode);
-        IOLog("XenonFramebufferTest: mode %ld failed, previous display state %s\n",
+
+    mach_timespec_t timeout = {1, 0};
+    IOService *smc = waitForService(serviceMatching("XenonSMC"), &timeout);
+    if (!smc)
+        return kIOReturnNotReady;
+    uint32_t control = 0;
+    if (!readAna(smc, 0, &control) || control != profiles.control) {
+        IOLog("XenonFramebufferTest: ANA preflight failed (control=0x%08x)\n", control);
+        return kIOReturnNotReady;
+    }
+    if (!applyMode(smc, mode)) {
+        const bool restored = applyMode(smc, currentMode);
+        IOLog("XenonFramebufferTest: native mode %ld failed, previous HDMI mode %s\n",
               static_cast<long>(mode), restored ? "restored" : "could not be restored");
         return kIOReturnIOError;
     }
     currentMode = mode;
-    IOLog("XenonFramebufferTest: desktop %lux%lu, HDMI timing 1920x1080\n",
-          mode == kBootMode ? kWidth : kScaledWidth,
-          mode == kBootMode ? kHeight : kScaledHeight);
     return kIOReturnSuccess;
 }
 
-void XenonFramebufferTest::prepareScaledMode()
+void XenonFramebufferTest::prepareNativeModes()
 {
     IODeviceMemory *mmio = IODeviceMemory::withRange(kXenosMmioAddress, kXenosMmioLength);
     if (mmio) {
@@ -273,68 +310,113 @@ void XenonFramebufferTest::prepareScaledMode()
         mmio->release();
     }
     if (!displayMap) {
-        IOLog("XenonFramebufferTest: display registers unavailable for 720p desktop\n");
+        IOLog("XenonFramebufferTest: display registers unavailable for native HDMI switching\n");
         return;
     }
 
     displayRegisters = reinterpret_cast<volatile void *>(displayMap->getVirtualAddress());
-    for (unsigned int i = 0; i < kScalerFieldCount; ++i)
-        bootScaler[i] = readDisplay(kScalerRegisters[i]);
-
-    // Only enable switching over the known, unscaled 1080p60 boot setup.
-    scaledModeAvailable = (readDisplay(kCrtcHorizontalTotal) & 0x1fff) == 2199 &&
+    IORegistryEntry *chosen = IORegistryEntry::fromPath("/chosen", gIODTPlane);
+    if (chosen) {
+        OSData *data = OSDynamicCast(OSData, chosen->getProperty(XENON_NATIVE_HDMI_PROPERTY));
+        if (data && data->getLength() == sizeof(profiles))
+            memcpy(&profiles, data->getBytesNoCopy(), sizeof(profiles));
+        chosen->release();
+    }
+    nativeModeAvailable = profiles.version == XENON_NATIVE_HDMI_VERSION &&
+                          profiles.control == 0x2c1 &&
+                          (profiles.mode720.timing[0] & 0x1fff) == 1649 &&
+                          (profiles.mode720.timing[2] & 0x1fff) == 749 &&
+                          (profiles.mode1080.timing[0] & 0x1fff) == 2199 &&
+                          (profiles.mode1080.timing[2] & 0x1fff) == 1124 &&
+                          (readDisplay(xenonNativeTimingRegisters[0]) & 0x1fff) == 2199 &&
                           readDisplay(kSurfacePitch) == kWidth &&
                           readDisplay(kSurfaceEndX) == kWidth &&
                           readDisplay(kSurfaceEndY) == kHeight &&
                           readDisplay(kViewportStart) == 0 &&
-                          bootScaler[kScalerEnable] == 0 &&
-                          bootScaler[kViewportSize] == ((kWidth << 16) | kHeight);
-    IOLog("XenonFramebufferTest: 720p desktop %s over inherited 1080p HDMI\n",
-          scaledModeAvailable ? "available" : "disabled (unexpected scanout)");
+                          readDisplay(kScalerEnable) == 0 &&
+                          readDisplay(kViewportSize) == ((kWidth << 16) | kHeight);
+    IOLog("XenonFramebufferTest: native HDMI switching %s\n",
+          nativeModeAvailable ? "available" : "disabled (missing profile or unexpected scanout)");
 }
 
-bool XenonFramebufferTest::applyMode(IODisplayModeID mode)
+bool XenonFramebufferTest::applyMode(IOService *smc, IODisplayModeID mode)
 {
-    UInt32 scaler[kScalerFieldCount];
-    memcpy(scaler, bootScaler, sizeof(scaler));
-    const bool scaled = mode == kScaledMode;
-    const UInt32 height = scaled ? kScaledHeight : kHeight;
-    if (scaled) {
-        scaler[kScalerEnable] = 1;
-        scaler[kScalerTaps] = kTwoTaps;
-        scaler[kViewportSize] = (kScaledWidth << 16) | kScaledHeight;
-        scaler[kViewportWidth] = kScaledWidth / 4 - 1;
-        scaler[kHorizontalFilter] |= kBuiltInFilter;
-        scaler[kHorizontalScale] = kTwoThirdsScale;
-        scaler[kHorizontalPhase] = kTwoThirdsPhase;
-        scaler[kVerticalFilter] |= kBuiltInFilter;
-        scaler[kVerticalScale] = kTwoThirdsScale;
-        scaler[kVerticalPhase] = kTwoThirdsPhase;
-    }
+    const bool is720p = mode == k720pMode;
+    const XenonHDMIProfile &profile = is720p ? profiles.mode720 : profiles.mode1080;
+    const UInt32 width = is720p ? k720pWidth : kWidth;
+    const UInt32 height = is720p ? k720pHeight : kHeight;
 
-    // The render target and hardware pitch stay fixed. Crop the visible
-    // viewport and scale it while leaving the clock and transmitter alone.
-    writeDisplay(kScalerUpdate, kScalerUpdateLock);
-    for (unsigned int i = 0; i < kScalerFieldCount; ++i)
-        writeDisplay(kScalerRegisters[i], scaler[i]);
-    writeDisplay(kScalerUpdate, 0);
+    if (!writeAna(smc, 0, 0))
+        return false;
+    for (unsigned int i = 0; i < sizeof(xenonNativeAnaRegisters); ++i) {
+        uint32_t readback;
+        const uint8_t reg = xenonNativeAnaRegisters[i];
+        if (!writeAna(smc, reg, profile.ana[i]) || !readAna(smc, reg, &readback) ||
+            readback != profile.ana[i]) {
+            IOLog("XenonFramebufferTest: ANA register 0x%02x setup failed\n", unsigned(reg));
+            return false;
+        }
+    }
+    IOSleep(5);
+    if (!writeHdmi(smc, 0x03, 0x00) || !writeHdmi(smc, 0x04, 0x18) ||
+        !writeHdmi(smc, 0x14, 0x03) || !writeAna(smc, 0, profiles.control))
+        return false;
+
+    if (!applyScanout(profile, width, height))
+        return false;
+
+    for (unsigned int i = 0; i < sizeof(kAudioSetup) / sizeof(kAudioSetup[0]); ++i) {
+        if (!writeHdmi(smc, kAudioSetup[i].reg, kAudioSetup[i].value)) {
+            IOLog("XenonFramebufferTest: HDMI PCM setup failed at 0x02%02x\n",
+                  unsigned(kAudioSetup[i].reg));
+            return false;
+        }
+    }
+    if (!verifyHdmi(smc, 0x14, 0x11)) {
+        IOLog("XenonFramebufferTest: HDMI PCM enable readback failed\n");
+        return false;
+    }
+    IOLog("XenonFramebufferTest: native HDMI %lux%lu, PCM enable readback 0x11\n",
+          width, height);
+    return true;
+}
+
+bool XenonFramebufferTest::applyScanout(const XenonHDMIProfile &profile,
+                                        UInt32 width, UInt32 height)
+{
+    writeDisplay(kCrtcUpdate, 1);
+    for (unsigned int i = 0; i < sizeof(profile.timing) / sizeof(profile.timing[0]); ++i)
+        writeDisplay(xenonNativeTimingRegisters[i], profile.timing[i]);
+    writeDisplay(kCrtcUpdate, 0);
+
+    // The refresh engine continues using a 1920-pixel stride in both modes.
+    writeDisplay(kSurfaceUpdate, 1);
     writeDisplay(kSurfaceEndY, height);
+    writeDisplay(kSurfaceUpdate, 0);
+    writeDisplay(kScalerUpdate, kScalerUpdateLock);
+    writeDisplay(kDesktopHeight, height);
+    writeDisplay(kViewportStart, 0);
+    writeDisplay(kViewportSize, (width << 16) | height);
+    writeDisplay(kScalerEnable, 0);
+    writeDisplay(kViewportWidth, width / 4 - 1);
+    writeDisplay(kScalerUpdate, 0);
+
     writeDisplay(kCrtcApply, 1);
     if (!waitForDisplayUpdate()) {
         writeDisplay(kCrtcApply, 0);
         IOLog("XenonFramebufferTest: display update timed out\n");
         return false;
     }
-
-    for (unsigned int i = 0; i < kScalerFieldCount; ++i) {
-        const UInt32 actual = readDisplay(kScalerRegisters[i]);
-        if (actual != scaler[i]) {
-            IOLog("XenonFramebufferTest: scaler register 0x%04lx read 0x%08lx, expected 0x%08lx\n",
-                  kScalerRegisters[i], actual, scaler[i]);
+    for (unsigned int i = 0; i < sizeof(profile.timing) / sizeof(profile.timing[0]); ++i) {
+        if (readDisplay(xenonNativeTimingRegisters[i]) != profile.timing[i]) {
+            IOLog("XenonFramebufferTest: timing readback failed at 0x%04x\n",
+                  unsigned(xenonNativeTimingRegisters[i]));
             return false;
         }
     }
-    return readDisplay(kSurfaceEndY) == height;
+    return readDisplay(kSurfaceEndY) == height &&
+           readDisplay(kViewportSize) == ((width << 16) | height) &&
+           readDisplay(kScalerEnable) == 0;
 }
 
 bool XenonFramebufferTest::waitForDisplayUpdate() const
