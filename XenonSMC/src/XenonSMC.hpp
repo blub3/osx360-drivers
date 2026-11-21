@@ -52,6 +52,12 @@ private:
   XenonSMCTempStatus  _tempStatus;
   bool                _tempStatusPresent;
 
+  IOLock           *_hdmiI2CLock;
+  bool              _hdmiI2CPending;
+  bool              _hdmiI2CReady;
+  bool              _hdmiI2CDiscardLateReply;
+  XenonSMCMessage   _hdmiI2CReply;
+
   // Register read/writes.
   inline void writeLittleReg32(UInt32 offset, UInt32 data) {
     OSWriteLittleInt32(_mmioMem, offset, data);
@@ -71,8 +77,10 @@ private:
   void handleInterrupt(IOInterruptEventSource *intEventSource, int count);
 
   // Internal functions.
-  IOReturn writeMessage(XenonSMCMessage *message);
+  IOReturn writeMessage(XenonSMCMessage *message, UInt32 timeout = kXenonSMCTimeout);
   IOReturn readMessage(XenonSMCMessage *message);
+  IOReturn exchangeHdmiI2C(XenonSMCMessage *message);
+  void receiveHdmiI2C(const XenonSMCMessage &message);
   IOReturn getRTC(UInt64 *value);
   IOReturn setLEDState(bool override, UInt8 value);
   IOReturn startLEDBootAnimation(void);

@@ -6,6 +6,7 @@
 //
 
 #include "XenonSMC.hpp"
+#include "NativeHDMI.h"
 
 //
 // Interrupt filter handler.
@@ -19,7 +20,10 @@ bool XenonSMC::filterInterrupt(IOFilterInterruptEventSource *intEventSource) {
   // Handle power button press here, need to notify SMC within a short
   // window otherwise the console will power off.
   //
-  readMessage(&message);
+  if (readMessage(&message) != kIOReturnSuccess) {
+    writeLittleReg32(kXenonSMCRegIntAck, readLittleReg32(kXenonSMCRegIntStatus));
+    return false;
+  }
 
   needSecondary = false;
   switch (message.command) {
@@ -64,6 +68,10 @@ bool XenonSMC::filterInterrupt(IOFilterInterruptEventSource *intEventSource) {
       _tempStatusPresent = true;
       break;
 
+    case XENON_HDMI_I2C_COMMAND:
+      receiveHdmiI2C(message);
+      break;
+
     default:
       break;
   }
@@ -102,8 +110,7 @@ void XenonSMC::handleInterrupt(IOInterruptEventSource *intEventSource, int count
 //
 // Writes a message to the SMC's FIFO buffer.
 //
-IOReturn XenonSMC::writeMessage(XenonSMCMessage *message) {
-  UInt32 timeout = kXenonSMCTimeout;
+IOReturn XenonSMC::writeMessage(XenonSMCMessage *message, UInt32 timeout) {
   IOInterruptState  ints;
 
   ints = IOSimpleLockLockDisableInterrupt(_lock);
@@ -128,6 +135,63 @@ IOReturn XenonSMC::writeMessage(XenonSMCMessage *message) {
 
   IOSimpleLockUnlockEnableInterrupt(_lock, ints);
   return kIOReturnSuccess;
+}
+
+void XenonSMC::receiveHdmiI2C(const XenonSMCMessage &message) {
+  IOInterruptState ints = IOSimpleLockLockDisableInterrupt(_lock);
+  if (_hdmiI2CDiscardLateReply) {
+    _hdmiI2CDiscardLateReply = false;
+  } else if (_hdmiI2CPending) {
+    _hdmiI2CReply = message;
+    _hdmiI2CReady = true;
+  }
+  IOSimpleLockUnlockEnableInterrupt(_lock, ints);
+}
+
+IOReturn XenonSMC::exchangeHdmiI2C(XenonSMCMessage *message) {
+  const unsigned int timeoutMs = 100;
+  IOLockLock(_hdmiI2CLock);
+
+  // All replies to command 0x11 look alike. Drain a timed-out reply first.
+  unsigned int elapsed = 0;
+  IOInterruptState ints = IOSimpleLockLockDisableInterrupt(_lock);
+  while (_hdmiI2CDiscardLateReply && elapsed < timeoutMs) {
+    IOSimpleLockUnlockEnableInterrupt(_lock, ints);
+    IOSleep(1);
+    ++elapsed;
+    ints = IOSimpleLockLockDisableInterrupt(_lock);
+  }
+  if (_hdmiI2CDiscardLateReply) {
+    IOSimpleLockUnlockEnableInterrupt(_lock, ints);
+    IOLockUnlock(_hdmiI2CLock);
+    return kIOReturnTimeout;
+  }
+  _hdmiI2CPending = true;
+  _hdmiI2CReady = false;
+  IOSimpleLockUnlockEnableInterrupt(_lock, ints);
+
+  IOReturn result = writeMessage(message, 10000);
+  ints = IOSimpleLockLockDisableInterrupt(_lock);
+  if (result == kIOReturnSuccess) {
+    elapsed = 0;
+    while (!_hdmiI2CReady && elapsed < timeoutMs) {
+      IOSimpleLockUnlockEnableInterrupt(_lock, ints);
+      IOSleep(1);
+      ++elapsed;
+      ints = IOSimpleLockLockDisableInterrupt(_lock);
+    }
+    if (_hdmiI2CReady) {
+      *message = _hdmiI2CReply;
+      result = message->data[0] == 0 ? kIOReturnSuccess : kIOReturnIOError;
+    } else {
+      _hdmiI2CDiscardLateReply = true;
+      result = kIOReturnTimeout;
+    }
+  }
+  _hdmiI2CPending = false;
+  IOSimpleLockUnlockEnableInterrupt(_lock, ints);
+  IOLockUnlock(_hdmiI2CLock);
+  return result;
 }
 
 //
