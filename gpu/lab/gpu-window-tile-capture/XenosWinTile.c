@@ -3,16 +3,30 @@
 extern int _NSGetExecutablePath(char *, UInt32 *);
 extern char *realpath(const char *, char *);
 extern int getpid(void);
+extern unsigned long long mach_absolute_time(void);
+typedef struct { UInt32 numer, denom; } MachTimebase;
+extern int mach_timebase_info(MachTimebase *);
+#ifndef XENOS_UNARMED_BLIT
 extern int open(const char *, int, ...);
 extern int close(int);
 extern long read(int, void *, unsigned long);
+enum { kReadOnly = 0, kNonBlocking = 4, kNoFollow = 0x100 };
+#endif
 extern int memcmp(const void *, const void *, unsigned long);
 extern void syslog(int, const char *, ...);
 extern _Bool OSAtomicCompareAndSwap32(int, int, volatile int *);
 extern int OSSpinLockTry(volatile int *);
 extern void OSSpinLockUnlock(volatile int *);
 
-enum { kNotice = 5, kReadOnly = 0, kNonBlocking = 4, kNoFollow = 0x100 };
+enum { kNotice = 5 };
+
+#ifdef XENOS_UNARMED_BLIT
+#define XENOS_BLIT_NAME "XenosWinAuto"
+#define XENOS_BLIT_ENTRY XenosWinAutoFactory
+#else
+#define XENOS_BLIT_NAME "XenosWinTile"
+#define XENOS_BLIT_ENTRY XenosWinTileFactory
+#endif
 
 typedef struct {
     const TigerBlitInterface *interface;
@@ -22,6 +36,9 @@ typedef struct {
     io_service_t framebuffer;
     int windowServer;
     volatile int beamReported;
+#ifdef XENOS_UNARMED_BLIT
+    unsigned long long cooldownTicks, nextSample;
+#endif
     int (*conforms)(io_object_t, const char *);
     int (*retainObject)(io_object_t);
     int (*releaseObject)(io_object_t);
@@ -32,8 +49,10 @@ typedef struct {
 
 static const TigerBlitInterface interface;
 static volatile int sampleLock;
+#ifndef XENOS_UNARMED_BLIT
 static int attempted;
 static volatile int traceCount;
+#endif
 
 static int isWindowServer(void)
 {
@@ -107,8 +126,16 @@ static int start(void *self, CFRef properties, io_service_t framebuffer)
     if (engine->retainObject(framebuffer))
         return kBlitNoResources;
     engine->framebuffer = framebuffer;
-    if (engine->windowServer)
-        syslog(kNotice, "XenosWinTile start pid=%d framebuffer_index=%u", getpid(), index);
+    if (engine->windowServer) {
+#ifdef XENOS_UNARMED_BLIT
+        MachTimebase timebase;
+        if (!mach_timebase_info(&timebase) && timebase.numer && timebase.denom) {
+            engine->cooldownTicks = 1000000000ULL * timebase.denom / timebase.numer;
+            engine->nextSample = mach_absolute_time() + 5 * engine->cooldownTicks;
+        }
+#endif
+        syslog(kNotice, XENOS_BLIT_NAME " start pid=%d framebuffer_index=%u", getpid(), index);
+    }
     return 0;
 }
 
@@ -151,7 +178,7 @@ static int beamPosition(void *self, UInt32 options, int *position)
     if (!position)
         return kBlitBadArgument;
     if (engine->windowServer && OSAtomicCompareAndSwap32(0, 1, &engine->beamReported))
-        syslog(kNotice, "XenosWinTile beam pid=%d status=0x%08x", getpid(), (UInt32)kBlitUnsupported);
+        syslog(kNotice, XENOS_BLIT_NAME " beam pid=%d status=0x%08x", getpid(), (UInt32)kBlitUnsupported);
     /* Tiger's startup fade applies the transfer immediately on a nonzero status. */
     return kBlitUnsupported;
 }
@@ -187,6 +214,53 @@ static int surfaceOutput(void *self, UInt32 options, TigerBlitSurface *surface, 
     return unsupportedSurface(self, options, surface);
 }
 
+#ifdef XENOS_UNARMED_BLIT
+static int blit(void *self, UInt32 options, UInt32 type, UInt32 sourceType,
+                const void *operation, const void *source)
+{
+    Engine *engine = self;
+    (void)options;
+    if (!engine->windowServer || !engine->framebuffer || !engine->cooldownTicks ||
+        source || type != kBlitCopyRegion)
+        return kBlitNoResources;
+
+    XenosCopyPlan plan;
+    if (!XenosDecodeWindowCopy(type, sourceType, operation, &plan) || plan.count != 1 ||
+        plan.area < 256 || plan.area > kXenosQuadReadbackPixels)
+        return kBlitNoResources;
+    const XenosCopyRectangle *rect = &plan.rects[0];
+    const XenosWindowMove *move = &rect->move;
+    if ((move->sourceX == move->targetX && move->sourceY == move->targetY) ||
+        !OSSpinLockTry(&sampleLock))
+        return kBlitNoResources;
+    if (mach_absolute_time() < engine->nextSample) {
+        OSSpinLockUnlock(&sampleLock);
+        return kBlitNoResources;
+    }
+
+    XenosFramebufferMap map;
+    XenosFullCopy copy = {.batches = 0};
+    UInt32 mapStatus = 0;
+    const char *failure = XenosMapWindowAperture(engine->io, engine->framebuffer, &map, &mapStatus);
+    if (!failure) {
+        const XenosWindowPixels screen = {(volatile UInt32 *)map.address, kFramebufferRowBytes,
+                                           kCommonWidth, kCommonHeight};
+        failure = XenosCompositeUnarmedCopy(&screen, &plan, &copy);
+        XenosUnmapFramebuffer(&map);
+    }
+    engine->nextSample = mach_absolute_time() + engine->cooldownTicks;
+    OSSpinLockUnlock(&sampleLock);
+
+    syslog(kNotice, XENOS_BLIT_NAME " %s pid=%d src=%d,%d dst=%d,%d size=%d,%d area=%u "
+           "ticket=%u fence=%u gpu_pixels=%u screen_pixels=%u hash=%08x gpu_ms=%u "
+           "committed=%d reason=%s map_status=0x%08x",
+           failure ? "FAIL" : "PASS", getpid(), move->sourceX, move->sourceY, move->targetX,
+           move->targetY, rect->width, rect->height, plan.area, copy.ticket, copy.fence,
+           copy.gpuPixels, copy.screenPixels, copy.hash, copy.elapsedMs, copy.committed,
+           failure ? failure : "verified", mapStatus);
+    return copy.committed ? 0 : (int)kBlitNoResources;
+}
+#else
 static int readArm(XenosWindowArm *arm)
 {
     int file = open(XENOS_WINDOW_ARM, kReadOnly | kNonBlocking | kNoFollow);
@@ -264,6 +338,7 @@ static int blit(void *self, UInt32 options, UInt32 type, UInt32 sourceType,
     OSSpinLockUnlock(&sampleLock);
     return committed ? 0 : (int)kBlitNoResources;
 }
+#endif
 
 static int getBlitter(void *self, UInt32 options, UInt32 type, UInt32 source, TigerBlitter *out)
 {
@@ -293,7 +368,7 @@ static const TigerBlitInterface interface = {
     .setDestination = destination, .getBlitter = getBlitter, .waitComplete = idle,
 };
 
-void *XenosWinTileFactory(CFRef allocator, CFRef type)
+void *XENOS_BLIT_ENTRY(CFRef allocator, CFRef type)
 {
     (void)allocator;
     const int server = isWindowServer();

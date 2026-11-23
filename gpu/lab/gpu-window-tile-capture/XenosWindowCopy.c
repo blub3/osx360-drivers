@@ -10,7 +10,7 @@ extern int snprintf(char *, unsigned long, const char *, ...);
 typedef struct { UInt32 numer, denom; } MachTimebase;
 extern int mach_timebase_info(MachTimebase *);
 
-enum { kBatchBudgetMs = 8000 };
+enum { kBatchBudgetMs = 8000, kUnarmedBudgetMs = 350 };
 
 static UInt32 batchElapsedMs(unsigned long long start, const MachTimebase *timebase)
 {
@@ -264,15 +264,16 @@ static int snapshot(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
 }
 
 static const char *renderRegion(XenosBackend *backend, PixelPair *pairs, UInt32 area,
-                                XenosFullCopy *copy)
+                                int armed, XenosFullCopy *copy)
 {
     MachTimebase timebase;
     if (mach_timebase_info(&timebase) || !timebase.numer || !timebase.denom)
         return "gpu-clock";
     const unsigned long long start = mach_absolute_time();
+    const UInt32 budget = armed ? kBatchBudgetMs : kUnarmedBudgetMs;
     // Pack only covered clip pixels into each texture, including partial tiles.
     for (UInt32 first = 0; first < area; first += kXenosQuadReadbackPixels) {
-        if (copy->elapsedMs >= kBatchBudgetMs)
+        if (copy->elapsedMs >= budget)
             return "gpu-budget";
         const UInt32 left = area - first;
         const UInt32 count = left < kXenosQuadReadbackPixels ? left : kXenosQuadReadbackPixels;
@@ -285,7 +286,8 @@ static const char *renderRegion(XenosBackend *backend, PixelPair *pairs, UInt32 
         }
         UInt32 result[kXenosQuadReadbackPixels];
         XenosFence fence = {.ticket = 0};
-        const int completed = XenosCaptureTile(backend, &upload, &fence, result);
+        const int completed = armed ? XenosCaptureTile(backend, &upload, &fence, result)
+                                    : XenosTryCaptureTile(backend, &upload, &fence, result);
         copy->elapsedMs = batchElapsedMs(start, &timebase);
         if (!completed || fence.ticket != fence.fence ||
             (copy->batches && fence.fence != copy->fence + 1))
@@ -304,7 +306,7 @@ static const char *renderRegion(XenosBackend *backend, PixelPair *pairs, UInt32 
             ++copy->gpuPixels;
         }
     }
-    return copy->elapsedMs >= kBatchBudgetMs ? "gpu-budget" : 0;
+    return copy->elapsedMs >= budget ? "gpu-budget" : 0;
 }
 
 static void publish(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
@@ -342,14 +344,14 @@ static void verifyPublished(const XenosWindowPixels *screen, const XenosCopyPlan
     copy->hash = hash;
 }
 
-const char *XenosCompositeWindowCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
-                                     const XenosWindowArm *arm, XenosFullCopy *copy)
+static const char *compositeWindowCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
+                                       const XenosWindowArm *arm, XenosFullCopy *copy)
 {
-    const XenosWindowMove *tile = &arm->move;
     *copy = (XenosFullCopy){.batches = 0};
-    if (!plan->area || plan->area > kFullCopyPixelLimit)
+    const UInt32 limit = arm ? kFullCopyPixelLimit : kXenosQuadReadbackPixels;
+    if (!plan->area || plan->area > limit)
         return "region-limit";
-    if (!XenosWindowCopyCovers(plan, arm) || !screen->base ||
+    if ((arm && !XenosWindowCopyCovers(plan, arm)) || !screen->base ||
         screen->rowBytes % sizeof(UInt32) || screen->width > screen->rowBytes / sizeof(UInt32))
         return "geometry";
     for (UInt32 i = 0; i < plan->count; ++i) {
@@ -364,27 +366,34 @@ const char *XenosCompositeWindowCopy(const XenosWindowPixels *screen, const Xeno
     PixelPair *pairs = calloc(plan->area, sizeof(*pairs));
     if (!pairs)
         return "memory";
-    const char *failure = "source-hash";
-    UInt32 source[kWindowCopyPixels], current[kWindowCopyPixels];
-    if (!snapshot(screen, plan, pairs, 0) ||
-        !XenosWindowSample(screen, tile->sourceX, tile->sourceY, source) ||
-        XenosWindowHash(source) != arm->hash)
+    const char *failure = "source-snapshot";
+    UInt32 source[kWindowCopyPixels];
+    if (!snapshot(screen, plan, pairs, 0))
         goto done;
+    if (arm && (!XenosWindowSample(screen, arm->move.sourceX, arm->move.sourceY, source) ||
+                XenosWindowHash(source) != arm->hash)) {
+        failure = "source-hash";
+        goto done;
+    }
 
     XenosBackend backend = {.connection = 0};
     failure = "gpu-open";
     if (!XenosOpenBackend(&backend))
         goto done;
-    failure = renderRegion(&backend, pairs, plan->area, copy);
+    failure = renderRegion(&backend, pairs, plan->area, arm != 0, copy);
     XenosCloseBackend(&backend);
     if (failure)
         goto done;
 
     failure = "framebuffer-changed";
-    if (!snapshot(screen, plan, pairs, 1) ||
-        !XenosWindowSample(screen, tile->sourceX, tile->sourceY, current) ||
-        memcmp(source, current, sizeof(source)))
+    if (!snapshot(screen, plan, pairs, 1))
         goto done;
+    if (arm) {
+        UInt32 current[kWindowCopyPixels];
+        if (!XenosWindowSample(screen, arm->move.sourceX, arm->move.sourceY, current) ||
+            memcmp(source, current, sizeof(source)))
+            goto done;
+    }
 
     publish(screen, plan, pairs);
     copy->committed = 1;
@@ -393,4 +402,16 @@ const char *XenosCompositeWindowCopy(const XenosWindowPixels *screen, const Xeno
 done:
     free(pairs);
     return failure;
+}
+
+const char *XenosCompositeWindowCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
+                                     const XenosWindowArm *arm, XenosFullCopy *copy)
+{
+    return compositeWindowCopy(screen, plan, arm, copy);
+}
+
+const char *XenosCompositeUnarmedCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
+                                     XenosFullCopy *copy)
+{
+    return compositeWindowCopy(screen, plan, 0, copy);
 }

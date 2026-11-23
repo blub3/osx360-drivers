@@ -36,6 +36,9 @@ typedef struct {
     int (*createWindow)(UInt32, UInt32, const QDRect *, WindowRef *);
     void (*disposeWindow)(WindowRef);
     void (*showWindow)(WindowRef);
+#ifdef XENOS_UNARMED_BLIT
+    void (*selectWindow)(WindowRef);
+#endif
     void (*moveWindow)(WindowRef, short, short, unsigned char);
     int (*windowBounds)(WindowRef, unsigned, QDRect *);
     void *(*windowPort)(WindowRef);
@@ -82,6 +85,9 @@ static int loadAPI(API *api)
     LOAD(hit, createWindow, CreateNewWindow);
     LOAD(hit, disposeWindow, DisposeWindow);
     LOAD(hit, showWindow, ShowWindow);
+#ifdef XENOS_UNARMED_BLIT
+    LOAD(hit, selectWindow, SelectWindow);
+#endif
     LOAD(hit, moveWindow, MoveWindow);
     LOAD(hit, windowBounds, GetWindowBounds);
     LOAD(hit, windowPort, GetWindowPort);
@@ -201,7 +207,7 @@ static unsigned windowContent(const XenosWindowPixels *screen, int x, int y, int
 
 enum { kOverlapWidth = 96, kOverlapHeight = 72 };
 
-static int windowTest(const API *api, UInt32 expectedOwner, int overlap)
+static int windowTest(const API *api, UInt32 expectedOwner, int overlap, int unarmed)
 {
     const int active = expectedOwner != 0;
     const short windowX = overlap ? 216 : 224, windowY = overlap ? 183 : 208;
@@ -245,6 +251,9 @@ static int windowTest(const API *api, UInt32 expectedOwner, int overlap)
         bounds.top != windowY || bounds.right != windowX + width || bounds.bottom != windowY + height)
         goto done;
     api->showWindow(window);
+#ifdef XENOS_UNARMED_BLIT
+    api->selectWindow(window);
+#endif
     api->runEvents(0.15);
     if (!paint(api, window, patchX, patchY))
         goto done;
@@ -275,10 +284,11 @@ static int windowTest(const API *api, UInt32 expectedOwner, int overlap)
     const int haveBefore = completion(api, gpu, &before);
     MachTimebase timebase;
     if (!haveBefore || mach_timebase_info(&timebase) || !timebase.numer || !timebase.denom ||
-        (active && !(armed=armCopy(&arm))))
+        (active && !unarmed && !(armed=armCopy(&arm))))
         goto done;
     /* The asynchronous move may take the plug-in's full eight-second GPU budget. */
-    const unsigned long long waitNs = active && overlap ? 12000000000ULL : 1250000000ULL;
+    const unsigned long long waitNs = unarmed ? 2000000000ULL
+        : active && overlap ? 12000000000ULL : 1250000000ULL;
     const unsigned long long moveStart = mach_absolute_time();
     const unsigned long long deadline = moveStart + waitNs * timebase.denom / timebase.numer;
     api->moveWindow(window, targetX, targetY, 1);
@@ -305,7 +315,8 @@ static int windowTest(const API *api, UInt32 expectedOwner, int overlap)
     printf("XenosWindowRepaint %s mode=%s src=%d,%d dst=%d,%d hash=%08x "
            "screen_pixels=%u owner_pid=%u ticket=%u fence=%u gpu_pixels=%u gpu_mismatches=%u "
            "QuartzExtreme_before=%d after=%d window_pixels=%u/%u move_ms=%u\n",
-           ok ? "PASS" : "FAIL", active ? (overlap ? "overlap" : "repaint") : (overlap ? "overlap-baseline" : "baseline"), x, y, destX, destY, arm.hash,
+           ok ? "PASS" : "FAIL", unarmed ? "unarmed" : active ? (overlap ? "overlap" : "repaint") : (overlap ? "overlap-baseline" : "baseline"),
+           x, y, destX, destY, arm.hash,
            matches, after.ownerPID, after.ticket, after.fence, after.pixels, after.mismatches,
            qeBefore, api->qe(display.display) != 0, contentMatches, contentPixels, moveMs);
 done:
@@ -440,13 +451,14 @@ int main(int argc, char **argv)
     if (argc == 2 && !strcmp(argv[1],"--control"))
         return !privateCopyTest();
     UInt32 owner = 0;
+    const int unarmed = argc == 3 && !strcmp(argv[1], "--unarmed");
     const int overlap = argc > 1 && (!strcmp(argv[1], "--overlap") || !strcmp(argv[1], "--overlap-baseline"));
     const int baseline = argc == 2 && (!strcmp(argv[1], "--baseline") || !strcmp(argv[1], "--overlap-baseline"));
     const int engine = argc == 2 && !strcmp(argv[1],"--lookup");
     const int policy = argc == 2 && (!strcmp(argv[1], "--mapping-policy") ||
                                      !strcmp(argv[1], "--mapping-baseline"));
     if (!baseline && !engine && !policy) {
-        if (argc != 3 || (strcmp(argv[1], "--repaint") && strcmp(argv[1], "--overlap")))
+        if (argc != 3 || (!unarmed && strcmp(argv[1], "--repaint") && strcmp(argv[1], "--overlap")))
             return 2;
         char *end = 0;
         owner = strtoul(argv[2],&end,10);
@@ -458,5 +470,5 @@ int main(int argc, char **argv)
         return 1;
     if (policy)
         return !mappingPolicy(&api, !strcmp(argv[1], "--mapping-baseline"));
-    return engine ? !lookup(&api) : !windowTest(&api, owner, overlap);
+    return engine ? !lookup(&api) : !windowTest(&api, owner, overlap, unarmed);
 }

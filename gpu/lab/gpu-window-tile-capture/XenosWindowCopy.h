@@ -47,6 +47,7 @@ typedef struct {
 } XenosFramebufferMap;
 
 int XenosCaptureTile(XenosBackend *, const XenosQuadTileUpload *, XenosFence *, UInt32 *argb);
+int XenosTryCaptureTile(XenosBackend *, const XenosQuadTileUpload *, XenosFence *, UInt32 *argb);
 void XenosFormatBatchFences(const XenosFullCopy *copy, char text[kBatchFenceTextBytes]);
 int XenosMapFramebuffer(void *io, io_service_t framebuffer, XenosFramebufferMap *map);
 const char *XenosMapWindowAperture(void *io, io_service_t framebuffer, XenosFramebufferMap *map,
@@ -60,4 +61,6 @@ int XenosWindowSample(const XenosWindowPixels *screen, int x, int y,
 UInt32 XenosWindowHash(const UInt32 pixels[kWindowCopyPixels]);
 const char *XenosCompositeWindowCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
                                      const XenosWindowArm *arm, XenosFullCopy *copy);
+const char *XenosCompositeUnarmedCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
+                                     XenosFullCopy *copy);
 #endif

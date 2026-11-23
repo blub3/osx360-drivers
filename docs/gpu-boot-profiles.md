@@ -69,6 +69,14 @@ See [rebuilding a profile](../gpu/README.md) for the toolchain and reference inp
 | `gpucompositor` | [gpu-0.0.5d45-gpucompositor](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d45-gpucompositor) | `openbios-xbox360-gpu-compositor-context.elf` | `XenosWCC.mkext` | 0.0.5d45 | 0.0.5d2 | A | [recipe](../gpu/lab/gpu-compositor-context) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `fd6cab709215` / `b329c26fa9f0` |
 | `gpucompretry` | [gpu-0.0.5d45-gpucompretry](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d45-gpucompretry) | `openbios-xbox360-gpu-compositor-retry.elf` | `XenosWCR.mkext` | 0.0.5d45 | 0.0.5d2 | A | [recipe](../gpu/lab/gpu-compositor-retry) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `2c2c1df61f3a` / `8b2c32caf609` |
 
+## Staged entries in alternate menus
+
+These candidates have separate XeLL menus. The active menu is unchanged.
+
+| XeLL entry | Driver source tag | ELF | mkext | CoreGraphics | FramebufferTest | Set | Build files | OpenBIOS source tag | SHA-256 ELF / mkext |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `gpuwinauto` | [gpu-0.0.5d48-gpuwinauto](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwinauto) | `WINAUTO.ELF` | `XWAU.MKE` | 0.0.5d48 | 0.0.5d3 | A | [recipe](../gpu/lab/gpu-window-unarmed) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `907ad6641d5e` / `c173f317c131` |
+
 ## Superseded entries retained in rollback menus
 
 | XeLL entry | Driver source tag | ELF | mkext | CoreGraphics | FramebufferTest | Set | Build files | OpenBIOS source tag | SHA-256 ELF / mkext |

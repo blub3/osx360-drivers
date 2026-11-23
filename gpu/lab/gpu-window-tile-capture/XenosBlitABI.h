@@ -12,7 +12,11 @@ static const TigerUUID graphicsInterface =
 static const TigerUUID unknownInterface =
     {{0, 0, 0, 0, 0, 0, 0, 0, 0xc0, 0, 0, 0, 0, 0, 0, 0x46}};
 
+#ifndef XENOS_UNARMED_BLIT
 #define XENOS_BLIT_FACTORY "FC82AC58-0AA6-454B-BBDC-938F8DD503DB"
+#else
+#define XENOS_BLIT_FACTORY "1219E9F2-0EA1-42B0-9CE7-BEC7864F4B2B"
+#endif
 
 enum {
     kBlitFill = 0, kBlitCopy = 1, kBlitCopyRegion = 4,

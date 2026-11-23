@@ -743,6 +743,26 @@ and report the next milestone and the remaining count.
    gpuwintile remains active. The gpuringbuf rollback, native HDMI
    and 720p backup passed post-boot checks. Quartz Extreme stayed
    off, so milestone 7 and the desktop smoke test remain open.
+
+   The separately staged `gpuwinauto` profile selects `XenosWinAuto.plugin`
+   and keeps the nine `gpuwintile` kext executables byte-identical. Its
+   native WindowServer copy-region callback can use one GPU tile on a
+   moved rectangle of 256–1,024 pixels without the XenosWinTile marker.
+   A five-second startup grace period and a one-second interval between
+   attempts limit synchronous work. Tiger retains its software fallback
+   for ineligible copies and failures before scanout publication.
+   The plug-in factory, timing callbacks and invalid-surface handling
+   passed on the existing boot. A private overlapping copy passed over
+   SSH with ticket and fence 3, all 324 GPU and destination pixels
+   matching, all 3,772 guard pixels intact, and 26 ms capture time.
+   The on-screen control read a solid white source patch on the current
+   boot with both verifiers. Two unarmed WindowServer-owned fences and
+   on-screen readbacks still require a cold boot into the candidate.
+   `gpuwintile` remains active. All 486 pre-existing files matched after
+   staging, including native HDMI, the earlier GPU tests and the 720p
+   backup. The [unarmed test recipe](../gpu/lab/gpu-window-unarmed/) and
+   [boot profile index](gpu-boot-profiles.md) record the candidate inputs,
+   alternate menu and staging backup.
 8. Desktop smoke test — exercise window movement, overlap, resize and
    720p/1080p switching with acceleration active.
 

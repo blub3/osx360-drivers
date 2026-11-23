@@ -57,6 +57,8 @@ def main():
     parser.add_argument("boot", type=Path)
     parser.add_argument("--date", required=True, help="date that the USB was read")
     parser.add_argument("--docs", type=Path, default=ROOT / "docs")
+    parser.add_argument("--staged-config", action="append", default=[], metavar="FILENAME",
+                        help="include an alternate XeLL menu saved alongside kboot.conf")
     args = parser.parse_args()
     read_archive = reader()
     boot = args.boot
@@ -66,17 +68,29 @@ def main():
     if len({name for name, _ in entries}) != len(entries):
         raise ValueError("duplicate GPU profile")
     active_entries = set(entries)
+    staged = set()
+    for filename in args.staged_config:
+        if Path(filename).name != filename:
+            raise ValueError("expected an on-volume config filename")
+        alternate = (boot / filename).read_text().splitlines()
+        selected = next(line.split("=", 1)[1] for line in alternate if line.startswith("default="))
+        matches = [match.groups() for line in alternate
+                   if (match := ENTRY.fullmatch(line)) and match[1] == selected]
+        if len(matches) != 1:
+            raise ValueError(f"{filename}: expected one GPU entry for {selected}")
+        staged.update(set(matches) - active_entries)
     superseded = set()
     for saved in boot.glob("kboot.conf.before-*.bak"):
         for line in saved.read_text().splitlines():
             match = ENTRY.fullmatch(line)
-            if match and match.groups() not in active_entries:
+            if match and match.groups() not in active_entries | staged:
                 superseded.add(match.groups())
     sets = {}
     rows = []
     retired_rows = []
+    staged_rows = []
     tags = []
-    for profile, elf in [*entries, *sorted(superseded)]:
+    for profile, elf in [*entries, *sorted(staged), *sorted(superseded)]:
         archive = archive_name(boot, elf)
         earlier = recipe_for(profile, elf)
         versions = {
@@ -94,7 +108,7 @@ def main():
         tags.append(tag)
         fwtag = FIRMWARE_TAGS.get(profile, "gpu-fw-native-hdmi")
         sha = f"`{digest(boot / elf)[:12]}` / `{digest(boot / archive)[:12]}`"
-        section = retired_rows if retired else rows
+        section = retired_rows if retired else staged_rows if (profile, elf) in staged else rows
         section.append(f"| `{profile}` | [{tag}](https://github.com/blub3/osx360-drivers/tree/{tag})"
                     f" | `{elf}` | `{archive}` | {core} | {framebuffer} | {group}"
                     f" | [recipe](../{earlier.relative_to(ROOT).as_posix()})"
@@ -116,11 +130,19 @@ def main():
         "See [rebuilding a profile](../gpu/README.md) for the toolchain and reference inputs.",
         "",
         header, divider, *rows, "",
+    ]
+    if staged_rows:
+        pages.extend([
+            "## Staged entries in alternate menus", "",
+            "These candidates have separate XeLL menus. The active menu is unchanged.", "",
+            header, divider, *staged_rows, "",
+        ])
+    pages.extend([
         "## Superseded entries retained in rollback menus", "",
         header, divider, *retired_rows, "",
         "## Other kexts in the archives", "",
         "| Set | Additional kexts |", "| --- | --- |",
-    ]
+    ])
     for versions, group in sets.items():
         kexts = ", ".join(f"`{name} {version}`" for name, version in versions)
         pages.append(f"| {group} | {kexts} |")
@@ -128,7 +150,7 @@ def main():
     (args.docs / "gpu-boot-profiles.md").write_text("\n".join(pages) + "\n")
     include = re.compile(r"\.(?:elf|mkext|mke|bak)$", re.IGNORECASE)
     files = (p for p in boot.iterdir() if p.is_file() and
-             (p.name == "kboot.conf" or include.search(p.name)))
+             (p.name == "kboot.conf" or p.name in args.staged_config or include.search(p.name)))
     manifest = "".join(f"{digest(path)}  {path.name}\n" for path in sorted(files))
     (args.docs / "gpu-boot-checksums.txt").write_text(manifest)
     print("\n".join(tags))

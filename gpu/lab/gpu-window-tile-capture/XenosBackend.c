@@ -39,19 +39,19 @@ void XenosCloseBackend(XenosBackend *backend)
     *backend = (XenosBackend){.connection = 0};
 }
 
-int XenosCaptureTile(XenosBackend *backend, const XenosQuadTileUpload *upload,
-                     XenosFence *fence, UInt32 *argb)
+static int captureTile(XenosBackend *backend, const XenosQuadTileUpload *upload,
+                       XenosFence *fence, UInt32 *argb, unsigned submitAttempts)
 {
     const unsigned submit = kXenosQuadCaptureTile;
     *fence = (XenosFence){.ticket = 0};
     const UInt32 busy = 0xe00002d5U;
     unsigned long ticketBytes = sizeof(fence->ticket);
     int result = busy;
-    for (unsigned attempt = 0; attempt < 48; ++attempt) {
+    for (unsigned attempt = 0; attempt < submitAttempts; ++attempt) {
         ticketBytes = sizeof(fence->ticket);
         result = backend->IOConnectMethodStructureIStructureO(backend->connection, submit,
                                       sizeof(*upload), &ticketBytes, upload, &fence->ticket);
-        if ((UInt32)result != busy)
+        if ((UInt32)result != busy || attempt + 1 == submitAttempts)
             break;
         usleep(5000);
     }
@@ -89,4 +89,16 @@ int XenosCaptureTile(XenosBackend *backend, const XenosQuadTileUpload *upload,
         memcpy(argb + row * kXenosQuadTargetSide, band.argb, sizeof(band.argb));
     }
     return 1;
+}
+
+int XenosCaptureTile(XenosBackend *backend, const XenosQuadTileUpload *upload,
+                     XenosFence *fence, UInt32 *argb)
+{
+    return captureTile(backend, upload, fence, argb, 48);
+}
+
+int XenosTryCaptureTile(XenosBackend *backend, const XenosQuadTileUpload *upload,
+                        XenosFence *fence, UInt32 *argb)
+{
+    return captureTile(backend, upload, fence, argb, 1);
 }
