@@ -41,6 +41,11 @@ and [WindowServer tests](lab/gpu-windowserver/) retain their source and checks.
 
 ## Rebuilding a profile
 
+The latest two unarmed WindowServer profiles have a download and a verified
+mkext restore path. It uses the matching IOGraphicsFamily payload from a
+local archive such as the tested `NativeHD.mkext`. The older recipes below
+remain available for historical profiles. [WindowServer download guide](../docs/gpu-windowserver-download.md)
+
 1. Fetch both forks and check out the driver tag in the USB inventory.
    Choose its build directory from the same row. For a plist-only or
    version-only retry, its package script records the predecessor archive
