@@ -5,10 +5,19 @@ boot=/Volumes/OSX360BOOT
 cd "$boot"
 test "$(pwd -P)" = "$boot"
 
-old=393ef935a095cc9aaf570b9ce3a8d511
-new=971cd5a4d6a6ae40bc1878ca6092d2d6
-candidate=kboot-gpu-window-unarmed.conf
-backup=kboot.conf.before-gpuwinauto.bak
+case ${1:-single} in
+    overlap)
+        profile=gpuwinoverlap parent=gpuwinauto elf=WINOVR.ELF parent_elf=WINAUTO.ELF
+        old=971cd5a4d6a6ae40bc1878ca6092d2d6 new=20b69579b5087babe0adb82b0069d20a
+        candidate=kboot-gpu-window-unarmed-overlap.conf candidate_plugin=XenosWinOverlap ;;
+    single)
+        profile=gpuwinauto parent=gpuwintile elf=WINAUTO.ELF parent_elf=WINTILE.ELF
+        old=393ef935a095cc9aaf570b9ce3a8d511 new=971cd5a4d6a6ae40bc1878ca6092d2d6
+        candidate=kboot-gpu-window-unarmed.conf candidate_plugin=XenosWinAuto ;;
+    *) exit 2 ;;
+esac
+backup=kboot.conf.before-$profile.bak
+prefix=.kboot-$profile.
 verify() {
     if [ "$(md5 -q "$2")" != "$1" ]; then
         printf 'Checksum mismatch for %s\n' "$2" >&2
@@ -16,16 +25,23 @@ verify() {
     fi
 }
 
-verify "$old" kboot.conf.before-gpuwinauto-stage.bak
+verify "$old" "kboot.conf.before-$profile-stage.bak"
 verify "$new" "$candidate"
 verify 40dda24eabaaf7b89821a81f5ac2f2ea XWAU.MKE
 verify 83bf102f2f8ae255b384745cbcaae554 WINAUTO.ELF
 verify c36e84a7e31782ea14a20b3a931881fb XWTC.MKE
 verify 42a56267336d32c99565f24d9c9bf8f2 WINTILE.ELF
+if [ "$profile" = gpuwinoverlap ]; then
+    verify 400c31b16ad5e2481c5cfd68fd44b5a3 XWOV.MKE
+    verify 281d7ba935c5a68da3cd35f5d1ae04cd WINOVR.ELF
+    verify 393ef935a095cc9aaf570b9ce3a8d511 kboot.conf.before-gpuwinauto.bak
+    verify fcab1b2748d13f9cd51b53f7f5aaec11 /System/Library/Extensions/XenosWinOverlap.plugin/Contents/Info.plist
+    verify 0560680747e7f4c87c15afe6dca0e9ce /System/Library/Extensions/XenosWinOverlap.plugin/Contents/MacOS/XenosWinOverlap
+fi
 verify b99d4be9377e3e7965bb3e88d5f1ff0e NativeHD.mkext
 verify ca72c036347285e3fe77b58d3b2c93c6 openbios-xbox360-native-hdmi-test.elf
 verify 2ce8cf67dd57d0ef8b68beaa342e051a openbios-xbox360.720p-hdmi.elf.bak
-for name in XenosWinAuto XenosWinTile; do
+for name in "$candidate_plugin" XenosWinAuto XenosWinTile; do
     contents=/System/Library/Extensions/$name.plugin/Contents
     test "$(stat -f '%Su:%Sg:%Lp' "$contents/Info.plist")" = root:wheel:644
     test "$(stat -f '%Su:%Sg:%Lp' "$contents/MacOS/$name")" = root:wheel:755
@@ -40,13 +56,13 @@ test ! -e XenosWindowTileTest/repaint-window.lock
 current=$(md5 -q kboot.conf)
 if [ "$current" = "$new" ]; then
     verify "$old" "$backup"
-    echo "gpuwinauto is already selected."
+    echo "$profile is already selected."
     exit 0
 fi
 verify "$old" kboot.conf
-grep -Fx 'default=gpuwinauto' "$candidate"
-grep -Fx 'gpuwinauto="uda0:/WINAUTO.ELF"' "$candidate"
-grep -Fx 'gpuwintile="uda0:/WINTILE.ELF"' "$candidate"
+grep -Fx "default=$profile" "$candidate"
+grep -Fx "$profile=\"uda0:/$elf\"" "$candidate"
+grep -Fx "$parent=\"uda0:/$parent_elf\"" "$candidate"
 
 scratch=$(mktemp -d /tmp/xenos-winauto-activate.XXXXXXXX)
 temp=
@@ -56,9 +72,9 @@ cleanup() {
     trap - 0
     if [ "$status" -ne 0 ] && [ "$replacing" = yes ] &&
        [ "$(md5 -q kboot.conf)" = "$new" ] && [ "$(md5 -q "$backup")" = "$old" ]; then
-        restore=$(mktemp "$boot/.kboot-gpuwinauto.XXXXXXXX") &&
+        restore=$(mktemp "$boot/${prefix}XXXXXXXX") &&
             cat "$backup" > "$restore" && mv -f "$restore" kboot.conf && sync &&
-            printf 'Restored the previous gpuwintile boot menu.\n' >&2
+            printf 'Restored the previous %s boot menu.\n' "$parent" >&2
     fi
     test -z "$temp" || rm -f "$temp"
     rm -rf "$scratch"
@@ -68,7 +84,7 @@ trap cleanup 0
 trap 'exit 1' HUP INT TERM
 
 protected_checksums() {
-    find . \( -path './kboot.conf' -o -path "./$backup" -o -path './.kboot-gpuwinauto.*' \) \
+    find . \( -path './kboot.conf' -o -path "./$backup" -o -path "./$prefix*" \) \
         -prune -o -type f -print0 | xargs -0 md5 | sort
 }
 
@@ -78,7 +94,7 @@ if [ ! -e "$backup" ] && [ ! -L "$backup" ]; then
 fi
 verify "$old" "$backup"
 verify "$old" kboot.conf
-temp=$(mktemp "$boot/.kboot-gpuwinauto.XXXXXXXX")
+temp=$(mktemp "$boot/${prefix}XXXXXXXX")
 cat "$candidate" > "$temp"
 verify "$new" "$temp"
 previous_boot=$(/usr/sbin/sysctl -n kern.boottime)
@@ -91,6 +107,6 @@ verify "$new" kboot.conf
 verify "$old" "$backup"
 protected_checksums > "$scratch/after"
 cmp "$scratch/before" "$scratch/after"
-printf 'Verified %s protected files. gpuwinauto is selected.\n' \
-    "$(wc -l < "$scratch/after" | tr -d ' ')"
+printf 'Verified %s protected files. %s is selected.\n' \
+    "$(wc -l < "$scratch/after" | tr -d ' ')" "$profile"
 printf 'previous_boot=%s\n' "$previous_boot"

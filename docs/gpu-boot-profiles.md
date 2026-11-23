@@ -1,7 +1,7 @@
 # OSX360BOOT GPU profiles
 
-Read from the mounted test USB on 2026-11-23. The current default is **`gpuwinauto`**.
-The table covers all 56 `gpu*` entries. The two graphics versions and the
+Read from the mounted test USB on 2026-11-23. The current default is **`gpuwinoverlap`**.
+The table covers all 57 `gpu*` entries. The two graphics versions and the
 dependency set together identify every kext in each archive.
 
 The last column shows the first 12 characters of the ELF and mkext SHA-256
@@ -13,6 +13,7 @@ See [rebuilding a profile](../gpu/README.md) for the toolchain and reference inp
 
 | XeLL entry | Driver source tag | ELF | mkext | CoreGraphics | FramebufferTest | Set | Build files | OpenBIOS source tag | SHA-256 ELF / mkext |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `gpuwinoverlap` | [gpu-0.0.5d48-gpuwinoverlap](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwinoverlap) | `WINOVR.ELF` | `XWOV.MKE` | 0.0.5d48 | 0.0.5d3 | A | [recipe](../gpu/lab/gpu-window-unarmed) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `90eac794c9cf` / `a10b60034ddd` |
 | `gpuwinauto` | [gpu-0.0.5d48-gpuwinauto](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwinauto) | `WINAUTO.ELF` | `XWAU.MKE` | 0.0.5d48 | 0.0.5d3 | A | [recipe](../gpu/lab/gpu-window-unarmed) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `907ad6641d5e` / `c173f317c131` |
 | `gpuwintile` | [gpu-0.0.5d48-gpuwintile](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwintile) | `WINTILE.ELF` | `XWTC.MKE` | 0.0.5d48 | 0.0.5d3 | A | [recipe](../gpu/lab/gpu-window-tile-capture) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `e09ddcefeb12` / `c9ad00948853` |
 | `gpuringbuf` | [gpu-0.0.5d47-gpuringbuf](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d47-gpuringbuf) | `RINGBUF.ELF` | `XWRB.MKE` | 0.0.5d47 | 0.0.5d3 | A | [recipe](../gpu/lab/gpu-ring-buffer-retry) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `ba292509d679` / `69ad909d57ba` |
@@ -69,14 +70,6 @@ See [rebuilding a profile](../gpu/README.md) for the toolchain and reference inp
 | `gpuwsfbretry` | [gpu-0.0.5d44-gpuwsfbretry](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d44-gpuwsfbretry) | `openbios-xbox360-gpu-windowserver-framebuffer.elf` | `XenosWFR.mkext` | 0.0.5d44 | 0.0.5d2 | A | [recipe](../gpu/lab/gpu-windowserver-submit-retry) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `3e9c6e162a4a` / `5da64ac4675f` |
 | `gpucompositor` | [gpu-0.0.5d45-gpucompositor](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d45-gpucompositor) | `openbios-xbox360-gpu-compositor-context.elf` | `XenosWCC.mkext` | 0.0.5d45 | 0.0.5d2 | A | [recipe](../gpu/lab/gpu-compositor-context) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `fd6cab709215` / `b329c26fa9f0` |
 | `gpucompretry` | [gpu-0.0.5d45-gpucompretry](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d45-gpucompretry) | `openbios-xbox360-gpu-compositor-retry.elf` | `XenosWCR.mkext` | 0.0.5d45 | 0.0.5d2 | A | [recipe](../gpu/lab/gpu-compositor-retry) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `2c2c1df61f3a` / `8b2c32caf609` |
-
-## Staged entries in alternate menus
-
-These candidates have separate XeLL menus. The active menu is unchanged.
-
-| XeLL entry | Driver source tag | ELF | mkext | CoreGraphics | FramebufferTest | Set | Build files | OpenBIOS source tag | SHA-256 ELF / mkext |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `gpuwinoverlap` | [gpu-0.0.5d48-gpuwinoverlap](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwinoverlap) | `WINOVR.ELF` | `XWOV.MKE` | 0.0.5d48 | 0.0.5d3 | A | [recipe](../gpu/lab/gpu-window-unarmed) | [gpu-fw-native-hdmi](https://github.com/blub3/openbios/tree/gpu-fw-native-hdmi) | `90eac794c9cf` / `a10b60034ddd` |
 
 ## Superseded entries retained in rollback menus
 

@@ -800,9 +800,13 @@ and report the next milestone and the remaining count.
    The alternate menu, ELF, mkext and test bundle were staged on
    OSX360BOOT. The checksums of 496 pre-existing files matched,
    including the HDMI setup, earlier tests and 720p backup.
-   `gpuwinauto` is still the active profile. The two live unarmed
-   WindowServer moves and their fence and pixel results await a
-   candidate cold boot. [Rebuild and verification steps](../gpu/lab/gpu-window-unarmed/)
+   The candidate plug-in was installed alongside XenosWinAuto and
+   verified against the staged files with root:wheel ownership.
+   `gpuwinoverlap` is selected on OSX360BOOT. All 504 protected files
+   matched during activation. The exact working `gpuwinauto` menu
+   is saved as `kboot.conf.before-gpuwinoverlap.bak`. The two live
+   unarmed WindowServer moves await candidate cold boot verification.
+   [Rebuild and verification steps](../gpu/lab/gpu-window-unarmed/)
 8. Desktop smoke test — exercise window movement, overlap, resize and
    720p/1080p switching with acceleration active.
 
