@@ -1,105 +1,43 @@
-<div align="center">
-  <img src="./docs/osx360.png" alt="OSX360" width="250" align>
-  <h1>OSX360</h1>
-</div>
+<p align="center">
+  <img src="docs/osx360.png" alt="OSX360" width="250">
+</p>
 
-[![Build Status](https://github.com/osx360/osx360-drivers/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/osx360/osx360-drivers/actions) [![Build OpenBIOS](https://github.com/osx360/openbios/actions/workflows/main.yml/badge.svg)](https://github.com/osx360/openbios/actions/workflows/main.yml)
+# OSX360 drivers for Mac OS X Tiger
 
-Xbox 360 support kernel extensions for Mac OS X as part of [OSX360](https://github.com/osx360). This is an early attempt at running Mac OS X on the Xbox 360. There will be functions that do not work, and the system may lock up unexpectedly.
+This fork of [osx360/osx360-drivers](https://github.com/osx360/osx360-drivers) extends the Xbox 360 kernel extensions from the original [OSX360 project](https://github.com/osx360). The fork focuses on Ethernet reliability, native HDMI mode switching and incremental Xenos GPU bring-up. Hardware results below are from an Xbox 360 Slim running PowerPC Mac OS X Tiger 10.4.11.
 
-## Background
+## What's working
 
-The Xbox 360 is a PowerPC-based "Xenon" console released in 2005. The Xenon processor is unique to the console, being a three core Cell-based design without AltiVec and instead having VMX128. VMX128 is not completely compatible with AltiVec, and Cell is different in behavior from the G5 used in various Mac models. Currently the processor is spoofed to appear as a G3 to prevent AltiVec usage, and any software requiring AltiVec or a G5 will not run at this time. Some 32-bit software that runs unmodified on a G5 may not function on this platform.
+| Area | Verified result |
+| --- | --- |
+| Ethernet | Fixed the transmit descriptor ring wrap marker for single- and multi-segment packets. The Slim transferred 72 MiB in one SSH session, answered 185 of 185 concurrent pings, and accepted a fresh SSH login. [Tested change](https://github.com/blub3/osx360-drivers/commit/87fd30a) |
+| Native HDMI | Paired OpenBIOS and Tiger drivers switch the physical HDMI output between 720p and 1080p. A TV confirmed both timings, and iTunes audio was audible in both modes. [Tested change](https://github.com/blub3/osx360-drivers/commit/c4b62b4) |
+| Xenos rendering | Hardware tests cover command-ring completion, offscreen drawing, texture sampling and filtering, alpha blending, depth, scissor and stencil, render-to-texture, and queued VBlank flips. |
+| Tiger apps | Tests passed for reusable surfaces, shared drawables, concurrent client submissions, and process-local CGL/AGL rendering with pixel readback, buffer swaps, resizing and clipping. Tiger's stock CGL also discovered the native diagnostic GLD. |
+| WindowServer | The `gpuwintile` diagnostic completed eight ordered WindowServer-owned GPU fences for a clipped 7,252-pixel repaint. The GPU, framebuffer and independent on-screen checks matched. Submission and readback took 1,086 ms, down from 4,276 ms in the 29-submission reference. |
 
-Xenon does not support some of the hardware features present in the G5, i.e. the register that controls `dcbz` behavior. While most of XNU will use the proper dcbz128 instruction, some portions do not and some userspace libraries such as CoreGraphics do not. The platform expert as part of this driver project will attempt to patch those to be invalid and trigger XNU's built-in instruction emulator. See [this](https://www.talospace.com/2018/08/making-your-talos-ii-into-power-mac_29.html) page for more background.
+**Quartz Extreme is still disabled.** The WindowServer result is a controlled repaint test. The remaining milestones are native WindowServer acceleration and an accelerated desktop smoke test. The tracker records the acceptance criteria, individual hardware runs and outstanding SMP checks. [GPU milestone tracker](https://github.com/blub3/osx360-drivers/blob/gpu/quartz-extreme/docs/gpu-milestones.md)
 
-AltiVec is not supported on Xenon in favor of VMX128 which drops some AltiVec instructions. In theory these could be trapped/emulated to enable AltiVec software to run, but this has yet to be explored.
+## Branches and boot profiles
 
-## Installation
+- [`main`](https://github.com/blub3/osx360-drivers/tree/main) carries the tested Ethernet and native HDMI fixes.
+- [`gpu/quartz-extreme`](https://github.com/blub3/osx360-drivers/tree/gpu/quartz-extreme) contains XenonCoreGraphics `0.0.5d48`, XenonFramebufferTest `0.0.5d3`, and the GPU test source, plug-ins and build recipes. The latest verified profile is [`gpu-0.0.5d48-gpuwintile`](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwintile).
 
-#### Requirements
-* An Xbox 360 that is modded either by hardware or with BadUpdate. OpenBIOS will be launched from a USB stick using XeLL. Non-4GB NAND consoles will need to have the USB configured as system storage if using ABadAvatar. Refer to [this](https://consolemods.org/wiki/Xbox_360:Bad_Update) page for more information.
-* The latest release of [OpenBIOS Xbox 360 fork](https://github.com/osx360/openbios).
-* The latest release of the drivers mkext from the Releases tab.
-* Mac OS X Tiger 10.4.6 DVD (the CD version may also work, but is currently untested)
-  * A USB installer can also work, but will require partitioning that is currently not documented here.
-  * Certain DVD drives require a tray cycle before working. So far this needs to be done on the DL10N, but others may be affected.
-* Hard drive to install Mac OS X to. This will be destructive, do not use a stock Xbox 360 hard drive.
-  * Any drive should work, but there are some issues with some WD drives and OpenBIOS currently.
-  * A USB drive can also work, but is not documented currently and will require some additional work to start from OpenBIOS.
+Each experimental boot entry pairs a specific OpenBIOS ELF with a driver archive. The profile index lists the pairing, component versions, source tags and recorded checksums. Keep the working XeLL entry and the 720p rollback when testing a new profile. [Boot profile index](https://github.com/blub3/osx360-drivers/blob/gpu/quartz-extreme/docs/gpu-boot-profiles.md) · [SHA-256 manifest](https://github.com/blub3/osx360-drivers/blob/gpu/quartz-extreme/docs/gpu-boot-checksums.txt)
 
-#### USB setup
-Configure the USB for BadUpdate / ABadAvatar if needed. Place `openbios-xbox360.elf` and `Xbox360.mkext` from this repo's releases onto the root of the drive. Configure kboot.conf for XeLL as desired, an example configuration can be found [here](tools/kboot.conf).
+## Build and boot
 
-#### Boot and installation
-Start XeLL and launch OpenBIOS. OpenBIOS should drop into the shell.
-* To startup from the installation DVD, run `boot cd:,\\:tbxi`.
-* To startup from the hard drive, run `boot hd:,\\:tbxi`.
-* To startup from the USB stick (if configured as an installer), run `boot ud:X,\\:tbxi` where `X` is the installer partition.
-* To boot in verbose, run `setenv boot-args -v` prior to booting Mac OS X.
-* To boot in single user, run `setenv boot-args -s` prior to booting Mac OS X.
+The boot chain is XeLL → OpenBIOS → Tiger on a console that can run XeLL. Start with the original project's installation guide and use the matching firmware and mkext from the branch or profile you intend to test. The companion firmware fork documents the verified Tiger USB SSD autoboot setup. [Upstream installation guide](https://github.com/osx360/osx360-drivers#installation) · [Upstream support matrix](https://github.com/osx360/osx360-drivers#support-status) · [Companion OpenBIOS fork](https://github.com/blub3/openbios)
 
-#### Post installation
-Mac OS X may require modifications to IOAudioFamily and IONetworkingFamily for audio and ethernet to work. You'll need to edit both to ensure they are loaded at bootup.
+The standard driver build uses Linux with Darling and the legacy Xcode toolchain. With the prerequisites installed, run the following from the repository root. [Driver build instructions](BUILDING.md)
 
-`sudo vi /System/Library/Extensions/IOAudioFamily.kext/Contents/Info.plist`
-`sudo vi /System/Library/Extensions/IONetworkingFamily.kext/Contents/Info.plist`
-
-For both files, type `i` to enter insert mode and append the following after the last key, but before the closing plist:
-
-```
-<key>OSBundleRequired</key>
-<string>Root</string>
+```sh
+make
+make package
 ```
 
-Save and quit with `:wq`.
+Historical GPU tests use their own PowerPC build, Tiger link and archive packaging recipes. Use the GPU work index for the required SDK, reference inputs and verification steps. [GPU test source and rebuild guide](https://github.com/blub3/osx360-drivers/tree/gpu/quartz-extreme/gpu)
 
-After both edits are made, run `sudo touch /System/Library/Extensions` to force a kext cache rebuild and reboot. The next bootup may take several minutes as the system will boot without a kext cache. Once booted, audio and networking should be fully functional.
+## Credits and license
 
-## Support status
-
-### Version status
-
-| Version                                            | Supported                                |
-|----------------------------------------------------|------------------------------------------|
-| 10.0 Cheetah                                       | No, released prior to 64-bit support     |
-| 10.1 Puma                                          | No, released prior to 64-bit support     |
-| 10.2 Jaguar                                        | Partial, only boots to single user mode. The G5 version of 10.2.7 must be used. |
-| 10.3 Panther                                       | Partial, only boots to single user mode. |
-| 10.4 Tiger                                         | Mostly functional, freezes may occur either during boot or sometime after. |
-| 10.5 Leopard                                       | No, requires AltiVec                     |
-| 10.6 Snow Leopard (beta/unofficial PowerPC builds) | No, requires AltiVec                     |
-
-### Xbox 360 hardware support status
-| Hardware                                          | Supported                                     |
-|---------------------------------------------------|-----------------------------------------------|
-| Interrupt controller                              | Yes                                           |
-| PCI root bridge                                   | Yes                                           |
-| USB 1.1 (OHCI) controllers                        | Yes                                           |
-| USB 2.0 (EHCI) controllers                        | Yes                                           |
-| WiFi via USB                                      | No                                            |
-| Audio interface (rear A/V)                        | Yes, not all media may work                   |
-| Xenos graphics interface                          | Basic framebuffer only, no resolution changes |
-| System management controller (SMC)                | Yes, shutdown/restart, CD drive, RTC read     |
-| Ethernet controller                               | Partially, receiving packets may stop working |
-| SATA DVD-ROM                                      | Yes, some drives require a tray cycle         |
-| SATA Hard Drive                                   | Yes, some drives may not function             |
-
-## Extensions
-* XenonAudo: Audio support
-* XenonCoreGraphics: Core graphics support
-* XenonEthernet: Ethernet support
-* XenonPCI: PCI host bridge support
-* XenonPlatform: Platform expert and interrupt controller support
-* XenonSATA: SATA controller and DVD drive support
-* XenonSMC: SMC support
-
-## Credits
-- [Apple](https://www.apple.com) for Mac OS X
-- [Goldfish64](https://github.com/Goldfish64) for this software
-- [JoJo](https://github.com/buddyjojo) for graphics implementation
-- [Lilu](https://github.com/acidanthera/Lilu) for kernel patching and function hooking basis
-- [Free60](https://free60.org) for various documents/info
-- [libxenon](https://github.com/Free60Project/libxenon) for graphics implementation and other hardware info
-- [https://github.com/freedreno-zz/freedreno](freedreno) for graphics implementation
-- [Xenon Emulator](https://github.com/xenon-emu/xenon) for hardware workings
+The original OSX360 port and driver foundation are the work of [Goldfish64](https://github.com/Goldfish64), [JoJo](https://github.com/buddyjojo) and the other OSX360 contributors. The upstream project credits [Apple](https://www.apple.com) for Mac OS X, [Lilu](https://github.com/acidanthera/Lilu) for the kernel patching and hooking basis, and [Free60](https://free60.org), [libxenon](https://github.com/Free60Project/libxenon), [freedreno](https://github.com/freedreno-zz/freedreno) and [Xenon Emulator](https://github.com/xenon-emu/xenon) for graphics and hardware references. [BSD 3-Clause license](LICENSE)
