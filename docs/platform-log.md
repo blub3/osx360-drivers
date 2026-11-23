@@ -6,9 +6,9 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
-1. Measure dcbz trap cost in `CGSFillDRAM64`, the source of most patched words.
-2. Patch only Mach-O text ranges, so data words that look like dcbz are never changed.
-3. Measure real app launch times with and without the fast scan.
+1. Patch only Mach-O text ranges, so data words that look like dcbz are never changed.
+2. Measure real app launch times with and without the fast scan.
+3. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
 
 The Xbox is on `pmapfast`. The owner decides when to restore `gpuwinoverlap`.
 
@@ -24,6 +24,23 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-23: dcbz trap cost
+
+User-space benchmark on the running `pmapfast` profile, 1,000,000 iterations, best of 3 runs. The G5 is the behaviour reference.
+
+Pass criteria, set before the run: `dcbz` clears exactly 32 bytes and `dcbzl` exactly 128, matching the G5; each emulated instruction causes one trap.
+
+**Result: pass.** Both machines cleared 32 and 128 bytes with 0 wrong bytes. Each 3-run set took exactly 3,000,000 traps, and the plain-store runs took 0.
+
+| Operation | G5 | Xbox |
+| --- | --- | --- |
+| `dcbz` (32 bytes) | 6.0 ns | 1,365.9 ns, emulated |
+| `dcbzl` (128 bytes) | 10.0 ns | 1,405.5 ns, emulated |
+| 8 word stores (32 bytes) | 12.8 ns | 34.2 ns |
+| 32 word stores (128 bytes) | 55.3 ns | 95.1 ns |
+
+On the Xbox, an emulated `dcbz` costs about 40x the equivalent stores, and `dcbzl` about 15x. At about 1.4 µs per trap, the 1,291,720 traps in the first 2 minutes cost about 1.8 s. This is an estimate from a tight loop and an upper bound on the trap count. The benchmark added 2 patched words to the running system's counter.
 
 ## 2026-11-23: fast dcbz page pre-scan
 
