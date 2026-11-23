@@ -1,0 +1,27 @@
+Tiger framebuffer blit and GPU surface diagnostic: beam-position retry
+XeLL profile gpufbblitbeam
+OpenBIOS BLITBEAM.ELF
+PowerPC mkext XWBM.MKE
+
+The original gpufbblit plug-in left Tiger's GetBeamPosition vtable slot
+empty. IOFBBeamPosition calls that slot during the startup fade. This
+retry returns kIOReturnUnsupported (0xe00002c7) so Tiger applies the
+display transfer immediately. The plug-in also returns a safe status
+from synchronization and unsupported legacy surface methods. The
+framebuffer personality advertises this separate blit plug-in. The GPU
+and framebuffer kext binaries and the HDMI configuration are unchanged.
+
+RunXenosFramebufferBlit.sh --control loads the private plug-in and
+checks the real IOFBBeamPosition and IOFBSynchronize wrappers, safe
+unsupported surface calls, and an actual 32×32 ARGB GPU clear and readback.
+--baseline tests eight overlapping window repaints on the current boot.
+--lookup measures Tiger's normal IOPSAllocateBlitEngine lookup.
+
+For the hardware repaint check, install the staged XenosBeamBlit.plugin
+in /System/Library/Extensions with root:wheel ownership. Activate the
+gpufbblitbeam profile and cold boot. Once the desktop is stable, use
+RunXenosFramebufferBlit.sh --repaint to check a fresh GPU fence owned by
+WindowServer, 1,024 pixels and the callback log for the same PID. When
+armed, the first eligible fill, copy or region-copy callback runs one
+offscreen test. Actual desktop blits still use Tiger's software path.
+Quartz Extreme is checked separately by the runner.

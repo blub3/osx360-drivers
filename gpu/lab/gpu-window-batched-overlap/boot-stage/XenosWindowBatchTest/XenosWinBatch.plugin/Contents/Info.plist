@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>XenosWinBatch</string>
+	<key>CFBundleIdentifier</key>
+	<string>fish.goldfish64.osx360.XenosWinBatch</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>XenosWinBatch</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFPlugInDynamicRegistration</key>
+	<string>NO</string>
+	<key>CFPlugInFactories</key>
+	<dict>
+		<key>B8B58360-9BB9-4B20-9F20-E05D52D573BB</key>
+		<string>XenosWinBatchFactory</string>
+	</dict>
+	<key>CFPlugInTypes</key>
+	<dict>
+		<key>ACCF0000-0000-0000-0000-000A2789904E</key>
+		<array>
+			<string>B8B58360-9BB9-4B20-9F20-E05D52D573BB</string>
+		</array>
+	</dict>
+	<key>Personality</key>
+	<dict>
+		<key>IOProviderClass</key>
+		<string>XenonFramebufferTest</string>
+	</dict>
+</dict>
+</plist>

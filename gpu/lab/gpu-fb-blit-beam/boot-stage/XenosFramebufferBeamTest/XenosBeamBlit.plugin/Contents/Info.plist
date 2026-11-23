@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>XenosBeamBlit</string>
+	<key>CFBundleIdentifier</key>
+	<string>fish.goldfish64.osx360.XenosBeamBlit</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>XenosBeamBlit</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFPlugInDynamicRegistration</key>
+	<string>NO</string>
+	<key>CFPlugInFactories</key>
+	<dict>
+		<key>F730960E-CC2C-4F1C-8C87-C87B6FB029AE</key>
+		<string>XenosBeamBlitFactory</string>
+	</dict>
+	<key>CFPlugInTypes</key>
+	<dict>
+		<key>ACCF0000-0000-0000-0000-000A2789904E</key>
+		<array>
+			<string>F730960E-CC2C-4F1C-8C87-C87B6FB029AE</string>
+		</array>
+	</dict>
+	<key>Personality</key>
+	<dict>
+		<key>IOProviderClass</key>
+		<string>XenonFramebufferTest</string>
+	</dict>
+</dict>
+</plist>

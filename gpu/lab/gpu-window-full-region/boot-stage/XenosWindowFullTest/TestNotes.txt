@@ -1,0 +1,24 @@
+WindowServer full clipped repaint test
+
+Alternate boot profile  gpuwinfull
+Firmware                WINFULL.ELF
+Driver archive          XWFR.MKE
+Tiger plug-in           XenosWinAll.plugin
+
+The armed copy can cover up to 512 unique clipped pixels, using up to two
+16×16 GPU draws. Every accepted RGB pixel is checked against the source
+snapshot after its GPU fence. Once both GPU results and the framebuffer
+snapshot are verified, the plug-in copies the GPU results to scanout and
+reads every destination pixel. CPU staging and final scanout transfer
+use the existing owner-only framebuffer mapping. Larger regions use the
+stock software path.
+
+RunXenosWindowFull.sh --control checks an overlapping 392-pixel region
+and all 3,704 untouched fixture pixels. --mapping-policy checks that a
+separate console task cannot map WindowServer's private aperture.
+--baseline verifies the visible test image without arming the plug-in.
+
+After installing XenosWinAll.plugin and cold-booting gpuwinfull,
+RunXenosWindowFull.sh --repaint checks the small window move. It requires
+both GPU fences from the running WindowServer, complete GPU and scanout
+readback of the clip, and a separate match of the visible 16×16 tile.

@@ -6,6 +6,8 @@
 #include "XenosRegs.hpp"
 #include "XenosWindowServerFramebufferProbe.h"
 #include <kern/task.h>
+#include <IOKit/IOUserClient.h>
+#include "XenosWindowAperture.h"
 
 extern "C" int proc_selfpid(void);
 extern "C" void proc_selfname(char *, int);
@@ -87,6 +89,18 @@ bool verifyHdmi(IOService *smc, uint8_t reg, uint8_t value)
 }
 }
 
+class XenonFramebufferTest;
+class XenosWindowApertureClient : public IOUserClient {
+    OSDeclareDefaultStructors(XenosWindowApertureClient);
+public:
+    bool initForFramebuffer(task_t task, void *securityID, XenonFramebufferTest *fb);
+    IOReturn clientClose();
+    IOReturn clientMemoryForType(UInt32 type, IOOptionBits *options, IOMemoryDescriptor **memory);
+private:
+    task_t owner;
+    XenonFramebufferTest *framebuffer;
+};
+
 class XenonFramebufferTest : public IOFramebuffer {
     OSDeclareDefaultStructors(XenonFramebufferTest)
 
@@ -108,9 +122,13 @@ public:
                                  IOPixelAperture aperture, IOPixelInformation *info);
     IOReturn getCurrentDisplayMode(IODisplayModeID *mode, IOIndex *depth);
     IOReturn setDisplayMode(IODisplayModeID mode, IOIndex depth);
+    bool isWindowApertureOwner(task_t task);
     IOReturn connectFlags(IOIndex connection, IODisplayModeID mode, IOOptionBits *flags);
 
 private:
+    IOReturn openWindowAperture(task_t task, void *securityID, IOUserClient **handler);
+    task_t framebufferOwner;
+    IOLock *ownerLock;
     IODeviceMemory *framebuffer;
     IOMemoryMap *displayMap;
     volatile void *displayRegisters;
@@ -128,6 +146,75 @@ private:
 };
 
 OSDefineMetaClassAndStructors(XenonFramebufferTest, IOFramebuffer)
+
+OSDefineMetaClassAndStructors(XenosWindowApertureClient, IOUserClient);
+
+bool XenosWindowApertureClient::initForFramebuffer(task_t task, void *securityID,
+                                                    XenonFramebufferTest *fb)
+{
+    owner = task;
+    framebuffer = fb;
+    return IOUserClient::initWithTask(task, securityID, kXenosWindowApertureClient, NULL);
+}
+
+IOReturn XenosWindowApertureClient::clientClose()
+{
+    terminate();
+    return kIOReturnSuccess;
+}
+
+IOReturn XenosWindowApertureClient::clientMemoryForType(UInt32 type, IOOptionBits *options,
+                                                        IOMemoryDescriptor **memory)
+{
+    if (!options || !memory)
+        return kIOReturnBadArgument;
+    *memory = NULL;
+    if (type != kXenosWindowApertureMemory)
+        return kIOReturnUnsupported;
+    if (isInactive() || !framebuffer || owner != current_task() ||
+        !framebuffer->isWindowApertureOwner(owner))
+        return kIOReturnNotPrivileged;
+
+    *memory = framebuffer->getApertureRange(kIOFBSystemAperture);
+    if (!*memory)
+        return kIOReturnNotReady;
+    *options = kIOMapInhibitCache;
+    return kIOReturnSuccess;
+}
+
+bool XenonFramebufferTest::isWindowApertureOwner(task_t task)
+{
+    if (!ownerLock || !task || task != current_task() || isInactive())
+        return false;
+    IOLockLock(ownerLock);
+    const bool ownsFramebuffer = task == framebufferOwner;
+    IOLockUnlock(ownerLock);
+    return ownsFramebuffer;
+}
+
+IOReturn XenonFramebufferTest::openWindowAperture(task_t task, void *securityID,
+                                                   IOUserClient **handler)
+{
+    if (!handler)
+        return kIOReturnBadArgument;
+    *handler = NULL;
+    if (!isWindowApertureOwner(task))
+        return kIOReturnNotPrivileged;
+    XenosWindowApertureClient *client = new XenosWindowApertureClient;
+    if (!client)
+        return kIOReturnNoMemory;
+    if (!client->initForFramebuffer(task, securityID, this) || !client->attach(this)) {
+        client->release();
+        return kIOReturnNotReady;
+    }
+    if (!client->start(this)) {
+        client->detach(this);
+        client->release();
+        return kIOReturnNotReady;
+    }
+    *handler = client;
+    return kIOReturnSuccess;
+}
 
 IOService *XenonFramebufferTest::probe(IOService *provider, SInt32 *score)
 {
@@ -167,6 +254,8 @@ bool XenonFramebufferTest::start(IOService *provider)
         IOLog("XenonFramebufferTest: start failed to create framebuffer aperture\n");
         return false;
     }
+    framebufferOwner = NULL;
+    ownerLock = IOLockAlloc();
     currentMode = kBootMode;
     prepareNativeModes();
     if (!IOFramebuffer::start(provider)) {
@@ -179,6 +268,10 @@ bool XenonFramebufferTest::start(IOService *provider)
 
 void XenonFramebufferTest::free()
 {
+    if (framebufferOwner)
+        task_deallocate(framebufferOwner);
+    if (ownerLock)
+        IOLockFree(ownerLock);
     if (displayMap)
         displayMap->release();
     if (framebuffer)
@@ -189,6 +282,8 @@ void XenonFramebufferTest::free()
 IOReturn XenonFramebufferTest::newUserClient(task_t task, void *securityID, UInt32 type,
                                              IOUserClient **handler)
 {
+    if (type == kXenosWindowApertureClient)
+        return openWindowAperture(task, securityID, handler);
     const IOReturn result = IOFramebuffer::newUserClient(task, securityID, type, handler);
     if (result != kIOReturnSuccess || type != kIOFBServerConnectType ||
         !handler || !*handler || !task || task != current_task())
@@ -199,6 +294,15 @@ IOReturn XenonFramebufferTest::newUserClient(task_t task, void *securityID, UInt
     const int pid = proc_selfpid();
     if (pid <= 0 || strcmp(process, "WindowServer"))
         return result;
+    if (ownerLock) {
+        task_reference(task);
+        IOLockLock(ownerLock);
+        task_t oldOwner = framebufferOwner;
+        framebufferOwner = task;
+        IOLockUnlock(ownerLock);
+        if (oldOwner)
+            task_deallocate(oldOwner);
+    }
     setProperty(XENOS_WS_FRAMEBUFFER_PID, static_cast<UInt32>(pid), 32);
 
     IOService *pci = getProvider();

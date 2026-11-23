@@ -1,0 +1,26 @@
+Tiger WindowServer GPU window copy test
+XeLL profile gpuwinrepaint
+OpenBIOS WINPAINT.ELF
+PowerPC mkext XWRP.MKE
+
+This test moves a plain 16×16 window with four colored quadrants to a
+non-overlapping position. For a matching Tiger framebuffer copy, the
+plug-in uploads the visible source pixels, renders them on the GPU,
+checks the result and writes the GPU RGB output to the destination
+framebuffer. CPU transfers stage the input and commit the readback.
+It returns success to Tiger after verifying the full destination.
+Other moves and repaints use the stock software path. The test
+does not enable Quartz Extreme or support blending in this blit path.
+
+RunXenosWindowRepaint.sh --control loads the new plug-in privately and
+checks its interface and startup fallbacks, then copies a GPU tile
+through a private buffer, verifies 256 output pixels and checks every
+guard pixel. --baseline shows and moves the four-color window and
+checks the on-screen pixels using the active desktop.
+
+The cold-boot test uses the uniquely named XenosWinBlit.plugin in
+/System/Library/Extensions with root:wheel ownership. With gpuwinrepaint
+active, RunXenosWindowRepaint.sh --repaint checks the stock IOPS lookup,
+WindowServer's PID, the matching GPU ticket and fence, the callback's
+source and destination, and all of the on-screen pixels. It reports
+the Quartz Extreme status and removes its arm marker.

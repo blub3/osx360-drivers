@@ -1,0 +1,28 @@
+WindowServer overlapping repaint test
+
+Alternate boot profile  gpuwinbatch
+Firmware                WINBATCH.ELF
+Driver archive          XWBT.MKE
+Tiger plug-in           XenosWinBatch.plugin
+
+The test moves an overlapping 96 by 72 window. Tiger previously supplied
+a 7,252-pixel clip for this move, including its border. The plug-in
+snapshots the complete clip before writing any destination pixels.
+It moves RGB through 256-pixel GPU batches, validates each ticket and
+fence in order, and includes a partial final batch. After all GPU
+readbacks pass, the CPU transfers the results to scanout and the plug-in
+reads every destination pixel. The verifier separately checks the
+6,912 on-screen content pixels.
+
+The diagnostic handles up to 8,192 pixels. A callback that exceeds the
+GPU wait budget or fails verification before publication returns to
+Tiger's software copy. The existing GPU cooldown between submissions
+makes the deliberately armed move take several seconds. Each boot
+allows one armed attempt. Ordinary unarmed repaints use the stock path.
+
+RunXenosWindowBatch.sh --control checks a two-rectangle, 7,252-pixel
+overlapping copy in 29 batches, including all 9,132 guard pixels.
+--overlap-baseline checks the window move without arming the plug-in.
+--mapping-policy confirms that the console cannot map the private
+WindowServer aperture. Once XenosWinBatch.plugin is installed and
+gpuwinbatch has booted, --repaint checks the actual WindowServer copy.

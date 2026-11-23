@@ -1,0 +1,31 @@
+Tiger WindowServer GPU copy with clipped rectangles
+XeLL profile gpuwinretry
+OpenBIOS WINRETRY.ELF
+PowerPC mkext XWRR.MKE
+
+The original cold-boot test reached WindowServer's region-copy and copy
+callbacks. A live kernel trace confirmed that both opened the arm file.
+The original plug-in returned before GPU submission. Its decoder
+required a single exact 16×16 rectangle at the armed origins. The old
+trace cannot recover the exact shape and origins the hooks received.
+
+The retry accepts a bounded list of clipped rectangles with one common
+translation. Together they must cover the armed source tile. The
+plug-in checks the tile's source hash and snapshots the whole requested
+copy before it writes. The GPU renders the armed 16×16 tile and the CPU
+publishes the GPU result plus the source pixels for the remainder of
+Tiger's copy. The snapshot handles overlapping source and destination.
+A mismatch detected before commit lets Tiger use its software path.
+The plug-in logs the callback type and why armed requests are skipped.
+
+RunXenosWindowRetry.sh --control checks the new plug-in privately and
+tests a GPU tile across a clipped, overlapping copy. --baseline runs the
+16×16 move on the current desktop. --overlap-baseline checks the tile in
+a larger window moving over a second window. These baselines never arm
+WindowServer's GPU copy.
+
+Once XenosWinFix.plugin is installed and gpuwinretry is active, a cold
+boot and RunXenosWindowRetry.sh --repaint check both the original move
+and, if needed, the larger overlapping move. A pass requires the same
+WindowServer PID, a fresh fence, the matching callback and on-screen
+pixels. The retry does not enable Quartz Extreme.

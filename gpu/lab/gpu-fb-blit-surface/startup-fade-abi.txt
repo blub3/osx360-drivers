@@ -1,0 +1,117 @@
+9038097c [9038097c..90380b4c]:
+9038097c stmw      r30, -0x28(r1)
+90380980 or.       r30, r3, r3
+90380984 mflr      r0
+90380988 bl        0x906d4ea8
+9038098c stwu      r1, -0x90(r1)
+90380990 bdnzl     0x90380994
+90380994 fmr       f31, f1
+90380998 mflr      r31
+9038099c fmr       f30, f2
+903809a0 fmr       f29, f3
+903809a4 fmr       f28, f4
+903809a8 bne       0x903809c0
+903809ac addis     r4, r31, 0x38
+903809b0 li        r3, 0x3e9
+903809b4 addi      r4, r4, 0x262c
+903809b8 bl        0x903ecb48 <_CGSGlobalErrorv>
+903809bc b         0x90380a74
+903809c0 lwz       r2, 4(r30)
+903809c4 li        r3, 0
+903809c8 lwz       r2, 8(r2)
+903809cc lwz       r0, 0x28(r2)
+903809d0 cmpwi     cr7, r0, 0
+903809d4 beq       cr7, 0x90380a74
+903809d8 addis     r2, r31, 0x3b
+903809dc addis     r3, r31, 0x38
+903809e0 lfs       f0, -0x1b34(r2)
+903809e4 addis     r4, r31, 0x38
+903809e8 addis     r6, r31, 0x38
+903809ec li        r0, 0
+903809f0 fmuls     f13, f1, f0
+903809f4 addi      r3, r3, 0x262c
+903809f8 fmuls     f12, f2, f0
+903809fc addi      r4, r4, 0x2418
+90380a00 fmuls     f11, f3, f0
+90380a04 addi      r6, r6, 0x2640
+90380a08 fmuls     f0, f4, f0
+90380a0c li        r5, 0x6a4
+90380a10 stw       r0, 0x3c(r1)
+90380a14 stw       r0, 0x38(r1)
+90380a18 fctiwz    f13, f13
+90380a1c fctiwz    f12, f12
+90380a20 fctiwz    f11, f11
+90380a24 stfd      f13, 0x50(r1)
+90380a28 fctiwz    f0, f0
+90380a2c lwz       r7, 0x54(r1)
+90380a30 stfd      f12, 0x50(r1)
+90380a34 lwz       r8, 0x54(r1)
+90380a38 stfd      f11, 0x50(r1)
+90380a3c lwz       r9, 0x54(r1)
+90380a40 stfd      f0, 0x50(r1)
+90380a44 lwz       r10, 0x54(r1)
+90380a48 bl        0x9037f078 <__CGSLogTrace>
+90380a4c lwz       r2, 4(r30)
+90380a50 mr        r3, r30
+90380a54 fmr       f1, f31
+90380a58 lwz       r2, 8(r2)
+90380a5c fmr       f2, f30
+90380a60 fmr       f3, f29
+90380a64 lwz       r12, 0x28(r2)
+90380a68 fmr       f4, f28
+90380a6c mtctr     r12
+90380a70 bctrl     
+90380a74 addi      r1, r1, 0x90
+90380a78 lmw       r30, -0x28(r1)
+90380a7c b         0x906d4ef8
+90380a80 lwz       r2, 0x98(r3)
+90380a84 li        r4, 0
+90380a88 stfs      f4, 0x240(r2)
+90380a8c stfs      f1, 0x234(r2)
+90380a90 stfs      f2, 0x238(r2)
+90380a94 stfs      f3, 0x23c(r2)
+90380a98 b         0x90380a9c <_setDeviceTransfer>
+90380a9c mflr      r0
+90380aa0 stmw      r26, -0x20(r1)
+90380aa4 stfd      f31, -8(r1)
+90380aa8 bdnzl     0x90380aac
+90380aac stw       r0, 8(r1)
+90380ab0 mflr      r31
+90380ab4 stwu      r1, -0x90(r1)
+90380ab8 mr        r29, r3
+90380abc lwz       r2, 8(r3)
+90380ac0 mr        r26, r4
+90380ac4 lwz       r30, 0x98(r3)
+90380ac8 lbz       r0, 0xcf(r2)
+90380acc cmpwi     cr7, r0, 0
+90380ad0 bne       cr7, 0x90380c98
+90380ad4 lbz       r0, 0xc8(r2)
+90380ad8 cmpwi     cr7, r0, 0
+90380adc beq       cr7, 0x90380c98
+90380ae0 cmpwi     cr7, r30, 0
+90380ae4 li        r3, 0x3e8
+90380ae8 beq       cr7, 0x90380c9c
+90380aec cmpwi     cr7, r4, 0
+90380af0 beq       cr7, 0x90380afc
+90380af4 li        r0, 1
+90380af8 stb       r0, 0x244(r30)
+90380afc lbz       r0, 0x245(r30)
+90380b00 li        r3, 0
+90380b04 cmpwi     cr7, r0, 0
+90380b08 bne       cr7, 0x90380c9c
+90380b0c lwz       r3, 0x168(r30)
+90380b10 cmpwi     cr7, r3, 0
+90380b14 beq       cr7, 0x90380c50
+90380b18 li        r4, 0
+90380b1c addi      r5, r1, 0x58
+90380b20 bl        0x906d86e0
+90380b24 or.       r27, r3, r3
+90380b28 bne       0x90380c50
+90380b2c lwz       r11, 8(r29)
+90380b30 addi      r0, r1, 0x5c
+90380b34 lwz       r9, 0x58(r1)
+90380b38 lwz       r2, 0x10(r11)
+90380b3c stw       r2, 0x5c(r1)
+90380b40 lwbrx     r2, 0, r0
+90380b44 subf.     r28, r9, r2
+90380b48 ble       0x90380c50

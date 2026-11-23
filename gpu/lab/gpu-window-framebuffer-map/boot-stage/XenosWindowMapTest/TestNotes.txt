@@ -1,0 +1,27 @@
+Tiger WindowServer GPU copy with a framebuffer owner mapping
+XeLL profile gpuwinmap
+OpenBIOS WINMAP.ELF
+PowerPC mkext XWFM.MKE
+
+On gpuwinretry both console and WindowServer accounts open Tiger's
+shared IOKit connection. Mapping VRAM type 110 succeeds for the
+console account and returns 0xe00002c2 for the WindowServer account.
+
+Framebuffer kext 0.0.5d3 records the exact task that successfully
+opened the stock framebuffer server connection. A separate IOKit
+client maps the same fixed framebuffer aperture only for that task,
+and checks task identity again on each map request. The normal
+console shared aperture, boot profiles and display mode code are
+unchanged. The plug-in reports which map phase failed and its status.
+
+RunXenosWindowMap.sh --control checks the plug-in interface and the
+private GPU copy. --mapping-baseline verifies that the active older
+kext rejects the private selector. --baseline and --overlap-baseline
+check visible pixels through the normal console map before activation.
+The private copy control does not write screen pixels.
+
+For the cold-boot test, install XenosWinMap.plugin and activate
+gpuwinmap. RunXenosWindowMap.sh --repaint first checks that a separate
+console task is denied access to the owner-only mapping, then tests
+the WindowServer map, GPU fence and screen pixels on an armed move.
+Quartz Extreme is reported separately.

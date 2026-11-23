@@ -1,0 +1,25 @@
+Tiger framebuffer blit and GPU surface diagnostic
+XeLL profile gpufbblit
+OpenBIOS BLITSURF.ELF
+PowerPC mkext XWBL.MKE
+
+The alternate archive adds the framebuffer's IOGraphicsAccelerator plug-in
+registration and retains the working GPU and framebuffer binaries. The
+existing GLD selection and HDMI path are preserved. This probe uses Tiger's
+legacy IOPS rectangle fill, copy and region copy callbacks. Once armed, the
+first eligible WindowServer callback submits one actual 32×32 ARGB surface
+clear, verifies its readback and returns the normal software fallback status
+for the original desktop blit. It does not enable Quartz Extreme.
+
+RunXenosFramebufferBlit.sh --control loads the private plug-in and checks
+its callback and GPU surface through the current Tiger session. --baseline
+generates overlapping window repaints and checks the current GPU fence and
+Quartz Extreme state without arming the callback. --lookup checks the live
+framebuffer registration using IOPSAllocateBlitEngine.
+
+To test WindowServer on the next boot, install the staged XenosLegacyBlit.plugin
+in /System/Library/Extensions with root:wheel ownership and activate the
+gpufbblit profile. After Tiger is stable, RunXenosFramebufferBlit.sh --repaint
+checks the stock IOPS lookup, WindowServer's PID, a fresh matching GPU fence,
+1024 pixels, and the corresponding callback log. Its marker is removed at
+the end of the test. The callback runs once per WindowServer process.
