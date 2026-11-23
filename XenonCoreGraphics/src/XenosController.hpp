@@ -28,6 +28,9 @@ static inline UInt32 fui(float f) {
 #include "adreno_common.xml.h"
 #include "a2xx.xml.h"
 
+static const UInt32 kResolveConvert = 1 << 20;
+static const UInt32 kResolveDisplayFormat = (COLORX_S8_8_8_8 << 7) | (1 << 24);
+
 #define RADEON_CP_PACKET0               0x00000000
 #define RADEON_ONE_REG_WR                (1 << 15)
 
@@ -69,6 +72,48 @@ private:
   IOBufferMemoryDescriptor  *_ringBufferDesc;
   volatile UInt8            *_ringBuffer;
   UInt32                    _ringBufferWritePtr;
+  UInt32                    _refreshesUntilRingSample;
+  UInt32                    _markerSubmitAttempts;
+  IOBufferMemoryDescriptor  *_markerScratch;
+  UInt32                    _movingDelay;
+  UInt32                    _movingWait;
+  UInt32                    _vblankWaitUS;
+  UInt32                    _vblankHeight;
+  UInt32                    _vblankHTotal;
+  UInt32                    _vblankVTotal;
+  enum { kScanoutCount = 3, kReadyCapacity = kScanoutCount - 1, kNoBuffer = kScanoutCount };
+  struct QueuedFrame {
+    UInt32 number;
+    UInt32 index;
+  };
+  UInt32                    _frontIndex;
+  UInt32                    _renderIndex;
+  QueuedFrame               _ready[kReadyCapacity];
+  UInt32                    _readyCount;
+  UInt32                    _peakReady;
+  UInt32                    _framesQueued;
+  UInt32                    _twoDeepFlips;
+  UInt32                    _bufferFlips[kScanoutCount];
+  bool                      _queuePrimed;
+  UInt32                    _orderErrors;
+  UInt32                    _lateFlips;
+  UInt32                    _latchErrors;
+  UInt32                    _lastFlipLine;
+  bool                      _needActiveScan;
+  bool                      _desktopRestored;
+  bool                      _flipAttempted;
+  UInt32                    _reservedPhysical;
+  UInt32                    _movingSubmitted;
+  UInt32                    _movingChecked;
+  UInt32                    _movingChanges;
+  UInt32                    _movingOpaque;
+  UInt32                    _movingLow;
+  UInt32                    _movingHigh;
+  UInt32                    _movingMismatches;
+  bool                      _movingFinished;
+  IOBufferMemoryDescriptor  *_movingScratch;
+  IOMemoryMap               *_scanoutMaps[kScanoutCount];
+  UInt32                    _movingPhysical;
 
   // Shaders.
   IOBufferMemoryDescriptor  *_texCoordsDesc;
@@ -110,9 +155,45 @@ private:
   void initME(void);
   IOReturn initHardware(void);
   void initFramebuffer(void);
+  void setGpuViewport(UInt32 width, UInt32 height);
+  void setGpuScissors(UInt32 width, UInt32 height);
+  void setGpuTexture(UInt32 address, UInt32 width, UInt32 height,
+                     enum sq_tex_filter filter, bool tiled);
+  void setGpuDisplayVertices();
+  void setGpuVertices(UInt32 positionAddress, UInt32 positionBytes,
+                      UInt32 uvAddress, UInt32 uvBytes);
+  void setGpuDisplayShaders();
+  void setGpuTexturePixelShader(bool explicit2D);
+  void setGpuEdRamMode(enum a2xx_rb_edram_mode mode);
+  void setResolveTarget(UInt32 address, UInt32 width, UInt32 height,
+                        UInt32 control, UInt32 format);
 
   // Internal functions.
   void handleTimer(IOTimerEventSource *sender);
+  void runMarkerTest();
+  void drawResolveRectangle();
+  void drawQuad();
+  enum FlipResult { kFlipRetry, kFlipComplete, kFlipLate, kFlipReadbackFailed };
+  UInt32 stepMovingComposite();
+  UInt32 nextVBlankPollUS();
+  bool ownsScanoutAddress(UInt32 address) const;
+  UInt32 freeScanoutIndex() const;
+  bool collectRenderedFrame(bool drained);
+  bool presentQueuedFrame();
+  bool scanoutAt(UInt32 address);
+  bool displayModeMatches();
+  bool restoreDesktopScanout(bool drained);
+  FlipResult flipDuringVBlank(UInt32 address, UInt32 activeHeight);
+  UInt32 scanoutAddress(UInt32 index) const;
+  volatile UInt32 *scanoutBuffer(UInt32 index);
+  bool checkFrameNumber(UInt32 index, UInt32 frame);
+  bool initMovingComposite();
+  void submitMovingComposite(UInt32 target);
+  void checkMovingComposite(volatile UInt32 *scanout, UInt32 frame);
+  void finishMovingComposite(const char *result, const char *reason);
+  void drawTextureLayer(UInt32 positions, UInt32 uv, UInt32 texture);
+  void setBlendTestState(bool enabled);
+  void syncGpuMemory(UInt32 address, UInt32 bytes, UInt32 actions);
   void syncData(volatile void *data, UInt32 length);
   void syncRingBuffer(void);
 };

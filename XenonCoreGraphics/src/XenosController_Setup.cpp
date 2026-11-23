@@ -181,15 +181,7 @@ void XenosController::initFramebuffer(void) {
   writeRing(CP_REG(REG_A2XX_PA_SC_WINDOW_OFFSET));
   writeRing(0x00000000);
 
-  float halfWidth = _fbWidth * 0.5f;
-  float halfHeight = _fbHeight * 0.5f;
-
-  writeRingPacket3(CP_SET_CONSTANT, 5);
-  writeRing(CP_REG(REG_A2XX_PA_CL_VPORT_XSCALE));
-  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XSCALE */
-  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XOFFSET */
-  writeRing(fui(-halfHeight));	/* PA_CL_VPORT_YSCALE */
-  writeRing(fui(halfHeight));	/* PA_CL_VPORT_YOFFSET */
+  setGpuViewport(_fbWidth, _fbHeight);
 
   writeRingPacket3(CP_SET_CONSTANT, 2);
   writeRing(CP_REG(REG_A2XX_PA_CL_CLIP_CNTL));
@@ -220,15 +212,7 @@ void XenosController::initFramebuffer(void) {
     A2XX_PA_SU_SC_MODE_CNTL_FRONT_PTYPE(PC_DRAW_TRIANGLES) |
     A2XX_PA_SU_SC_MODE_CNTL_BACK_PTYPE(PC_DRAW_TRIANGLES));
 
-  writeRingPacket3(CP_SET_CONSTANT, 3);
-  writeRing(CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
-  writeRing(xy32(0,0));                 /* PA_SC_WINDOW_SCISSOR_TL */
-  writeRing(xy32(_fbWidth, _fbHeight)); /* PA_SC_WINDOW_SCISSOR_BR */
-
-  writeRingPacket3(CP_SET_CONSTANT, 3);
-  writeRing(CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_TL));
-  writeRing(xy32(0,0));                 /* PA_SC_SCREEN_SCISSOR_TL */
-  writeRing(xy32(_fbWidth, _fbHeight)); /* PA_SC_SCREEN_SCISSOR_BR */
+  setGpuScissors(_fbWidth, _fbHeight);
 
   writeRingPacket3(CP_SET_CONSTANT, 2);
   writeRing(CP_REG(REG_A2XX_RB_BLEND_CONTROL));
@@ -280,43 +264,98 @@ void XenosController::initFramebuffer(void) {
   writeRing((k_8_8_8_8 << 16) );    /* RB_COLOR_INFO */
   writeRing(A2XX_RB_DEPTH_INFO_DEPTH_BASE(ALIGN(_fbWidth, 32) * ALIGN(_fbHeight, 32))); /* RB_DEPTH_INFO */
 
-  writeRingPacket3(CP_SET_CONSTANT, 7);
-  writeRing((0x1 << 16) | 0x78); // type = fetch (base is 0x4800, val is offset)
-  writeRing(_triagPhys | 3); // kVertex
-  writeRing(0x2 | 48);			 // 12 dwords | k8in32 endian
-  writeRing(_texCoordsPhys | 3); 	 // kVertex
-  writeRing(0x2 | 32);			 // 12 dwords | k8in32 endian
-  writeRing(0x00000000);
-  writeRing(0x00000000);
+  setGpuDisplayVertices();
 
+  setGpuTexture(_fbPhysAddr, _fbWidth, _fbHeight, SQ_TEX_FILTER_BILINEAR, false);
+
+  setResolveTarget(_gpuPhysAddr, _fbWidth, _fbHeight, kResolveConvert, kResolveDisplayFormat);
+
+  setGpuDisplayShaders();
+}
+
+void XenosController::setGpuViewport(UInt32 width, UInt32 height) {
+  float halfWidth = width * 0.5f;
+  float halfHeight = height * 0.5f;
+
+  writeRingPacket3(CP_SET_CONSTANT, 5);
+  writeRing(CP_REG(REG_A2XX_PA_CL_VPORT_XSCALE));
+  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XSCALE */
+  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XOFFSET */
+  writeRing(fui(-halfHeight));	/* PA_CL_VPORT_YSCALE */
+  writeRing(fui(halfHeight));	/* PA_CL_VPORT_YOFFSET */
+}
+
+void XenosController::setGpuScissors(UInt32 width, UInt32 height) {
+  writeRingPacket3(CP_SET_CONSTANT, 3);
+  writeRing(CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
+  writeRing(xy32(0,0));                 /* PA_SC_WINDOW_SCISSOR_TL */
+  writeRing(xy32(width, height)); /* PA_SC_WINDOW_SCISSOR_BR */
+
+  writeRingPacket3(CP_SET_CONSTANT, 3);
+  writeRing(CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_TL));
+  writeRing(xy32(0,0));                 /* PA_SC_SCREEN_SCISSOR_TL */
+  writeRing(xy32(width, height)); /* PA_SC_SCREEN_SCISSOR_BR */
+}
+
+void XenosController::setResolveTarget(UInt32 address, UInt32 width, UInt32 height,
+                                       UInt32 control, UInt32 format) {
+  writeRingPacket3(CP_SET_CONSTANT, 5);
+  writeRing(CP_REG(REG_A2XX_RB_COPY_CONTROL));
+  writeRing(control);
+  writeRing(address);
+  writeRing(xy32(width, height));
+  writeRing(format);
+}
+
+void XenosController::setGpuTexture(UInt32 address, UInt32 width, UInt32 height,
+                                      enum sq_tex_filter filter, bool tiled) {
   writeRingPacket3(CP_SET_CONSTANT, 7);
   writeRing(0x00010000);
   writeRing(
-    A2XX_SQ_TEX_0_PITCH(ALIGN(_fbWidth, 32)) |
+    (tiled ? 1U << 31 : 0) | // Xbox 360 uses bit 31 to select tiled storage.
+    A2XX_SQ_TEX_0_PITCH(ALIGN(width, 32)) |
     A2XX_SQ_TEX_0_CLAMP_X(SQ_TEX_WRAP) |
     A2XX_SQ_TEX_0_CLAMP_Y(SQ_TEX_WRAP));
-  writeRing(_fbPhysAddr | FMT_8_8_8_8);
+  writeRing(address | FMT_8_8_8_8);
   writeRing(
-    A2XX_SQ_TEX_2_HEIGHT(_fbHeight - 1) |
-    A2XX_SQ_TEX_2_WIDTH(_fbWidth - 1));
+    A2XX_SQ_TEX_2_HEIGHT(height - 1) |
+    A2XX_SQ_TEX_2_WIDTH(width - 1));
   writeRing(
     A2XX_SQ_TEX_3_SWIZ_X(SQ_TEX_Y) |
     A2XX_SQ_TEX_3_SWIZ_Y(SQ_TEX_Z) |
     A2XX_SQ_TEX_3_SWIZ_Z(SQ_TEX_W) |
     A2XX_SQ_TEX_3_SWIZ_W(SQ_TEX_X) |
-    A2XX_SQ_TEX_3_XY_MAG_FILTER(SQ_TEX_FILTER_BILINEAR) |
-    A2XX_SQ_TEX_3_XY_MIN_FILTER(SQ_TEX_FILTER_BILINEAR));
+    A2XX_SQ_TEX_3_XY_MAG_FILTER(filter) |
+    A2XX_SQ_TEX_3_XY_MIN_FILTER(filter));
   writeRing(0x00000000);
   writeRing(0x00000200);
+}
 
-  writeRingPacket3(CP_SET_CONSTANT, 5);
-  writeRing(CP_REG(REG_A2XX_RB_COPY_CONTROL));
-  writeRing(0x00100000);                  /* RB_COPY_CONTROL */
-  writeRing(_gpuPhysAddr);                /* RB_COPY_DEST_BASE */
-  writeRing(xy32(_fbWidth, _fbHeight));   /* RB_COPY_DEST_PITCH */
-  writeRing(A2XX_RB_COPY_DEST_INFO_FORMAT(COLORX_S8_8_8_8) |
-    A2XX_RB_COPY_DEST_INFO_SWAP(1));      /* RB_COPY_DEST_INFO */
+void XenosController::setGpuDisplayVertices() {
+  setGpuVertices(_triagPhys, sizeof(sTriag), _texCoordsPhys, sizeof(sTexCoords));
+}
 
+void XenosController::setGpuVertices(UInt32 positionAddress, UInt32 positionBytes,
+                                       UInt32 uvAddress, UInt32 uvBytes) {
+  // The Xenos SQ latches all three fetch pairs as a six-dword group.
+  // Updating the two position dwords alone can disrupt later draws and resolves.
+  writeRingPacket3(CP_SET_CONSTANT, 7);
+  writeRing((1 << 16) | 0x78); // Fetch bank, group containing position and UVs.
+  writeRing(positionAddress | 3);
+  writeRing(positionBytes | 2); // Size in dwords at bit 2, with 8-in-32 byte order.
+  writeRing(uvAddress | 3);
+  writeRing(uvBytes | 2);
+  writeRing(0);
+  writeRing(0);
+}
+
+void XenosController::setGpuEdRamMode(enum a2xx_rb_edram_mode mode) {
+  writeRingPacket3(CP_SET_CONSTANT, 2);
+  writeRing(CP_REG(REG_A2XX_RB_MODECONTROL));
+  writeRing(A2XX_RB_MODECONTROL_EDRAM_MODE(mode));
+}
+
+void XenosController::setGpuDisplayShaders() {
   writeRingPacket3(CP_IM_LOAD_IMMEDIATE, 2 + 21);
   writeRing(0x00000000);
   writeRing(0x00000015);
@@ -332,11 +371,17 @@ void XenosController::initFramebuffer(void) {
   writeRing(CP_REG(REG_A2XX_SQ_PROGRAM_CNTL));
   writeRing(0x10030002);
 
+  setGpuTexturePixelShader(false);
+}
+
+void XenosController::setGpuTexturePixelShader(bool explicit2D) {
   writeRingPacket3(CP_IM_LOAD_IMMEDIATE, 2 + 12);
   writeRing(0x00000001);
   writeRing(0x0000000c);
   writeRing(0x00031002); writeRing(0x00001000); writeRing(0xc4000000);
   writeRing(0x00001003); writeRing(0x00002000); writeRing(0x00000000);
-  writeRing(0x10000001); writeRing(0x1ffff688); writeRing(0x00000000);
+  // Fetch slot 0 passes normalized UVs and takes its filters from the sampler.
+  const UInt32 fetchDimension2D = 1U << 14;
+  writeRing(0x10000001); writeRing(0x1ffff688); writeRing(explicit2D ? fetchDimension2D : 0);
   writeRing(0x140f8000); writeRing(0x00000000); writeRing(0xe2000000);
 }
