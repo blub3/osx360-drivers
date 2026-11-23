@@ -285,12 +285,17 @@ void XenosController::setGpuViewport(UInt32 width, UInt32 height) {
   writeRing(fui(halfHeight));	/* PA_CL_VPORT_YOFFSET */
 }
 
-void XenosController::setGpuScissors(UInt32 width, UInt32 height) {
+void XenosController::setGpuWindowScissor(UInt32 left, UInt32 top, UInt32 right, UInt32 bottom,
+                                           bool disableOffset) {
   writeRingPacket3(CP_SET_CONSTANT, 3);
   writeRing(CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
-  writeRing(xy32(0,0));                 /* PA_SC_WINDOW_SCISSOR_TL */
-  writeRing(xy32(width, height)); /* PA_SC_WINDOW_SCISSOR_BR */
+  const UInt32 offsetFlag = disableOffset ? A2XX_PA_SC_WINDOW_SCISSOR_TL_WINDOW_OFFSET_DISABLE : 0;
+  writeRing(xy32(left, top) | offsetFlag);
+  writeRing(xy32(right, bottom));
+}
 
+void XenosController::setGpuScissors(UInt32 width, UInt32 height) {
+  setGpuWindowScissor(0, 0, width, height);
   writeRingPacket3(CP_SET_CONSTANT, 3);
   writeRing(CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_TL));
   writeRing(xy32(0,0));                 /* PA_SC_SCREEN_SCISSOR_TL */
@@ -308,7 +313,8 @@ void XenosController::setResolveTarget(UInt32 address, UInt32 width, UInt32 heig
 }
 
 void XenosController::setGpuTexture(UInt32 address, UInt32 width, UInt32 height,
-                                      enum sq_tex_filter filter, bool tiled) {
+                                      enum sq_tex_filter filter, bool tiled, UInt32 mipAddress,
+                                      enum sq_tex_filter mipFilter, UInt32 lodBiasSteps, UInt32 anisoFilter) {
   writeRingPacket3(CP_SET_CONSTANT, 7);
   writeRing(0x00010000);
   writeRing(
@@ -326,9 +332,13 @@ void XenosController::setGpuTexture(UInt32 address, UInt32 width, UInt32 height,
     A2XX_SQ_TEX_3_SWIZ_Z(SQ_TEX_W) |
     A2XX_SQ_TEX_3_SWIZ_W(SQ_TEX_X) |
     A2XX_SQ_TEX_3_XY_MAG_FILTER(filter) |
-    A2XX_SQ_TEX_3_XY_MIN_FILTER(filter));
-  writeRing(0x00000000);
-  writeRing(0x00000200);
+    A2XX_SQ_TEX_3_XY_MIN_FILTER(filter) |
+    (UInt32(mipFilter) << 23) |
+    (anisoFilter << 25));
+  // Word 4 selects levels 0..1 and encodes LOD bias in units of 1/32.
+  // Word 5 selects 2D and the packed mip tail.
+  writeRing(mipAddress ? ((1U << 6) | (lodBiasSteps << 12)) : 0);
+  writeRing(0x00000200 | (mipAddress ? (mipAddress | (1U << 11)) : 0));
 }
 
 void XenosController::setGpuDisplayVertices() {
