@@ -6,9 +6,9 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
-1. Add a dcbz emulation trap counter. This needs a hook in the kernel's emulation path.
-2. Classify the patched words as real code or data, so false positives can be measured.
-3. Design the "already scanned" record, including invalidation when a physical page is freed or refilled.
+1. Reduce scan cost without a page cache: pre-scan each page in one fast physical-read pass, and use the existing patch loop only on pages with a match.
+2. Measure dcbz trap cost in `CGSFillDRAM64`, the source of most patched words.
+3. Patch only Mach-O text ranges, so data words that look like dcbz are never changed.
 
 ## Build notes
 
@@ -22,6 +22,27 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-23: dcbz trap counter and word classification
+
+Branch `claude/pmap-patcher`, commit `187302c`. Profile `pmaptrap`: `PMAPTRAP.ELF` + `XPMT.MKE` (MD5 `173591843f35f806152e4f352d93f748`). XenonPlatform binary MD5 `f98b5bc99754af99a13a9a74fc8c4a40`. All other kexts are byte-identical to `XWOV.MKE`.
+
+Pass criteria, set before the run: Tiger boots; SSH, WindowServer, Finder and Dock run; the trap counter is present and app launches still work; the log holds one entry per patched word; a 50 MiB Ethernet transfer keeps its checksum; audio is audible.
+
+**Result: pass.** Ethernet ran at 7.27 MiB/s up and 8.92 MiB/s down with matching checksums. The owner heard the audio.
+
+| Measure | Value |
+| --- | --- |
+| Emulator traps about 2 minutes after power-on | 1,234,696 (upper bound on dcbz traps) |
+| Terminal launch | up to 83,936 traps |
+| TextEdit launch | up to 191,094 traps |
+| Patched words | 41: 35 `dcbz`, 6 `dcbzl` |
+| Location | All in CoreGraphics `__TEXT,__text` |
+| Functions | `CGSFillDRAM64` 34, `vec128CGSFill8by1` 4, `vec128CGSFillDRAM64` 2, `CGSFillDRAM8by1` 1 |
+
+No false positives occurred in this sample. Emulate64 clears 32 bytes for `dcbz` and 128 bytes for `dcbzl`, matching G5 behaviour.
+
+File reads return the patched words while the page is cached, so a checksum of a patched library can differ from its on-disk bytes. The patcher logged unpatched originals after each cold boot, so these runs show no sign of patches reaching the disk.
 
 ## 2026-11-23: dcbz patcher counters
 
