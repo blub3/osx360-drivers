@@ -551,19 +551,42 @@ IOReturn XenosController::queueQuadGeometry(OSObject *owner, void *clientArg, vo
                            &upload->geometry, kXenosQuadUploadGeometry, static_cast<UInt32 *>(output));
 }
 
-IOReturn XenosController::queueQuadCapture(OSObject *owner, void *clientArg, void *input,
-                                             void *output, void *unused) {
-  XenosQuadClient *client = static_cast<XenosQuadClient *>(clientArg);
-  if (!client->_quadCapturePixels) {
+bool XenosController::ensureQuadCapture(XenosQuadClient *client) {
+  if (!client->_quadCapturePixels)
     client->_quadCapturePixels = static_cast<UInt32 *>(
-      IOMalloc(kXenosQuadReadbackPixels * sizeof(UInt32)));
-    if (!client->_quadCapturePixels)
-      return kIOReturnNoMemory;
-  }
+        IOMalloc(kXenosQuadReadbackPixels * sizeof(UInt32)));
+  return client->_quadCapturePixels != NULL;
+}
+
+IOReturn XenosController::queueQuadCapture(OSObject *owner, void *clientArg, void *input,
+                                            void *output, void *unused) {
+  XenosQuadClient *client = static_cast<XenosQuadClient *>(clientArg);
+  if (!ensureQuadCapture(client))
+    return kIOReturnNoMemory;
   const IOReturn result = queueQuadGeometry(owner, client, input, output, unused);
   if (result == kIOReturnSuccess)
     client->_captureQuad = true;
   return result;
+}
+
+IOReturn XenosController::queueQuadCaptureTile(OSObject *owner, void *clientArg, void *input,
+                                                void *output, void *) {
+  XenosController *self = static_cast<XenosController *>(owner);
+  XenosQuadClient *client = static_cast<XenosQuadClient *>(clientArg);
+  const IOReturn ready = self->quadQueueReady(client);
+  if (ready != kIOReturnSuccess)
+    return ready;
+  if (!ensureQuadCapture(client))
+    return kIOReturnNoMemory;
+
+  self->_quadTile = *static_cast<const XenosQuadTileUpload *>(input);
+  QuadLayer &layer = self->_quadLayers[0];
+  layer.payload.geometry = xenosQuadMakeGeometry(
+      0, 0, kClearSide, kClearSide, 0, 0, kClearSide, kClearSide);
+  layer.rotated = false;
+  self->startQuad(client, 0, true, kXenosQuadCaptureTile, 1, static_cast<UInt32 *>(output));
+  client->_captureQuad = true;
+  return kIOReturnSuccess;
 }
 
 IOReturn XenosController::readQuadCapture(OSObject *owner, void *clientArg, void *input,
@@ -834,6 +857,7 @@ void XenosController::startQuad(XenosQuadClient *client, UInt32 texture, bool up
                        geometryMode == kXenosQuadUploadBlendedBatch ? "Blended Batch" :
                        geometryMode == kXenosQuadUploadBatch ? "Batch" :
                        geometryMode == kXenosQuadUploadRotated ? "Rotated" :
+                       geometryMode == kXenosQuadCaptureTile ? "Tile Capture" :
                        geometryMode == kXenosQuadUploadGeometry ? "Geometry" :
                        uploaded ? "Upload" : "Built-in";
   setProperty("XenosUserQuadSource", source);
@@ -912,8 +936,9 @@ bool XenosController::quadUsesBlending() const {
 }
 
 UInt32 XenosController::quadLayerTexel(UInt32 layer, UInt32 u, UInt32 v) const {
-  const UInt32 index = v * kQuadSide + u;
-  const UInt8 *rgb = _quadLayers[layer].payload.rgb + 3 * index;
+  const bool fullTile = _quadGeometryMode == kXenosQuadCaptureTile;
+  const UInt32 index = v * (fullTile ? kClearSide : kQuadSide) + u;
+  const UInt8 *rgb = (fullTile ? _quadTile.rgb : _quadLayers[layer].payload.rgb) + 3 * index;
   const UInt32 alpha = layer == 1 && quadUsesBlending()
       ? _quadFrontAlpha[index] : 255;
   return (alpha << 24) | (UInt32(rgb[0]) << 16) | (UInt32(rgb[1]) << 8) | rgb[2];
@@ -984,6 +1009,7 @@ bool XenosController::stepQuad() {
 
     UInt32 mismatches = 0;
     UInt32 hash = XENOS_QUAD_HASH_INITIAL;
+    const bool fullTile = _quadGeometryMode == kXenosQuadCaptureTile;
     const bool blending = quadUsesBlending();
     const bool scissored = quadUsesScissor();
     const bool stenciled = quadUsesStencil();
@@ -1001,8 +1027,8 @@ bool XenosController::stepQuad() {
                            "XenosBatchBlend";
     for (UInt32 y = 0; y < kClearSide; ++y) {
       for (UInt32 x = 0; x < kClearSide; ++x) {
-        UInt32 u = 0, v = 0;
-        const bool first = quadSampleAt(_quadLayers[0], x, y, u, v);
+        UInt32 u = x, v = y;
+        const bool first = fullTile || quadSampleAt(_quadLayers[0], x, y, u, v);
         const UInt32 destination = first ? quadLayerTexel(0, u, v) : kClearExpected;
         const bool frontGeometry = _quadLayerCount == kXenosQuadBatchLayers &&
                                    quadSampleAt(_quadLayers[1], x, y, u, v);
@@ -1029,9 +1055,9 @@ bool XenosController::stepQuad() {
         const bool matched = translucent ? delta <= kXenosQuadBlendTolerance : observed == expected;
         if (delta > _quadMaxBlendDelta)
           _quadMaxBlendDelta = delta;
-        if (blending && !matched && !mismatches) {
+        if ((blending || fullTile) && !matched && !mismatches) {
           IOLog("%s: first mismatch=(%lu,%lu) expected=%08lx observed=%08lx\n",
-                blendLog, x, y, expected, observed);
+                fullTile ? "XenosTileCapture" : blendLog, x, y, expected, observed);
         }
         mismatches += !matched;
         _quadFirstOnly += matched && first && !second;
@@ -1494,6 +1520,9 @@ void XenosController::finishQuad(UInt32 state, UInt32 fence, UInt32 checked,
           "uv=%u,%u,%u,%u fence=%lu pixels=%lu mismatches=%lu hash=%08lx\n",
           result, _quadTicket, r.direction * 45, r.originX, r.originY, r.legU, r.legV,
           r.u0, r.v0, r.u1, r.v1, fence, checked, mismatches, hash);
+  } else if (_quadGeometryMode == kXenosQuadCaptureTile) {
+    IOLog("XenosTileCapture: %s ticket=%lu fence=%lu pixels=%lu mismatches=%lu hash=%08lx\n",
+          result, _quadTicket, fence, checked, mismatches, hash);
   } else if (_quadGeometryMode == kXenosQuadUploadGeometry) {
     const XenosQuadMapping &m = _quadLayers[0].mapping;
     IOLog("XenosGeometryQuad: %s ticket=%lu rect=%u,%u,%u,%u uv=%u,%u,%u,%u "
@@ -1936,6 +1965,7 @@ bool XenosController::submitQuad() {
   const UInt32 textures = base + kQuadTextureOffset;
   const bool stencil = quadUsesStencil();
   const bool depth = quadUsesDepth();
+  const UInt32 textureSide = _quadGeometryMode == kXenosQuadCaptureTile ? kClearSide : kQuadSide;
   for (UInt32 index = 0; index < _quadLayerCount; ++index) {
     const QuadLayer &layer = _quadLayers[index];
     UInt8 *geometry = memory + kQuadGeometryOffset + index * kQuadGeometryStride;
@@ -1948,7 +1978,7 @@ bool XenosController::submitQuad() {
     UInt32 *texels = reinterpret_cast<UInt32 *>(memory + kQuadTextureOffset + index * PAGE_SIZE);
     for (UInt32 y = 0; y < kClearSide; ++y)
       for (UInt32 x = 0; x < kClearSide; ++x)
-        texels[resolveTileWord(x, y)] = quadLayerTexel(index, x % kQuadSide, y % kQuadSide);
+        texels[resolveTileWord(x, y)] = quadLayerTexel(index, x % textureSide, y % textureSide);
   }
   if (stencil) {
     for (UInt32 index = 0; index < kXenosQuadStencilRects; ++index) {

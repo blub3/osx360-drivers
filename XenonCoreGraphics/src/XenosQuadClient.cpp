@@ -99,6 +99,8 @@ IOExternalMethod *XenosQuadClient::getTargetAndMethodForIndex(IOService **target
      sizeof(XenosQuadGeometryUpload), sizeof(UInt32)},
     {NULL, (IOMethod)&XenosQuadClient::readCapture, kIOUCStructIStructO,
      sizeof(XenosQuadReadRequest), sizeof(XenosSurfaceReadback)},
+    {NULL, (IOMethod)&XenosQuadClient::uploadCaptureTile, kIOUCStructIStructO,
+     sizeof(XenosQuadTileUpload), sizeof(UInt32)},
   };
 
   if (selector >= sizeof(methods) / sizeof(methods[0]) ||
@@ -135,6 +137,12 @@ IOReturn XenosQuadClient::uploadCapture(void *input, void *ticket, void *inputSi
                                         void *outputSize, void *, void *) {
   return sendUpload(input, ticket, inputSize, outputSize, sizeof(XenosQuadGeometryUpload),
                     &XenosController::queueQuadCapture);
+}
+
+IOReturn XenosQuadClient::uploadCaptureTile(void *input, void *ticket, void *inputSize,
+                                            void *outputSize, void *, void *) {
+  return sendUpload(input, ticket, inputSize, outputSize, sizeof(XenosQuadTileUpload),
+                    &XenosController::queueQuadCaptureTile);
 }
 
 IOReturn XenosQuadClient::readCapture(void *input, void *output, void *inputSize,

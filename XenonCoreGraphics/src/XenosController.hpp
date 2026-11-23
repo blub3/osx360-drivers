@@ -118,6 +118,7 @@ private:
     bool rotated;
   };
   QuadLayer                  _quadLayers[kXenosQuadBatchLayers];
+  XenosQuadTileUpload         _quadTile;
   UInt8                      _quadFrontAlpha[kXenosQuadTexturePixels];
   XenosQuadScissor           _quadFrontMask[kXenosQuadStencilRects];
   XenosQuadScissor           _quadFrontScissor;
@@ -232,6 +233,8 @@ private:
   static IOReturn queueQuad(OSObject *owner, void *client, void *rgb, void *output, void *texture);
   static IOReturn queueQuadGeometry(OSObject *owner, void *client, void *input, void *output, void *);
   static IOReturn queueQuadCapture(OSObject *owner, void *client, void *input, void *output, void *);
+  static IOReturn queueQuadCaptureTile(OSObject *owner, void *client, void *input, void *output, void *);
+  static bool ensureQuadCapture(XenosQuadClient *client);
   static IOReturn readQuadCapture(OSObject *owner, void *client, void *input, void *output, void *);
   static IOReturn queueQuadRotated(OSObject *owner, void *client, void *input, void *output, void *);
   static IOReturn queueQuadBatch(OSObject *owner, void *client, void *input, void *output, void *);

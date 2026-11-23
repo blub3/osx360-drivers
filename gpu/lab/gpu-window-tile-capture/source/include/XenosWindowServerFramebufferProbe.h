@@ -1,0 +1,9 @@
+#ifndef XENOS_WINDOWSERVER_FRAMEBUFFER_PROBE_H
+#define XENOS_WINDOWSERVER_FRAMEBUFFER_PROBE_H
+
+#define XENOS_WS_FRAMEBUFFER_FUNCTION "XenosWindowServerFramebufferOpened"
+#define XENOS_WS_FRAMEBUFFER_ARMED "XenosWindowServerFramebufferProbe"
+#define XENOS_WS_FRAMEBUFFER_PID "XenosWindowServerFramebufferPID"
+#define XENOS_WS_FRAMEBUFFER_QUEUED_PID "XenosWindowServerFramebufferQueuedPID"
+
+#endif

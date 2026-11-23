@@ -30,6 +30,7 @@ private:
   IOReturn upload(void *rgb, void *ticket, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadGeometry(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadCapture(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
+  IOReturn uploadCaptureTile(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
   IOReturn readCapture(void *input, void *output, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadRotated(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadBatch(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);

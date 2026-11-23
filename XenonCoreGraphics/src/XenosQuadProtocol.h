@@ -33,6 +33,7 @@ enum {
   kXenosSurfaceQueueStatus = 24,
   kXenosQuadCapture = 25,
   kXenosQuadReadCaptured = 26,
+  kXenosQuadCaptureTile = 27,
   kXenosDrawableReaderType = 1,
   kXenosDrawableMemoryType = 1,
   kXenosDrawableTokenWords = 4,
@@ -49,6 +50,7 @@ enum {
   kXenosQuadTargetSide = 32,
   kXenosQuadQuarter = 4,
   kXenosQuadReadbackPixels = kXenosQuadTargetSide * kXenosQuadTargetSide,
+  kXenosQuadTileUploadBytes = kXenosQuadReadbackPixels * 3,
   kXenosQuadRenderTextureReadbackPixels = 2 * kXenosQuadReadbackPixels,
   kXenosQuadMipmapReadbackPixels = 3 * kXenosQuadReadbackPixels,
   kXenosSurfaceSide = kXenosQuadTargetSide,
@@ -130,6 +132,11 @@ typedef struct {
   XenosQuadGeometry geometry;
   uint8_t rgb[kXenosQuadUploadBytes];
 } XenosQuadGeometryUpload;
+
+// One full resolve tile in row-major RGB order, below Tiger's 4 KiB inline limit.
+typedef struct {
+  uint8_t rgb[kXenosQuadTileUploadBytes];
+} XenosQuadTileUpload;
 
 typedef struct {
   uint8_t kind;

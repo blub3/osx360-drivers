@@ -1,0 +1,28 @@
+WindowServer full-tile repaint test
+
+Alternate boot profile  gpuwintile
+Firmware                WINTILE.ELF
+Driver archive          XWTC.MKE
+XenonCoreGraphics       0.0.5d48
+Tiger plug-in           XenosWinTile.plugin
+
+The same overlapping 96 by 72 window move yields a 7,252-pixel clip.
+A full 32 by 32 RGB tile now fits in a single submission. That is seven
+full tiles and 84 covered pixels in the last tile. Each tile gets its
+own GPU fence. The kernel verifies all 1,024 pixels of each capture,
+including padding. The plug-in checks the clipped pixels again before
+transferring them to scanout and verifies the full destination.
+The independent app checks all 6,912 window content pixels.
+
+The report checks eight consecutive fence receipts, compares the
+submission-and-readback time with the recorded 4,276 ms run of the
+same repaint, and reports the time from move request to visible pixels.
+The 4,284 ms offscreen reference used the same overlap control at 29
+submissions. The startup markers and clear fences gate the real repaint.
+
+RunXenosWindowTile.sh --plugin-control checks the bundle and its timing
+callbacks on the current system. --overlap-baseline checks the same
+window move unarmed. After installing XenosWinTile.plugin and cold
+booting gpuwintile, --control exercises the offscreen fixture and
+--repaint exercises WindowServer. Each WindowServer process permits one
+armed attempt. The test is capped at 8,192 clipped pixels.
