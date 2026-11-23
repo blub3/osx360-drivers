@@ -14,18 +14,20 @@ This fork of [osx360/osx360-drivers](https://github.com/osx360/osx360-drivers) e
 | Native HDMI | Paired OpenBIOS and Tiger drivers switch the physical HDMI output between 720p and 1080p. A TV confirmed both timings, and iTunes audio was audible in both modes. [Tested change](https://github.com/blub3/osx360-drivers/commit/c4b62b4) |
 | Xenos rendering | Hardware tests cover command-ring completion, offscreen drawing, texture sampling and filtering, alpha blending, depth, scissor and stencil, render-to-texture, and queued VBlank flips. |
 | Tiger apps | Tests passed for reusable surfaces, shared drawables, concurrent client submissions, and process-local CGL/AGL rendering with pixel readback, buffer swaps, resizing and clipping. Tiger's stock CGL also discovered the native diagnostic GLD. |
-| WindowServer | The `gpuwintile` diagnostic completed eight ordered WindowServer-owned GPU fences for a clipped 7,252-pixel repaint. The GPU, framebuffer and independent on-screen checks matched. Submission and readback took 1,086 ms, down from 4,276 ms in the 29-submission reference. |
+| WindowServer | `gpuwinauto` passed two unarmed single-tile moves. `gpuwinoverlap` passed two unarmed overlapping moves with eight ordered WindowServer-owned GPU fences each. Per move, all 7,252 clipped pixels and 6,912 independently checked display pixels matched. |
 
 **Quartz Extreme is still disabled.** The WindowServer result is a controlled repaint test. The remaining milestones are native WindowServer acceleration and an accelerated desktop smoke test. The tracker records the acceptance criteria, individual hardware runs and outstanding SMP checks. [GPU milestone tracker](https://github.com/blub3/osx360-drivers/blob/gpu/quartz-extreme/docs/gpu-milestones.md)
 
 ## Branches and boot profiles
 
 - [`main`](https://github.com/blub3/osx360-drivers/tree/main) carries the tested Ethernet and native HDMI fixes.
-- [`gpu/quartz-extreme`](https://github.com/blub3/osx360-drivers/tree/gpu/quartz-extreme) contains XenonCoreGraphics `0.0.5d48`, XenonFramebufferTest `0.0.5d3`, and the GPU test source, plug-ins and build recipes. The latest verified profile is [`gpu-0.0.5d48-gpuwintile`](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwintile).
+- [`gpu/quartz-extreme`](https://github.com/blub3/osx360-drivers/tree/gpu/quartz-extreme) contains XenonCoreGraphics `0.0.5d48`, XenonFramebufferTest `0.0.5d3`, and the GPU test source, plug-ins and build recipes. The latest verified profile is [`gpu-0.0.5d48-gpuwinoverlap`](https://github.com/blub3/osx360-drivers/tree/gpu-0.0.5d48-gpuwinoverlap).
 
 Each experimental boot entry pairs a specific OpenBIOS ELF with a driver archive. The profile index lists the pairing, component versions, source tags and recorded checksums. Keep the working XeLL entry and the 720p rollback when testing a new profile. [Boot profile index](https://github.com/blub3/osx360-drivers/blob/gpu/quartz-extreme/docs/gpu-boot-profiles.md) · [SHA-256 manifest](https://github.com/blub3/osx360-drivers/blob/gpu/quartz-extreme/docs/gpu-boot-checksums.txt)
 
 ## Build and boot
+
+The WindowServer test download contains the project portions of the two verified mkexts and a tool that restores each byte-for-byte using your local Tiger graphics component. The OpenBIOS download supplies the matching ELFs. [Driver prerelease](https://github.com/blub3/osx360-drivers/releases/tag/gpu-0.0.5d48-gpuwinoverlap) · [Firmware prerelease](https://github.com/blub3/openbios/releases/tag/gpu-fw-windowserver)
 
 The boot chain is XeLL → OpenBIOS → Tiger on a console that can run XeLL. Start with the original project's installation guide and use the matching firmware and mkext from the branch or profile you intend to test. The companion firmware fork documents the verified Tiger USB SSD autoboot setup. [Upstream installation guide](https://github.com/osx360/osx360-drivers#installation) · [Upstream support matrix](https://github.com/osx360/osx360-drivers#support-status) · [Companion OpenBIOS fork](https://github.com/blub3/openbios)
 
