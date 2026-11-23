@@ -47,7 +47,8 @@ typedef struct {
 } XenosFramebufferMap;
 
 int XenosCaptureTile(XenosBackend *, const XenosQuadTileUpload *, XenosFence *, UInt32 *argb);
-int XenosTryCaptureTile(XenosBackend *, const XenosQuadTileUpload *, XenosFence *, UInt32 *argb);
+int XenosTryCaptureTile(XenosBackend *, const XenosQuadTileUpload *, XenosFence *, UInt32 *argb,
+                        unsigned submitAttempts);
 void XenosFormatBatchFences(const XenosFullCopy *copy, char text[kBatchFenceTextBytes]);
 int XenosMapFramebuffer(void *io, io_service_t framebuffer, XenosFramebufferMap *map);
 const char *XenosMapWindowAperture(void *io, io_service_t framebuffer, XenosFramebufferMap *map,
@@ -56,6 +57,7 @@ void XenosUnmapFramebuffer(XenosFramebufferMap *map);
 int XenosDecodeWindowCopy(UInt32 type, UInt32 sourceType, const void *operation,
                           XenosCopyPlan *plan);
 int XenosWindowCopyCovers(const XenosCopyPlan *plan, const XenosWindowArm *arm);
+int XenosUnarmedOverlapEligible(const XenosCopyPlan *plan);
 int XenosWindowSample(const XenosWindowPixels *screen, int x, int y,
                       UInt32 pixels[kWindowCopyPixels]);
 UInt32 XenosWindowHash(const UInt32 pixels[kWindowCopyPixels]);
@@ -63,4 +65,6 @@ const char *XenosCompositeWindowCopy(const XenosWindowPixels *screen, const Xeno
                                      const XenosWindowArm *arm, XenosFullCopy *copy);
 const char *XenosCompositeUnarmedCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
                                      XenosFullCopy *copy);
+const char *XenosCompositeUnarmedOverlap(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
+                                        XenosFullCopy *copy);
 #endif

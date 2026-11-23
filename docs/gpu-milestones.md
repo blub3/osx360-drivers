@@ -781,6 +781,28 @@ and report the next milestone and the remaining count.
    boot, including the `gpuwintile` rollback, native HDMI, earlier boot
    profiles and the 720p backup. Quartz Extreme remained disabled, so
    milestones 7 and 8 are still open.
+
+   The separate `gpuwinoverlap` profile stages `XenosWinOverlap.plugin`
+   for an unarmed overlapping copy-region callback. It accepts one
+   translated region of 1,025–8,192 clipped pixels and verifies up to
+   eight tiles before publishing the complete region to scanout. The
+   first trial hit the controller's eight-tick cooldown after tile one.
+   Subsequent tiles now allow bounded busy retries, with a 1,500 ms
+   total capture budget. The first tile still falls back immediately
+   if the GPU is busy.
+   On the running `gpuwinauto` boot, Tiger verified all nine kext
+   executables were byte-identical and loaded the candidate plug-in
+   in a process-local control. The private overlapping GPU copy passed
+   with fences 7–14, all 7,252 pixels matching and all 21,420 guard
+   pixels intact. Capture took 1,088 ms. Oversized and non-overlapping
+   inputs were rejected without changing any pixels. The live software
+   baseline matched all 6,912 on-screen pixels with no new GPU fence.
+   The alternate menu, ELF, mkext and test bundle were staged on
+   OSX360BOOT. The checksums of 496 pre-existing files matched,
+   including the HDMI setup, earlier tests and 720p backup.
+   `gpuwinauto` is still the active profile. The two live unarmed
+   WindowServer moves and their fence and pixel results await a
+   candidate cold boot. [Rebuild and verification steps](../gpu/lab/gpu-window-unarmed/)
 8. Desktop smoke test — exercise window movement, overlap, resize and
    720p/1080p switching with acceleration active.
 

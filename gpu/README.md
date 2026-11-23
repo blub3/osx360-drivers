@@ -32,6 +32,7 @@ bundle metadata, package scripts, and boot profiles.
 | XenosWinBatch | [gpu-window-batched-overlap](lab/gpu-window-batched-overlap/) |
 | XenosWinTile | [gpu-window-tile-capture](lab/gpu-window-tile-capture/) |
 | XenosWinAuto | [gpu-window-unarmed](lab/gpu-window-unarmed/) |
+| XenosWinOverlap | [gpu-window-unarmed](lab/gpu-window-unarmed/) |
 
 The [surface test](lab/gpu-reusable-surface/), [shared drawable test](lab/gpu-shared-drawable/),
 [multi-client test](lab/gpu-multi-client/), [CGL discovery](lab/gpu-cgl-discovery/),

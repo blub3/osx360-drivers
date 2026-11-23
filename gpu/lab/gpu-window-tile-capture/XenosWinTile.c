@@ -20,7 +20,10 @@ extern void OSSpinLockUnlock(volatile int *);
 
 enum { kNotice = 5 };
 
-#ifdef XENOS_UNARMED_BLIT
+#ifdef XENOS_UNARMED_OVERLAP
+#define XENOS_BLIT_NAME "XenosWinOverlap"
+#define XENOS_BLIT_ENTRY XenosWinOverlapFactory
+#elif defined(XENOS_UNARMED_BLIT)
 #define XENOS_BLIT_NAME "XenosWinAuto"
 #define XENOS_BLIT_ENTRY XenosWinAutoFactory
 #else
@@ -225,9 +228,15 @@ static int blit(void *self, UInt32 options, UInt32 type, UInt32 sourceType,
         return kBlitNoResources;
 
     XenosCopyPlan plan;
-    if (!XenosDecodeWindowCopy(type, sourceType, operation, &plan) || plan.count != 1 ||
-        plan.area < 256 || plan.area > kXenosQuadReadbackPixels)
+    if (!XenosDecodeWindowCopy(type, sourceType, operation, &plan))
         return kBlitNoResources;
+#ifdef XENOS_UNARMED_OVERLAP
+    if (!XenosUnarmedOverlapEligible(&plan))
+        return kBlitNoResources;
+#else
+    if (plan.count != 1 || plan.area < 256 || plan.area > kXenosQuadReadbackPixels)
+        return kBlitNoResources;
+#endif
     const XenosCopyRectangle *rect = &plan.rects[0];
     const XenosWindowMove *move = &rect->move;
     if ((move->sourceX == move->targetX && move->sourceY == move->targetY) ||
@@ -245,18 +254,25 @@ static int blit(void *self, UInt32 options, UInt32 type, UInt32 sourceType,
     if (!failure) {
         const XenosWindowPixels screen = {(volatile UInt32 *)map.address, kFramebufferRowBytes,
                                            kCommonWidth, kCommonHeight};
+#ifdef XENOS_UNARMED_OVERLAP
+        failure = XenosCompositeUnarmedOverlap(&screen, &plan, &copy);
+#else
         failure = XenosCompositeUnarmedCopy(&screen, &plan, &copy);
+#endif
         XenosUnmapFramebuffer(&map);
     }
     engine->nextSample = mach_absolute_time() + engine->cooldownTicks;
     OSSpinLockUnlock(&sampleLock);
 
+    char fences[kBatchFenceTextBytes];
+    XenosFormatBatchFences(&copy, fences);
     syslog(kNotice, XENOS_BLIT_NAME " %s pid=%d src=%d,%d dst=%d,%d size=%d,%d area=%u "
            "ticket=%u fence=%u gpu_pixels=%u screen_pixels=%u hash=%08x gpu_ms=%u "
-           "committed=%d reason=%s map_status=0x%08x",
+           "batches=%u first_fence=%u fences=%s committed=%d reason=%s map_status=0x%08x",
            failure ? "FAIL" : "PASS", getpid(), move->sourceX, move->sourceY, move->targetX,
            move->targetY, rect->width, rect->height, plan.area, copy.ticket, copy.fence,
-           copy.gpuPixels, copy.screenPixels, copy.hash, copy.elapsedMs, copy.committed,
+           copy.gpuPixels, copy.screenPixels, copy.hash, copy.elapsedMs, copy.batches,
+           copy.firstFence, fences, copy.committed,
            failure ? failure : "verified", mapStatus);
     return copy.committed ? 0 : (int)kBlitNoResources;
 }

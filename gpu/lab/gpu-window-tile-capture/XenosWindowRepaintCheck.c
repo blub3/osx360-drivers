@@ -287,7 +287,7 @@ static int windowTest(const API *api, UInt32 expectedOwner, int overlap, int una
         (active && !unarmed && !(armed=armCopy(&arm))))
         goto done;
     /* The asynchronous move may take the plug-in's full eight-second GPU budget. */
-    const unsigned long long waitNs = unarmed ? 2000000000ULL
+    const unsigned long long waitNs = unarmed ? 2250000000ULL
         : active && overlap ? 12000000000ULL : 1250000000ULL;
     const unsigned long long moveStart = mach_absolute_time();
     const unsigned long long deadline = moveStart + waitNs * timebase.denom / timebase.numer;
@@ -315,7 +315,8 @@ static int windowTest(const API *api, UInt32 expectedOwner, int overlap, int una
     printf("XenosWindowRepaint %s mode=%s src=%d,%d dst=%d,%d hash=%08x "
            "screen_pixels=%u owner_pid=%u ticket=%u fence=%u gpu_pixels=%u gpu_mismatches=%u "
            "QuartzExtreme_before=%d after=%d window_pixels=%u/%u move_ms=%u\n",
-           ok ? "PASS" : "FAIL", unarmed ? "unarmed" : active ? (overlap ? "overlap" : "repaint") : (overlap ? "overlap-baseline" : "baseline"),
+           ok ? "PASS" : "FAIL", unarmed ? (overlap ? "unarmed-overlap" : "unarmed")
+               : active ? (overlap ? "overlap" : "repaint") : (overlap ? "overlap-baseline" : "baseline"),
            x, y, destX, destY, arm.hash,
            matches, after.ownerPID, after.ticket, after.fence, after.pixels, after.mismatches,
            qeBefore, api->qe(display.display) != 0, contentMatches, contentPixels, moveMs);
@@ -451,8 +452,10 @@ int main(int argc, char **argv)
     if (argc == 2 && !strcmp(argv[1],"--control"))
         return !privateCopyTest();
     UInt32 owner = 0;
-    const int unarmed = argc == 3 && !strcmp(argv[1], "--unarmed");
-    const int overlap = argc > 1 && (!strcmp(argv[1], "--overlap") || !strcmp(argv[1], "--overlap-baseline"));
+    const int unarmedOverlap = argc == 3 && !strcmp(argv[1], "--unarmed-overlap");
+    const int unarmed = unarmedOverlap || (argc == 3 && !strcmp(argv[1], "--unarmed"));
+    const int overlap = unarmedOverlap || (argc > 1 &&
+        (!strcmp(argv[1], "--overlap") || !strcmp(argv[1], "--overlap-baseline")));
     const int baseline = argc == 2 && (!strcmp(argv[1], "--baseline") || !strcmp(argv[1], "--overlap-baseline"));
     const int engine = argc == 2 && !strcmp(argv[1],"--lookup");
     const int policy = argc == 2 && (!strcmp(argv[1], "--mapping-policy") ||

@@ -10,7 +10,8 @@ extern int snprintf(char *, unsigned long, const char *, ...);
 typedef struct { UInt32 numer, denom; } MachTimebase;
 extern int mach_timebase_info(MachTimebase *);
 
-enum { kBatchBudgetMs = 8000, kUnarmedBudgetMs = 350 };
+enum { kBatchBudgetMs = 8000, kUnarmedBudgetMs = 350, kUnarmedOverlapBudgetMs = 1500,
+       kFollowupTileAttempts = 41 };
 
 static UInt32 batchElapsedMs(unsigned long long start, const MachTimebase *timebase)
 {
@@ -201,6 +202,21 @@ int XenosWindowCopyCovers(const XenosCopyPlan *plan, const XenosWindowArm *arm)
     return 1;
 }
 
+int XenosUnarmedOverlapEligible(const XenosCopyPlan *plan)
+{
+    if (plan->count != 1 || plan->area <= kXenosQuadReadbackPixels ||
+        plan->area > kFullCopyPixelLimit)
+        return 0;
+    const XenosCopyRectangle *rect = &plan->rects[0];
+    UInt32 area = 0;
+    if (!validRectangle(rect, &area) || area != plan->area)
+        return 0;
+    const int dx = rect->move.targetX - rect->move.sourceX;
+    const int dy = rect->move.targetY - rect->move.sourceY;
+    return (dx || dy) && dx > -rect->width && dx < rect->width &&
+        dy > -rect->height && dy < rect->height;
+}
+
 static int contains(const XenosWindowPixels *screen, int x, int y)
 {
     return screen->base && x >= 0 && y >= 0 && screen->width >= kWindowCopySide &&
@@ -264,13 +280,12 @@ static int snapshot(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
 }
 
 static const char *renderRegion(XenosBackend *backend, PixelPair *pairs, UInt32 area,
-                                int armed, XenosFullCopy *copy)
+                                int armed, UInt32 budget, XenosFullCopy *copy)
 {
     MachTimebase timebase;
     if (mach_timebase_info(&timebase) || !timebase.numer || !timebase.denom)
         return "gpu-clock";
     const unsigned long long start = mach_absolute_time();
-    const UInt32 budget = armed ? kBatchBudgetMs : kUnarmedBudgetMs;
     // Pack only covered clip pixels into each texture, including partial tiles.
     for (UInt32 first = 0; first < area; first += kXenosQuadReadbackPixels) {
         if (copy->elapsedMs >= budget)
@@ -286,8 +301,10 @@ static const char *renderRegion(XenosBackend *backend, PixelPair *pairs, UInt32 
         }
         UInt32 result[kXenosQuadReadbackPixels];
         XenosFence fence = {.ticket = 0};
+        /* The controller holds the queue for eight 15 ms ticks after each completion. */
+        const unsigned attempts = copy->batches ? kFollowupTileAttempts : 1;
         const int completed = armed ? XenosCaptureTile(backend, &upload, &fence, result)
-                                    : XenosTryCaptureTile(backend, &upload, &fence, result);
+                                    : XenosTryCaptureTile(backend, &upload, &fence, result, attempts);
         copy->elapsedMs = batchElapsedMs(start, &timebase);
         if (!completed || fence.ticket != fence.fence ||
             (copy->batches && fence.fence != copy->fence + 1))
@@ -345,10 +362,10 @@ static void verifyPublished(const XenosWindowPixels *screen, const XenosCopyPlan
 }
 
 static const char *compositeWindowCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
-                                       const XenosWindowArm *arm, XenosFullCopy *copy)
+                                       const XenosWindowArm *arm, UInt32 limit, UInt32 budget,
+                                       XenosFullCopy *copy)
 {
     *copy = (XenosFullCopy){.batches = 0};
-    const UInt32 limit = arm ? kFullCopyPixelLimit : kXenosQuadReadbackPixels;
     if (!plan->area || plan->area > limit)
         return "region-limit";
     if ((arm && !XenosWindowCopyCovers(plan, arm)) || !screen->base ||
@@ -380,7 +397,7 @@ static const char *compositeWindowCopy(const XenosWindowPixels *screen, const Xe
     failure = "gpu-open";
     if (!XenosOpenBackend(&backend))
         goto done;
-    failure = renderRegion(&backend, pairs, plan->area, arm != 0, copy);
+    failure = renderRegion(&backend, pairs, plan->area, arm != 0, budget, copy);
     XenosCloseBackend(&backend);
     if (failure)
         goto done;
@@ -407,11 +424,21 @@ done:
 const char *XenosCompositeWindowCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
                                      const XenosWindowArm *arm, XenosFullCopy *copy)
 {
-    return compositeWindowCopy(screen, plan, arm, copy);
+    return compositeWindowCopy(screen, plan, arm, kFullCopyPixelLimit, kBatchBudgetMs, copy);
 }
 
 const char *XenosCompositeUnarmedCopy(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
                                      XenosFullCopy *copy)
 {
-    return compositeWindowCopy(screen, plan, 0, copy);
+    return compositeWindowCopy(screen, plan, 0, kXenosQuadReadbackPixels, kUnarmedBudgetMs, copy);
+}
+
+const char *XenosCompositeUnarmedOverlap(const XenosWindowPixels *screen, const XenosCopyPlan *plan,
+                                        XenosFullCopy *copy)
+{
+    if (!XenosUnarmedOverlapEligible(plan)) {
+        *copy = (XenosFullCopy){.batches = 0};
+        return "overlap-policy";
+    }
+    return compositeWindowCopy(screen, plan, 0, kFullCopyPixelLimit, kUnarmedOverlapBudgetMs, copy);
 }

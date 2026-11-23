@@ -98,7 +98,7 @@ int XenosCaptureTile(XenosBackend *backend, const XenosQuadTileUpload *upload,
 }
 
 int XenosTryCaptureTile(XenosBackend *backend, const XenosQuadTileUpload *upload,
-                        XenosFence *fence, UInt32 *argb)
+                        XenosFence *fence, UInt32 *argb, unsigned submitAttempts)
 {
-    return captureTile(backend, upload, fence, argb, 1);
+    return captureTile(backend, upload, fence, argb, submitAttempts);
 }
