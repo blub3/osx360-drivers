@@ -1,4 +1,6 @@
 set -eu
+console_user=$(stat -f "%Su" /dev/console)
+test -n "$console_user" && test "$console_user" != root
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin LC_ALL=C
 boot=/Volumes/OSX360BOOT
 test "$(md5 -q "$boot/kboot.conf")" = 348ca1649e90bea8a13541525f9ac0d6
@@ -26,7 +28,7 @@ trace() {
     result=0
     /usr/bin/ktrace -f "$work/$label" -t cn -p "$pid"
     tracing=yes
-    /usr/bin/sudo -u bblankenhagen "$@" || result=$?
+    /usr/bin/sudo -u "$console_user" "$@" || result=$?
     /usr/bin/ktrace -c -t cn -p "$pid"
     tracing=no
     printf "WindowServer trace workload=%s pid=%s test_status=%s\n" "$label" "$pid" "$result"

@@ -1,0 +1,15 @@
+/MacPPCKernelSDK
+/tx-build/toolchain
+reference/
+link-preflight/
+known_hosts*
+*.o
+*.dylib
+*.elf
+*.ELF
+*.mkext
+*.MKE
+*.kext/
+*.tar
+*.zip
+*.log

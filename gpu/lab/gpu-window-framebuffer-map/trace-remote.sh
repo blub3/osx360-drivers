@@ -13,7 +13,9 @@ trap "exit 1" HUP INT TERM
 chmod 755 "$tmp"
 install -m 755 "$source" "$tmp/probe"
 test "$(md5 -q "$tmp/probe")" = 1810b654ff2e8b996fc3c7b934f7cfb1
-for account in bblankenhagen windowserver; do
+console_user=$(stat -f "%Su" /dev/console)
+test -n "$console_user" && test "$console_user" != root
+for account in "$console_user" windowserver; do
     echo "Read-only mapping probe for $account (no framebuffer access)"
     /usr/bin/sudo -u "$account" "$tmp/probe"
 done

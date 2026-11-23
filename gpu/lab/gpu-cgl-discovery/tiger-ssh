@@ -1,6 +1,6 @@
 #!/bin/sh
-exec ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -i "$HOME/.ssh/id_rsa_osx360" \
-    -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 \
-    -o HostKeyAlgorithms=ssh-rsa -o PubkeyAcceptedAlgorithms=ssh-rsa \
-    -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts_osx360" \
-    bblankenhagen@192.168.178.130 "$@"
+set -eu
+: "${OSX360_TIGER_HOST:?Set OSX360_TIGER_HOST to user@host or an SSH alias}"
+exec ssh -T -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 \
+    -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+    -o StrictHostKeyChecking=yes "$OSX360_TIGER_HOST" "$@"
