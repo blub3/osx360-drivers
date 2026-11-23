@@ -47,6 +47,77 @@ typedef struct {
 static IOSimpleLock   *sPmapStatsLock = NULL;
 static XenonPmapStats sPmapStats;
 
+//
+// First patched words, with neighbours, for offline code/data classification.
+// Entries are immutable once sPmapPatchLogCount includes them.
+//
+#define kXenonPmapPatchLogEntries 128
+
+typedef struct {
+  UInt64 va;
+  UInt32 pmap;
+  UInt32 word;
+  UInt32 previous;
+  UInt32 next;
+} XenonPmapPatchEntry;
+
+static XenonPmapPatchEntry  sPmapPatchLog[kXenonPmapPatchLogEntries];
+static volatile UInt32      sPmapPatchLogCount = 0;
+
+//
+// Emulate64 counter. Firmware replaces the three-word diag check at this offset with nops.
+// r30 is dead there and the sequence leaves cr0 alone. The counter covers every illegal
+// instruction entering the emulator, so it is an upper bound on dcbz traps.
+// 0x5210 is in the unused part of the low-memory diag work area.
+//
+#define kXenonEmulate64DiagOffset   0x5C
+#define kXenonEmulationCounterPhys  0x5210
+#define kPPCNop                     0x60000000
+#define kPPCCmpwiR3Zero             0x2C030000
+
+static bool sEmulationCounterInstalled = false;
+
+static void installEmulationCounter(UInt32 emulate64) {
+  static const UInt32 counterCode[3] = {
+    0x83C00000 | kXenonEmulationCounterPhys,  // lwz  r30, counter(0)
+    0x3BDE0001,                               // addi r30, r30, 1
+    0x93C00000 | kXenonEmulationCounterPhys   // stw  r30, counter(0)
+  };
+  UInt32    *target = reinterpret_cast<UInt32*>(emulate64 + kXenonEmulate64DiagOffset);
+  boolean_t ints;
+
+  if ((target[0] != kPPCNop) || (target[1] != kPPCNop) || (target[2] != kPPCNop) ||
+      (target[3] != kPPCCmpwiR3Zero) || (ml_phys_read(kXenonEmulationCounterPhys) != 0)) {
+    IOLog("XenonPE: Emulate64 did not match, trap counter not installed\n");
+    return;
+  }
+
+  ints = ml_set_interrupts_enabled(false);
+  for (UInt32 i = 0; i < 3; i++) {
+    ml_phys_write(pmap_extract(kernel_pmap, (vm_map_offset_t) &target[i]), counterCode[i]);
+  }
+  invalidate_icache((vm_offset_t) target, sizeof (counterCode), 0);
+  ml_set_interrupts_enabled(ints);
+
+  sEmulationCounterInstalled = true;
+}
+
+static void recordPatchedWord(void *pmap, UInt64 va, UInt32 word, UInt32 previous, UInt32 next) {
+  IOInterruptState state = IOSimpleLockLockDisableInterrupt(sPmapStatsLock);
+
+  if (sPmapPatchLogCount < kXenonPmapPatchLogEntries) {
+    XenonPmapPatchEntry *entry = &sPmapPatchLog[sPmapPatchLogCount];
+
+    entry->va       = va;
+    entry->pmap     = reinterpret_cast<UInt32>(pmap);
+    entry->word     = word;
+    entry->previous = previous;
+    entry->next     = next;
+    sPmapPatchLogCount++;
+  }
+  IOSimpleLockUnlockEnableInterrupt(sPmapStatsLock, state);
+}
+
 static inline UInt64 readTimebase(void) {
   UInt32 upper;
   UInt32 lower;
@@ -79,6 +150,16 @@ bool XenonPE::serializeProperties(OSSerialize *serialize) const {
     self->setProperty("XenonPmapPagesChanged", snapshot.pagesChanged, 64);
     self->setProperty("XenonPmapWordsPatched", snapshot.wordsPatched, 64);
     self->setProperty("XenonPmapScanTicks", snapshot.scanTicks, 64);
+
+    if (sEmulationCounterInstalled) {
+      self->setProperty("XenonPmapEmulationTraps", ml_phys_read(kXenonEmulationCounterPhys), 32);
+    }
+
+    OSData *patchLog = OSData::withBytes(sPmapPatchLog, sPmapPatchLogCount * sizeof (XenonPmapPatchEntry));
+    if (patchLog != NULL) {
+      self->setProperty("XenonPmapPatchLog", patchLog);
+      patchLog->release();
+    }
   }
 
   return super::serializeProperties(serialize);
@@ -208,6 +289,12 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
     for (UInt32 i = 0; i < 1024; i++) {
       UInt32 data = ml_phys_read(currPhys);
       if ((data & 0xFF0007FF) == 0x7C0007EC) {
+        if (sPmapStatsLock != NULL) {
+          recordPatchedWord(pmap, ((UInt64) va) + (i * 4), data,
+                            (i > 0) ? ml_phys_read(currPhys - 4) : 0,
+                            (i < 1023) ? ml_phys_read(currPhys + 4) : 0);
+        }
+
         data &= 0x03FFFFFF;
         ml_phys_write(currPhys, data);
         changed = true;
@@ -361,6 +448,11 @@ bool XenonPE::initPatcher(void) {
     sPmapStatsLock = IOSimpleLockAlloc();
     if (sPmapStatsLock == NULL) {
       XESYSLOG("Failed to allocate pmap statistics lock");
+    } else {
+      UInt32 emulate64 = resolveKernelSymbol("_Emulate64");
+      if (emulate64 != 0) {
+        installEmulationCounter(emulate64);
+      }
     }
   }
 
