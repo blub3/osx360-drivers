@@ -32,6 +32,9 @@ public:
   // IOService overrides.
   bool start(IOService *provider);
 
+  // IORegistryEntry overrides.
+  bool serializeProperties(OSSerialize *serialize) const;
+
   // IOPlatformExpert overrides.
   IOReturn callPlatformFunction(const OSSymbol *functionName, bool waitForFunction,
                                 void *param1, void *param2, void *param3, void *param4);

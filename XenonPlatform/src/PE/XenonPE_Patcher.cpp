@@ -34,6 +34,57 @@ extern "C" void	ml_phys_write(vm_offset_t paddr, unsigned int data);
 XenonPE* XenonPE::_callbackPE = NULL;
 
 //
+// Optional dcbz patcher statistics. Disabled unless the xe_pmapstats boot-arg or the
+// XenonPmapStats personality property is present. Scan time is in 50 MHz timebase ticks.
+//
+typedef struct {
+  UInt64 pagesScanned;
+  UInt64 pagesChanged;
+  UInt64 wordsPatched;
+  UInt64 scanTicks;
+} XenonPmapStats;
+
+static IOSimpleLock   *sPmapStatsLock = NULL;
+static XenonPmapStats sPmapStats;
+
+static inline UInt64 readTimebase(void) {
+  UInt32 upper;
+  UInt32 lower;
+  UInt32 check;
+
+  do {
+    __asm__ volatile ("mftbu %0" : "=r" (upper));
+    __asm__ volatile ("mftb %0" : "=r" (lower));
+    __asm__ volatile ("mftbu %0" : "=r" (check));
+  } while (upper != check);
+
+  return (((UInt64) upper) << 32) | lower;
+}
+
+//
+// Publishes a current snapshot of the statistics whenever the registry entry is read.
+// Overrides IORegistryEntry::serializeProperties().
+//
+bool XenonPE::serializeProperties(OSSerialize *serialize) const {
+  if (sPmapStatsLock != NULL) {
+    XenonPE           *self = const_cast<XenonPE*>(this);
+    XenonPmapStats    snapshot;
+    IOInterruptState  state;
+
+    state = IOSimpleLockLockDisableInterrupt(sPmapStatsLock);
+    snapshot = sPmapStats;
+    IOSimpleLockUnlockEnableInterrupt(sPmapStatsLock, state);
+
+    self->setProperty("XenonPmapPagesScanned", snapshot.pagesScanned, 64);
+    self->setProperty("XenonPmapPagesChanged", snapshot.pagesChanged, 64);
+    self->setProperty("XenonPmapWordsPatched", snapshot.wordsPatched, 64);
+    self->setProperty("XenonPmapScanTicks", snapshot.scanTicks, 64);
+  }
+
+  return super::serializeProperties(serialize);
+}
+
+//
 // Search for and get the pointer to the kernel's Mach-O header.
 //
 bool XenonPE::findKernelMachHeader(void) {
@@ -150,6 +201,8 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
   //
   if ((pmap != NULL) && (pmap != kernel_pmap) && (prot & VM_PROT_EXECUTE)) {
     vm_offset_t currPhys = pa << PAGE_SHIFT;
+    UInt64 startTicks = (sPmapStatsLock != NULL) ? readTimebase() : 0;
+    UInt32 wordsPatched = 0;
 
     bool changed = false;
     for (UInt32 i = 0; i < 1024; i++) {
@@ -158,6 +211,7 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
         data &= 0x03FFFFFF;
         ml_phys_write(currPhys, data);
         changed = true;
+        wordsPatched++;
       }
 
       currPhys += 4;
@@ -165,6 +219,17 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
 
     if (changed) {
       _callbackPE->_pmapSyncPhysFunc(pa);
+    }
+
+    if (sPmapStatsLock != NULL) {
+      UInt64 elapsedTicks = readTimebase() - startTicks;
+      IOInterruptState state = IOSimpleLockLockDisableInterrupt(sPmapStatsLock);
+
+      sPmapStats.pagesScanned++;
+      sPmapStats.pagesChanged += changed ? 1 : 0;
+      sPmapStats.wordsPatched += wordsPatched;
+      sPmapStats.scanTicks    += elapsedTicks;
+      IOSimpleLockUnlockEnableInterrupt(sPmapStatsLock, state);
     }
   }
 }
@@ -288,6 +353,16 @@ bool XenonPE::initPatcher(void) {
   XEDBGLOG("Adjusted max perms 0x%X", result);
   result = vm_protect(kernel_map, (vm_address_t) _tmpExecMemory, sizeof(_tmpExecMemory), FALSE, VM_PROT_ALL);
   XEDBGLOG("Adjusted new perms 0x%X", result);
+
+  //
+  // Statistics must be ready before the pmap_enter hook is installed.
+  //
+  if (checkKernelArgument("xe_pmapstats") || (getProperty("XenonPmapStats") == kOSBooleanTrue)) {
+    sPmapStatsLock = IOSimpleLockAlloc();
+    if (sPmapStatsLock == NULL) {
+      XESYSLOG("Failed to allocate pmap statistics lock");
+    }
+  }
 
   routeFunction(resolveKernelSymbol("_Debugger"), (UInt32)&XenonPE::wrapDebugger, &_orgDebugger);
   routeFunction(resolveKernelSymbol("_pmap_enter"), (UInt32)&XenonPE::wrapPmapEnter, &_orgPmapEnter);
