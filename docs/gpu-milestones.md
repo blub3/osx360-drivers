@@ -758,11 +758,15 @@ and report the next milestone and the remaining count.
    The on-screen control read a solid white source patch on the current
    boot with both verifiers. Two unarmed WindowServer-owned fences and
    on-screen readbacks still require a cold boot into the candidate.
-   `gpuwintile` remains active. All 486 pre-existing files matched after
-   staging, including native HDMI, the earlier GPU tests and the 720p
-   backup. The [unarmed test recipe](../gpu/lab/gpu-window-unarmed/) and
-   [boot profile index](gpu-boot-profiles.md) record the candidate inputs,
-   alternate menu and staging backup.
+   All 486 pre-existing files matched after staging. The separate
+   XenosWinAuto plug-in was installed on Tiger and verified as root:wheel
+   against both staged files. `gpuwinauto` is selected on OSX360BOOT for
+   the cold boot. All 494 protected files matched across activation,
+   including native HDMI, the earlier GPU tests and the 720p backup.
+   The exact working `gpuwintile` menu is preserved as
+   `kboot.conf.before-gpuwinauto.bak`. The [unarmed test recipe](../gpu/lab/gpu-window-unarmed/)
+   and [boot profile index](gpu-boot-profiles.md) record the candidate inputs
+   and both saved menus.
 8. Desktop smoke test — exercise window movement, overlap, resize and
    720p/1080p switching with acceleration active.
 

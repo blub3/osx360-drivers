@@ -40,9 +40,11 @@ run with `RunXenosWindowUnarmed.sh --plugin-control`. The
 one overlapping 324-pixel GPU copy, the surrounding pixels, and rejection
 of a rectangle larger than one tile.
 
-For the live test, install the separate staged `XenosWinAuto.plugin` under
-`/System/Library/Extensions` with root:wheel ownership and cold boot
-`gpuwinauto`. Run `RunXenosWindowUnarmed.sh --repaint` over SSH from the staged
+For the staged build, run `install-plugin-remote.sh` as root on Tiger to
+install the verified `XenosWinAuto.plugin` alongside `XenosWinTile.plugin`.
+Run `activate-remote.sh` on Tiger to save the working `gpuwintile` rollback,
+select `gpuwinauto`, and verify the protected USB files. After a cold boot,
+run `RunXenosWindowUnarmed.sh --repaint` over SSH from the staged
 test directory. It requests two ordinary Carbon window moves and checks
 for distinct increasing fences from the running WindowServer, matching
 GPU and clipped framebuffer readbacks and independently sampled display
