@@ -42,10 +42,69 @@ typedef struct {
   UInt64 pagesChanged;
   UInt64 wordsPatched;
   UInt64 scanTicks;
+  UInt64 fastNegative;
+  UInt64 fastVerified;
+  UInt64 fastMismatches;
 } XenonPmapStats;
 
 static IOSimpleLock   *sPmapStatsLock = NULL;
 static XenonPmapStats sPmapStats;
+
+//
+// Optional fast pre-scan, enabled by the xe_pmapfast boot-arg or XenonPmapFastScan property.
+// Returns nonzero if a physical page contains a word matching the dcbz patch mask.
+// Like bcopy_phys, it runs with data translation off and instruction translation on. External
+// interrupts stay off, and the routine must fit in one page so it cannot take an ISI.
+//
+extern "C" UInt32 xenonPageHasDcbz(UInt32 physAddr);
+extern "C" void xenonPageHasDcbzEnd(void);
+
+__asm__(
+  ".text\n"
+  ".align 6\n"
+  ".globl _xenonPageHasDcbz\n"
+  "_xenonPageHasDcbz:\n"
+  "  mfmsr   r9\n"
+  "  lis     r8,0x0200\n"           // MSR[VEC]
+  "  ori     r8,r8,0xA010\n"        // MSR[EE|FP|DR]
+  "  andc    r10,r9,r8\n"
+  "  li      r11,1\n"
+  "  rldimi  r10,r11,63,0\n"        // MSR[SF]
+  "  rldicl  r3,r3,0,32\n"
+  "  addi    r3,r3,-4\n"
+  "  li      r4,1024\n"
+  "  mtctr   r4\n"
+  "  lis     r5,0xFF00\n"
+  "  ori     r5,r5,0x07FF\n"
+  "  lis     r6,0x7C00\n"
+  "  ori     r6,r6,0x07EC\n"
+  "  li      r7,0\n"
+  "  mtmsrd  r10\n"
+  "  isync\n"
+  "1:\n"
+  "  lwzu    r4,4(r3)\n"
+  "  and     r4,r4,r5\n"
+  "  cmplw   r4,r6\n"
+  "  beq-    2f\n"
+  "  bdnz+   1b\n"
+  "  b       3f\n"
+  "2:\n"
+  "  li      r7,1\n"
+  "3:\n"
+  "  mtmsrd  r9\n"
+  "  isync\n"
+  "  mr      r3,r7\n"
+  "  blr\n"
+  ".globl _xenonPageHasDcbzEnd\n"
+  "_xenonPageHasDcbzEnd:\n"
+  "  blr\n"
+);
+
+// Physical pages from 2 GB up need the kernel's I/O access path.
+#define kXenonPmapFastScanPageLimit 0x80000
+
+static bool   sPmapFastScanEnabled = false;
+static UInt32 sPmapFastScanSample = 0;
 
 //
 // First patched words, with neighbours, for offline code/data classification.
@@ -150,6 +209,9 @@ bool XenonPE::serializeProperties(OSSerialize *serialize) const {
     self->setProperty("XenonPmapPagesChanged", snapshot.pagesChanged, 64);
     self->setProperty("XenonPmapWordsPatched", snapshot.wordsPatched, 64);
     self->setProperty("XenonPmapScanTicks", snapshot.scanTicks, 64);
+    self->setProperty("XenonPmapFastNegative", snapshot.fastNegative, 64);
+    self->setProperty("XenonPmapFastVerified", snapshot.fastVerified, 64);
+    self->setProperty("XenonPmapFastMismatches", snapshot.fastMismatches, 64);
 
     if (sEmulationCounterInstalled) {
       self->setProperty("XenonPmapEmulationTraps", ml_phys_read(kXenonEmulationCounterPhys), 32);
@@ -284,9 +346,36 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
     vm_offset_t currPhys = pa << PAGE_SHIFT;
     UInt64 startTicks = (sPmapStatsLock != NULL) ? readTimebase() : 0;
     UInt32 wordsPatched = 0;
+    UInt64 stopTicks = 0;
+    bool scanPage = true;
+    bool fastNegative = false;
+    bool fastVerified = false;
+    bool fastMismatch = false;
+
+    if (sPmapFastScanEnabled && (pa < kXenonPmapFastScanPageLimit)) {
+      scanPage = xenonPageHasDcbz(currPhys) != 0;
+      fastNegative = !scanPage;
+
+      //
+      // In statistics builds, recheck a sample of clean pages with the original read path.
+      //
+      if (fastNegative && (sPmapStatsLock != NULL)) {
+        stopTicks = readTimebase();
+        if ((sPmapFastScanSample++ & 15) == 0) {
+          fastVerified = true;
+          for (UInt32 i = 0; i < 1024; i++) {
+            if ((ml_phys_read(currPhys + (i * 4)) & 0xFF0007FF) == 0x7C0007EC) {
+              fastMismatch = true;
+              scanPage = true;
+              break;
+            }
+          }
+        }
+      }
+    }
 
     bool changed = false;
-    for (UInt32 i = 0; i < 1024; i++) {
+    for (UInt32 i = 0; scanPage && (i < 1024); i++) {
       UInt32 data = ml_phys_read(currPhys);
       if ((data & 0xFF0007FF) == 0x7C0007EC) {
         if (sPmapStatsLock != NULL) {
@@ -309,9 +398,12 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
     }
 
     if (sPmapStatsLock != NULL) {
-      UInt64 elapsedTicks = readTimebase() - startTicks;
+      UInt64 elapsedTicks = ((fastNegative && !fastMismatch) ? stopTicks : readTimebase()) - startTicks;
       IOInterruptState state = IOSimpleLockLockDisableInterrupt(sPmapStatsLock);
 
+      sPmapStats.fastNegative   += fastNegative ? 1 : 0;
+      sPmapStats.fastVerified   += fastVerified ? 1 : 0;
+      sPmapStats.fastMismatches += fastMismatch ? 1 : 0;
       sPmapStats.pagesScanned++;
       sPmapStats.pagesChanged += changed ? 1 : 0;
       sPmapStats.wordsPatched += wordsPatched;
@@ -453,6 +545,17 @@ bool XenonPE::initPatcher(void) {
       if (emulate64 != 0) {
         installEmulationCounter(emulate64);
       }
+    }
+  }
+
+  if (checkKernelArgument("xe_pmapfast") || (getProperty("XenonPmapFastScan") == kOSBooleanTrue)) {
+    UInt32 scanStart = reinterpret_cast<UInt32>(&xenonPageHasDcbz);
+    UInt32 scanEnd   = reinterpret_cast<UInt32>(&xenonPageHasDcbzEnd);
+
+    if ((scanStart & ~0xFFFUL) == (scanEnd & ~0xFFFUL)) {
+      sPmapFastScanEnabled = true;
+    } else {
+      XESYSLOG("Fast pmap scan crosses a page, leaving it disabled");
     }
   }
 
