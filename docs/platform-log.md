@@ -8,7 +8,13 @@ Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
 Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5. The Cell handbook documents no usable hardware control. The commpage hook at `0xFFFF8520` (commit `b1848dc`) failed to boot and must stay disabled. Diagnose it in stages: first install the stub and machine call without the entry branch, then enable the entry branch in a second boot.
+1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5. The Cell handbook documents no usable hardware control. The commpage hook at `0xFFFF8520` (commit `b1848dc`) failed to boot and must stay disabled. Stage one (`995ab7a`, no entry branch) also crashed, so the entry branch and stub execution are not required to trigger the failure. Next, find which install step or build change causes it, one boot at a time.
+
+**Resume here on the next session:**
+
+1. The boot default on `OSX360BOOT` is still the failing `pmapst1`, so the Xbox will not boot normally. With the stick in this computer, restore `kboot.conf.before-pmapst1.bak` to `kboot.conf`, verify it selects `pmapfast`, and have the owner cold boot.
+2. Confirm SSH, WindowServer, Finder and Dock, then check `system.log` for any trace of the `pmapst1` boot.
+3. Do not restore `gpuwinoverlap` until the owner says so.
 2. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
 3. Measure real app launch times with and without the fast scan.
 4. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
@@ -27,6 +33,12 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-23: commpage hook stage one boot failure
+
+Branch `claude/pmap-patcher`, commit `995ab7a`. Profile `pmapst1`: `PMAPST1.ELF` (MD5 `1a35a0003055066862e8d5889364a60f`) + `XPS1.MKE` (MD5 `a90cae07669798812bb7d482d7b957c5`). XenonPlatform binary MD5 `91010d34fc4f96b639c87b039d7cb2f7`. This build installs the stub and machine call and leaves the commpage flush routine unchanged.
+
+**Result: fail.** The owner reported that the cold boot crashed. Logs and the screen were not inspected, and the system has not been recovered yet. Before the boot, all original `OSX360BOOT` files except the intentionally changed `kboot.conf` matched the session baseline, and the Tiger GPU files were unchanged.
 
 ## 2026-11-23: commpage flush hook boot failure
 
