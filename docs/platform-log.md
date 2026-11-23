@@ -6,9 +6,12 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
-1. Patch only Mach-O text ranges, so data words that look like dcbz are never changed.
-2. Measure real app launch times with and without the fast scan.
-3. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
+Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched. The owner needs to choose the next direction. Proposed order:
+
+1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32.
+2. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
+3. Measure real app launch times with and without the fast scan.
+4. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
 
 The Xbox is on `pmapfast`. The owner decides when to restore `gpuwinoverlap`.
 
@@ -24,6 +27,31 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-23: text-only patching survey
+
+Read-only survey of `/System`, `/usr`, `/bin`, `/sbin`, `/Applications` and `/Library` on the Xbox: 4,454 PowerPC Mach-O slices. Home folders were not scanned.
+
+| Location of words matching the patch mask | Words | Meaning |
+| --- | --- | --- |
+| `__TEXT,__text` | 680 | Code section |
+| `__TEXT,__textcoal_nt` (libGLImage) | 24 | Code section, flagged as instructions |
+| `__TEXT,__const` (GLEngine) | 39 | Inside named code routines such as `gleBlockClear` |
+| `rw-` segments and `__LINKEDIT` | 55 | Not mapped executable in normal use |
+
+**Conclusion: a `__TEXT,__text`-only patcher would be unsafe.** It would miss the 63 real or code-like matches in the other two sections, and each missed `dcbz` would clear 128 bytes instead of 32.
+
+Exposure test on the running `pmapfast` profile, with the G5 as reference:
+
+| Case | G5 | Xbox |
+| --- | --- | --- |
+| Word in `rw-` `__DATA` | Unchanged | Unchanged |
+| Word in `rw-` anonymous memory | Unchanged | Unchanged |
+| Data word in a file mapped `r-x` | Unchanged | **Rewritten** |
+| Same word through `read()` while cached | Unchanged | **Rewritten** |
+| `dcbz` generated in an already-mapped `rwx` page | Clears 32 bytes | **Clears 128 bytes** |
+
+Both Xbox failures also apply to the original patcher logic. Whether a rewritten file-backed page can reach the disk was not tested.
 
 ## 2026-11-23: dcbz trap cost
 
