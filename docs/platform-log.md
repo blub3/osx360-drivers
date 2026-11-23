@@ -8,7 +8,7 @@ Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
 Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Blocked on finding out whether the Xenon/PPE HID registers can make `dcbz` trap or clear 32 bytes. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5.
+1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5. The Cell handbook documents no usable hardware control. The remaining candidate is the commpage icache-flush routine at `0xFFFF8520`, used by `sys_icache_invalidate` and `MakeDataExecutable`. It would not cover programs that run `icbi` directly. The owner needs to approve this approach.
 2. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
 3. Measure real app launch times with and without the fast scan.
 4. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
@@ -54,6 +54,12 @@ Exposure test on the running `pmapfast` profile, with the G5 as reference:
 Both Xbox failures also apply to the original patcher logic. Whether a rewritten file-backed page can reach the disk was not tested.
 
 No-execute probe: private pages mapped `rw-`, `r--`, `r-x` and `rwx` all executed on both the Xbox and the G5. The patcher only scans mappings entered with execute permission, so code run from a `rw-` or `r--` page is not patched either.
+
+Hardware controls, from the Cell Broadband Engine Programming Handbook v1.11 (sections 6.1.6.4 and the alignment interrupt section). This documents the related Cell PPE, not Xenon itself:
+
+- `dcbz` always operates on the 128-byte cache line. No 32-byte mode is documented, and `HID5` does not appear.
+- `dcbz` raises an alignment interrupt only on caching-inhibited storage or with the L1 data cache disabled (`HID4[en_dcway] = 0000`). Neither is practical system-wide.
+- `HID4[force_ai]` covers misaligned load/store cases and does not list `dcbz`.
 
 ## 2026-11-23: dcbz trap cost
 
