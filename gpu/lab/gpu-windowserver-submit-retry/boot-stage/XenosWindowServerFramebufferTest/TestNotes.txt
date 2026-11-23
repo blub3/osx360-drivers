@@ -1,0 +1,25 @@
+Xenos WindowServer framebuffer-open retry
+
+On 0.0.5d43 the app path could load the diagnostic GLD and the stock
+cglsInitialize call also loaded it in an isolated process. The active
+WindowServer had no GLEngine or Xenos startup GLD in its memory map,
+so its startup produced no GLD fence records.
+
+gpuwsfbretry loads XenonCoreGraphics 0.0.5d44 and XenonFramebufferTest
+0.0.5d2. A successful native WindowServer framebuffer-server open
+queues two diagnostic offscreen clears. The framebuffer captures the
+calling PID and passes the owning task to the GPU controller. The
+controller independently checks the caller and records both completion
+tickets, fences, readback checksums and original PID. The GPU work runs
+in the normal controller work loop after the framebuffer call returns.
+
+After a cold boot, run these over SSH from this directory.
+
+    /bin/sh RunXenosWindowServerFramebuffer.sh --startup
+    /bin/sh RunXenosWindowServerFramebuffer.sh --require-native
+
+The startup check requires the active WindowServer PID to agree with
+the framebuffer-open record, the queue record and both completions.
+Quartz Extreme and repaint-driven fences are checked independently.
+This profile uses the existing GLDriverXenosNative bundle and its
+nonaccelerated renderer record. No additional Tiger install is needed.

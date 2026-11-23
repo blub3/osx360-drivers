@@ -1,0 +1,179 @@
+903a7384 [903a7384..903a74f4]:
+903a7384 addis     r2, r31, 0xffd
+903a7388 lwz       r2, -0x2620(r2)
+903a738c lwz       r0, 0(r2)
+903a7390 andis.    r2, r0, 0x100
+903a7394 bne       0x903a78ec
+903a7398 mr        r3, r26
+903a739c bl        0x903a846c <_CGXIsRecordingEnabled>
+903a73a0 cmpwi     cr7, r3, 0
+903a73a4 bne       cr7, 0x903a78ec
+903a73a8 addis     r30, r31, 0xffd
+903a73ac lwz       r2, -0x2620(r30)
+903a73b0 lwz       r9, 0(r2)
+903a73b4 andis.    r12, r9, 0x401
+903a73b8 bne       0x903a78ec
+903a73bc lwz       r11, 8(r26)
+903a73c0 addi      r0, r1, 0x21c
+903a73c4 lwz       r2, 0xac(r11)
+903a73c8 stw       r2, 0x21c(r1)
+903a73cc lwbrx     r0, 0, r0
+903a73d0 andi.     r2, r0, 8
+903a73d4 beq       0x903a78ec
+903a73d8 andi.     r0, r9, 0x2000
+903a73dc beq       0x903a7488
+903a73e0 addis     r3, r31, 0x36
+903a73e4 addis     r4, r31, 0x36
+903a73e8 addis     r6, r31, 0x36
+903a73ec addi      r3, r3, -0x5ae8
+903a73f0 addi      r4, r4, -0x60b8
+903a73f4 addi      r6, r6, -0x5ac8
+903a73f8 li        r5, 0xbce
+903a73fc li        r7, 0
+903a7400 li        r8, 0
+903a7404 li        r9, 0
+903a7408 li        r10, 0
+903a740c stw       r12, 0x3c(r1)
+903a7410 stw       r12, 0x38(r1)
+903a7414 bl        0x9037f078 <__CGSLogTrace>
+903a7418 mr        r3, r26
+903a741c addi      r4, r1, 0x220
+903a7420 bl        0x903a88f8 <_CGXGLAccelForDisplayDevice>
+903a7424 cmpwi     cr7, r3, 0
+903a7428 bne       cr7, 0x903a78ec
+903a742c lwz       r0, 0x220(r1)
+903a7430 cmpwi     cr7, r0, 0
+903a7434 beq       cr7, 0x903a7878
+903a7438 mr        r4, r19
+903a743c mr        r3, r29
+903a7440 bl        0x903aa998 <_CGXGLAccelAccess>
+903a7444 or.       r0, r3, r3
+903a7448 bne       0x903a7878
+903a744c addis     r3, r31, 0x36
+903a7450 addis     r4, r31, 0x36
+903a7454 addis     r6, r31, 0x36
+903a7458 addi      r3, r3, -0x5ae8
+903a745c addi      r4, r4, -0x60b8
+903a7460 addi      r6, r6, -0x5aac
+903a7464 li        r5, 0xbd4
+903a7468 li        r7, 0
+903a746c li        r8, 0
+903a7470 li        r9, 0
+903a7474 li        r10, 0
+903a7478 stw       r0, 0x3c(r1)
+903a747c stw       r0, 0x38(r1)
+903a7480 bl        0x9037f078 <__CGSLogTrace>
+903a7484 b         0x903a78ec
+903a7488 lbz       r0, 0xe9(r11)
+903a748c cmpwi     cr7, r0, 0
+903a7490 beq       cr7, 0x903a74bc
+903a7494 mr        r3, r26
+903a7498 addi      r4, r1, 0x220
+903a749c bl        0x903a88f8 <_CGXGLAccelForDisplayDevice>
+903a74a0 cmpwi     cr7, r3, 0
+903a74a4 bne       cr7, 0x903a74bc
+903a74a8 mr        r3, r29
+903a74ac mr        r4, r19
+903a74b0 bl        0x903aa998 <_CGXGLAccelAccess>
+903a74b4 cmpwi     cr7, r3, 0
+903a74b8 beq       cr7, 0x903a78ec
+903a74bc addis     r3, r31, 0x36
+903a74c0 addis     r4, r31, 0x36
+903a74c4 addis     r6, r31, 0x36
+903a74c8 li        r0, 0
+903a74cc addi      r3, r3, -0x5ae8
+903a74d0 addi      r4, r4, -0x60b8
+903a74d4 addi      r6, r6, -0x5a90
+903a74d8 li        r5, 0xbe7
+903a74dc li        r7, 0
+903a74e0 li        r8, 0
+903a74e4 li        r9, 0
+903a74e8 li        r10, 0
+903a74ec stw       r0, 0x3c(r1)
+903a74f0 stw       r0, 0x38(r1)
+903a7660 [903a7660..903a7710]:
+903a7660 li        r30, 0
+903a7664 addi      r3, r3, -0x5ae8
+903a7668 addi      r4, r4, -0x60b8
+903a766c addi      r6, r6, -0x5ac8
+903a7670 li        r5, 0xc17
+903a7674 li        r7, 0
+903a7678 li        r8, 0
+903a767c li        r9, 0
+903a7680 li        r10, 0
+903a7684 stw       r30, 0x38(r1)
+903a7688 stw       r30, 0x3c(r1)
+903a768c bl        0x9037f078 <__CGSLogTrace>
+903a7690 mr        r3, r26
+903a7694 addi      r4, r1, 0x220
+903a7698 bl        0x903a88f8 <_CGXGLAccelForDisplayDevice>
+903a769c cmpwi     cr7, r3, 0
+903a76a0 beq       cr7, 0x903a76a8
+903a76a4 stw       r30, 0x220(r1)
+903a76a8 addis     r3, r31, 0x36
+903a76ac addis     r4, r31, 0x36
+903a76b0 addis     r6, r31, 0x36
+903a76b4 addi      r3, r3, -0x5ae8
+903a76b8 addi      r4, r4, -0x60b8
+903a76bc addi      r6, r6, -0x5a3c
+903a76c0 li        r5, 0xc1c
+903a76c4 li        r7, 0
+903a76c8 li        r8, 0
+903a76cc li        r9, 0
+903a76d0 li        r10, 0
+903a76d4 stw       r30, 0x3c(r1)
+903a76d8 stw       r30, 0x38(r1)
+903a76dc bl        0x9037f078 <__CGSLogTrace>
+903a76e0 lwz       r3, 0x224(r1)
+903a76e4 mr        r5, r20
+903a76e8 lwz       r6, 0x230(r1)
+903a76ec mr        r4, r27
+903a76f0 bl        0x906d8180
+903a76f4 cmpwi     cr7, r3, 0
+903a76f8 bne       cr7, 0x903a7878
+903a76fc lwz       r0, 0x220(r1)
+903a7700 cmpwi     cr7, r0, 0
+903a7704 beq       cr7, 0x903a7764
+903a7708 mr        r4, r19
+903a770c mr        r3, r29
+904a15a0 [904a15a0..904a1640]:
+904a15a0 blt       cr7, 0x904a1540
+904a15a4 lwz       r0, 0x3c8(r1)
+904a15a8 li        r22, 0
+904a15ac cmpw      cr7, r22, r0
+904a15b0 bge       cr7, 0x904a1c20
+904a15b4 slwi      r17, r22, 2
+904a15b8 addi      r19, r1, 0x50
+904a15bc cmpwi     cr7, r18, 1
+904a15c0 add       r2, r17, r19
+904a15c4 lwz       r25, 0x110(r2)
+904a15c8 li        r24, 0
+904a15cc lwz       r29, 0x10(r25)
+904a15d0 beq       cr7, 0x904a15f4
+904a15d4 cmpwi     cr7, r18, 2
+904a15d8 beq       cr7, 0x904a15f0
+904a15dc mr        r3, r25
+904a15e0 li        r4, 0
+904a15e4 bl        0x903a88f8 <_CGXGLAccelForDisplayDevice>
+904a15e8 cmpwi     cr7, r3, 0
+904a15ec beq       cr7, 0x904a15f4
+904a15f0 li        r24, 1
+904a15f4 slwi      r30, r24, 2
+904a15f8 addi      r4, r1, 0x3b0
+904a15fc lwzx      r0, r30, r4
+904a1600 cmpwi     cr7, r0, 0
+904a1604 bne       cr7, 0x904a1628
+904a1608 cmpwi     cr7, r24, 0
+904a160c bne       cr7, 0x904a161c
+904a1610 mr        r3, r27
+904a1614 bl        0x9039f314 <_CGXGetScreenUnobscuredContentShapeForWindow>
+904a1618 b         0x904a1628
+904a161c mr        r3, r27
+904a1620 addi      r4, r1, 0x3b4
+904a1624 bl        0x90694064 <_CGXGetScreenUnshadowedContentShapeForWindow>
+904a1628 lwz       r3, 0x3c4(r1)
+904a162c mr        r4, r29
+904a1630 addi      r5, r1, 0x3cc
+904a1634 bl        0x9038c650 <_CGSIntersectRegion>
+904a1638 add       r2, r17, r19
+904a163c lwz       r2, 0x1a0(r2)

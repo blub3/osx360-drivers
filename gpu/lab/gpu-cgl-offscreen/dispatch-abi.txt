@@ -1,0 +1,576 @@
+_glBegin [92f28a4c..92f28ac8]:
+92f28a4c mflr      r0
+92f28a50 bdnzl     0x92f28a54
+92f28a54 stmw      r27, -0x14(r1)
+92f28a58 mflr      r31
+92f28a5c addis     r2, r31, 0x1000
+92f28a60 stw       r0, 8(r1)
+92f28a64 lwz       r28, -0x1a34(r2)
+92f28a68 mr        r29, r3
+92f28a6c stwu      r1, -0x60(r1)
+92f28a70 lwz       r2, 0(r28)
+92f28a74 mr        r30, r1
+92f28a78 lwz       r0, 0xab0(r2)
+92f28a7c xor       r0, r0, r30
+92f28a80 rlwinm.   r9, r0, 0, 0, 0x13
+92f28a84 beq       0x92f28aa4
+92f28a88 addis     r2, r31, 0x1000
+92f28a8c lwz       r2, -0x1a38(r2)
+92f28a90 lwz       r3, 0(r2)
+92f28a94 bl        0x92f45f60
+92f28a98 stw       r3, 0(r28)
+92f28a9c mr        r2, r3
+92f28aa0 stw       r30, 0xab0(r3)
+92f28aa4 lwz       r0, 0x68(r1)
+92f28aa8 addi      r1, r1, 0x60
+92f28aac lwz       r12, 0x14(r2)
+92f28ab0 mr        r4, r29
+92f28ab4 lwz       r3, 0(r2)
+92f28ab8 mtlr      r0
+92f28abc lmw       r27, -0x14(r1)
+92f28ac0 mtctr     r12
+92f28ac4 bctr      
+_glEnd [92f28b68..92f28bd8]:
+92f28b68 mflr      r0
+92f28b6c bdnzl     0x92f28b70
+92f28b70 stmw      r28, -0x10(r1)
+92f28b74 mflr      r31
+92f28b78 addis     r2, r31, 0x1000
+92f28b7c stw       r0, 8(r1)
+92f28b80 lwz       r29, -0x1b50(r2)
+92f28b84 stwu      r1, -0x50(r1)
+92f28b88 lwz       r3, 0(r29)
+92f28b8c mr        r30, r1
+92f28b90 lwz       r0, 0xab0(r3)
+92f28b94 xor       r0, r0, r30
+92f28b98 rlwinm.   r2, r0, 0, 0, 0x13
+92f28b9c beq       0x92f28bb8
+92f28ba0 addis     r2, r31, 0x1000
+92f28ba4 lwz       r2, -0x1b54(r2)
+92f28ba8 lwz       r3, 0(r2)
+92f28bac bl        0x92f45f60
+92f28bb0 stw       r3, 0(r29)
+92f28bb4 stw       r30, 0xab0(r3)
+92f28bb8 lwz       r12, 0x12c(r3)
+92f28bbc lwz       r0, 0x58(r1)
+92f28bc0 addi      r1, r1, 0x50
+92f28bc4 lwz       r3, 0(r3)
+92f28bc8 mtctr     r12
+92f28bcc lmw       r28, -0x10(r1)
+92f28bd0 mtlr      r0
+92f28bd4 bctr      
+_glGetError [92f29a58..92f29ac8]:
+92f29a58 mflr      r0
+92f29a5c bdnzl     0x92f29a60
+92f29a60 stmw      r28, -0x10(r1)
+92f29a64 mflr      r31
+92f29a68 addis     r2, r31, 0x1000
+92f29a6c stw       r0, 8(r1)
+92f29a70 lwz       r29, -0x2a40(r2)
+92f29a74 stwu      r1, -0x50(r1)
+92f29a78 lwz       r3, 0(r29)
+92f29a7c mr        r30, r1
+92f29a80 lwz       r0, 0xab0(r3)
+92f29a84 xor       r0, r0, r30
+92f29a88 rlwinm.   r2, r0, 0, 0, 0x13
+92f29a8c beq       0x92f29aa8
+92f29a90 addis     r2, r31, 0x1000
+92f29a94 lwz       r2, -0x2a44(r2)
+92f29a98 lwz       r3, 0(r2)
+92f29a9c bl        0x92f45f60
+92f29aa0 stw       r3, 0(r29)
+92f29aa4 stw       r30, 0xab0(r3)
+92f29aa8 lwz       r12, 0x19c(r3)
+92f29aac lwz       r0, 0x58(r1)
+92f29ab0 addi      r1, r1, 0x50
+92f29ab4 lwz       r3, 0(r3)
+92f29ab8 mtctr     r12
+92f29abc lmw       r28, -0x10(r1)
+92f29ac0 mtlr      r0
+92f29ac4 bctr      
+_glFinish [92f2cf1c..92f2cf8c]:
+92f2cf1c mflr      r0
+92f2cf20 bdnzl     0x92f2cf24
+92f2cf24 stmw      r28, -0x10(r1)
+92f2cf28 mflr      r31
+92f2cf2c addis     r2, r31, 0x1000
+92f2cf30 stw       r0, 8(r1)
+92f2cf34 lwz       r29, -0x5f04(r2)
+92f2cf38 stwu      r1, -0x50(r1)
+92f2cf3c lwz       r3, 0(r29)
+92f2cf40 mr        r30, r1
+92f2cf44 lwz       r0, 0xab0(r3)
+92f2cf48 xor       r0, r0, r30
+92f2cf4c rlwinm.   r2, r0, 0, 0, 0x13
+92f2cf50 beq       0x92f2cf6c
+92f2cf54 addis     r2, r31, 0x1000
+92f2cf58 lwz       r2, -0x5f08(r2)
+92f2cf5c lwz       r3, 0(r2)
+92f2cf60 bl        0x92f45f60
+92f2cf64 stw       r3, 0(r29)
+92f2cf68 stw       r30, 0xab0(r3)
+92f2cf6c lwz       r12, 0x168(r3)
+92f2cf70 lwz       r0, 0x58(r1)
+92f2cf74 addi      r1, r1, 0x50
+92f2cf78 lwz       r3, 0(r3)
+92f2cf7c mtctr     r12
+92f2cf80 lmw       r28, -0x10(r1)
+92f2cf84 mtlr      r0
+92f2cf88 bctr      
+_glReadPixels [92f292d8..92f29384]:
+92f292d8 mflr      r0
+92f292dc bdnzl     0x92f292e0
+92f292e0 stmw      r21, -0x2c(r1)
+92f292e4 mflr      r31
+92f292e8 addis     r2, r31, 0x1000
+92f292ec stw       r0, 8(r1)
+92f292f0 lwz       r22, -0x22c0(r2)
+92f292f4 mr        r23, r3
+92f292f8 stwu      r1, -0x70(r1)
+92f292fc mr        r24, r4
+92f29300 lwz       r2, 0(r22)
+92f29304 mr        r29, r5
+92f29308 mr        r30, r1
+92f2930c mr        r28, r6
+92f29310 lwz       r0, 0xab0(r2)
+92f29314 mr        r27, r7
+92f29318 mr        r26, r8
+92f2931c mr        r25, r9
+92f29320 xor       r0, r0, r30
+92f29324 rlwinm.   r11, r0, 0, 0, 0x13
+92f29328 beq       0x92f29348
+92f2932c addis     r2, r31, 0x1000
+92f29330 lwz       r2, -0x22c4(r2)
+92f29334 lwz       r3, 0(r2)
+92f29338 bl        0x92f45f60
+92f2933c stw       r3, 0(r22)
+92f29340 mr        r2, r3
+92f29344 stw       r30, 0xab0(r3)
+92f29348 lwz       r0, 0x78(r1)
+92f2934c addi      r1, r1, 0x70
+92f29350 lwz       r12, 0x3b8(r2)
+92f29354 mr        r4, r23
+92f29358 lwz       r3, 0(r2)
+92f2935c mtlr      r0
+92f29360 mr        r5, r24
+92f29364 mr        r6, r29
+92f29368 mtctr     r12
+92f2936c mr        r7, r28
+92f29370 mr        r8, r27
+92f29374 mr        r9, r26
+92f29378 mr        r10, r25
+92f2937c lmw       r21, -0x2c(r1)
+92f29380 bctr      
+_glTexImage2D [92f29fb0..92f2a070]:
+92f29fb0 mflr      r0
+92f29fb4 bdnzl     0x92f29fb8
+92f29fb8 stmw      r21, -0x2c(r1)
+92f29fbc mflr      r31
+92f29fc0 addis     r2, r31, 0x1000
+92f29fc4 stw       r0, 8(r1)
+92f29fc8 lwz       r28, -0x2f98(r2)
+92f29fcc mr        r21, r3
+92f29fd0 stwu      r1, -0x80(r1)
+92f29fd4 mr        r22, r4
+92f29fd8 lwz       r2, 0(r28)
+92f29fdc mr        r27, r5
+92f29fe0 mr        r30, r1
+92f29fe4 mr        r26, r6
+92f29fe8 lwz       r0, 0xab0(r2)
+92f29fec mr        r25, r7
+92f29ff0 mr        r24, r8
+92f29ff4 mr        r23, r9
+92f29ff8 xor       r0, r0, r30
+92f29ffc mr        r29, r10
+92f2a000 rlwinm.   r11, r0, 0, 0, 0x13
+92f2a004 beq       0x92f2a024
+92f2a008 addis     r2, r31, 0x1000
+92f2a00c lwz       r2, -0x2f9c(r2)
+92f2a010 lwz       r3, 0(r2)
+92f2a014 bl        0x92f45f60
+92f2a018 stw       r3, 0(r28)
+92f2a01c mr        r2, r3
+92f2a020 stw       r30, 0xab0(r3)
+92f2a024 lwz       r0, 0xb8(r1)
+92f2a028 mr        r4, r21
+92f2a02c lwz       r3, 0(r2)
+92f2a030 mr        r5, r22
+92f2a034 stw       r29, 0x38(r1)
+92f2a038 mr        r6, r27
+92f2a03c stw       r0, 0x3c(r1)
+92f2a040 mr        r7, r26
+92f2a044 lwz       r12, 0x4b8(r2)
+92f2a048 mr        r8, r25
+92f2a04c mr        r9, r24
+92f2a050 mr        r10, r23
+92f2a054 mtctr     r12
+92f2a058 bctrl     
+92f2a05c lwz       r0, 0x88(r1)
+92f2a060 addi      r1, r1, 0x80
+92f2a064 mtlr      r0
+92f2a068 lmw       r21, -0x2c(r1)
+92f2a06c blr       
+_glTexCoord2f [92f2959c..92f2962c]:
+92f2959c mflr      r0
+92f295a0 bdnzl     0x92f295a4
+92f295a4 stmw      r28, -0x20(r1)
+92f295a8 mflr      r31
+92f295ac addis     r2, r31, 0x1000
+92f295b0 stfd      f30, -0x10(r1)
+92f295b4 lwz       r29, -0x2584(r2)
+92f295b8 fmr       f30, f1
+92f295bc stfd      f31, -8(r1)
+92f295c0 fmr       f31, f2
+92f295c4 stw       r0, 8(r1)
+92f295c8 stwu      r1, -0x60(r1)
+92f295cc lwz       r3, 0(r29)
+92f295d0 mr        r30, r1
+92f295d4 lwz       r0, 0xab0(r3)
+92f295d8 xor       r0, r0, r30
+92f295dc rlwinm.   r2, r0, 0, 0, 0x13
+92f295e0 beq       0x92f295fc
+92f295e4 addis     r2, r31, 0x1000
+92f295e8 lwz       r2, -0x2588(r2)
+92f295ec lwz       r3, 0(r2)
+92f295f0 bl        0x92f45f60
+92f295f4 stw       r3, 0(r29)
+92f295f8 stw       r30, 0xab0(r3)
+92f295fc lwz       r12, 0x430(r3)
+92f29600 fmr       f1, f30
+92f29604 lwz       r0, 0x68(r1)
+92f29608 fmr       f2, f31
+92f2960c addi      r1, r1, 0x60
+92f29610 lwz       r3, 0(r3)
+92f29614 mtctr     r12
+92f29618 lmw       r28, -0x20(r1)
+92f2961c lfd       f30, -0x10(r1)
+92f29620 mtlr      r0
+92f29624 lfd       f31, -8(r1)
+92f29628 bctr      
+_glVertex2f [92f2a284..92f2a314]:
+92f2a284 mflr      r0
+92f2a288 bdnzl     0x92f2a28c
+92f2a28c stmw      r28, -0x20(r1)
+92f2a290 mflr      r31
+92f2a294 addis     r2, r31, 0x1000
+92f2a298 stfd      f30, -0x10(r1)
+92f2a29c lwz       r29, -0x326c(r2)
+92f2a2a0 fmr       f30, f1
+92f2a2a4 stfd      f31, -8(r1)
+92f2a2a8 fmr       f31, f2
+92f2a2ac stw       r0, 8(r1)
+92f2a2b0 stwu      r1, -0x60(r1)
+92f2a2b4 lwz       r3, 0(r29)
+92f2a2b8 mr        r30, r1
+92f2a2bc lwz       r0, 0xab0(r3)
+92f2a2c0 xor       r0, r0, r30
+92f2a2c4 rlwinm.   r2, r0, 0, 0, 0x13
+92f2a2c8 beq       0x92f2a2e4
+92f2a2cc addis     r2, r31, 0x1000
+92f2a2d0 lwz       r2, -0x3270(r2)
+92f2a2d4 lwz       r3, 0(r2)
+92f2a2d8 bl        0x92f45f60
+92f2a2dc stw       r3, 0(r29)
+92f2a2e0 stw       r30, 0xab0(r3)
+92f2a2e4 lwz       r12, 0x4e4(r3)
+92f2a2e8 fmr       f1, f30
+92f2a2ec lwz       r0, 0x68(r1)
+92f2a2f0 fmr       f2, f31
+92f2a2f4 addi      r1, r1, 0x60
+92f2a2f8 lwz       r3, 0(r3)
+92f2a2fc mtctr     r12
+92f2a300 lmw       r28, -0x20(r1)
+92f2a304 lfd       f30, -0x10(r1)
+92f2a308 mtlr      r0
+92f2a30c lfd       f31, -8(r1)
+92f2a310 bctr      
+_glClear [92f28368..92f283e4]:
+92f28368 mflr      r0
+92f2836c bdnzl     0x92f28370
+92f28370 stmw      r27, -0x14(r1)
+92f28374 mflr      r31
+92f28378 addis     r2, r31, 0x1000
+92f2837c stw       r0, 8(r1)
+92f28380 lwz       r28, -0x1350(r2)
+92f28384 mr        r29, r3
+92f28388 stwu      r1, -0x60(r1)
+92f2838c lwz       r2, 0(r28)
+92f28390 mr        r30, r1
+92f28394 lwz       r0, 0xab0(r2)
+92f28398 xor       r0, r0, r30
+92f2839c rlwinm.   r9, r0, 0, 0, 0x13
+92f283a0 beq       0x92f283c0
+92f283a4 addis     r2, r31, 0x1000
+92f283a8 lwz       r2, -0x1354(r2)
+92f283ac lwz       r3, 0(r2)
+92f283b0 bl        0x92f45f60
+92f283b4 stw       r3, 0(r28)
+92f283b8 mr        r2, r3
+92f283bc stw       r30, 0xab0(r3)
+92f283c0 lwz       r0, 0x68(r1)
+92f283c4 addi      r1, r1, 0x60
+92f283c8 lwz       r12, 0x2c(r2)
+92f283cc mr        r4, r29
+92f283d0 lwz       r3, 0(r2)
+92f283d4 mtlr      r0
+92f283d8 lmw       r27, -0x14(r1)
+92f283dc mtctr     r12
+92f283e0 bctr      
+_glClearColor [92f27ef0..92f27fe0]:
+92f27ef0 mflr      r0
+92f27ef4 stmw      r28, -0x30(r1)
+92f27ef8 bl        0x92f27fc8
+92f27efc stwu      r1, -0x70(r1)
+92f27f00 bdnzl     0x92f27f04
+92f27f04 fmr       f28, f1
+92f27f08 mflr      r31
+92f27f0c fmr       f29, f2
+92f27f10 addis     r2, r31, 0x1000
+92f27f14 fmr       f31, f3
+92f27f18 lwz       r29, -0xee4(r2)
+92f27f1c fmr       f30, f4
+92f27f20 mr        r30, r1
+92f27f24 lwz       r3, 0(r29)
+92f27f28 lwz       r0, 0xab0(r3)
+92f27f2c xor       r0, r0, r30
+92f27f30 rlwinm.   r2, r0, 0, 0, 0x13
+92f27f34 beq       0x92f27f50
+92f27f38 addis     r2, r31, 0x1000
+92f27f3c lwz       r2, -0xee8(r2)
+92f27f40 lwz       r3, 0(r2)
+92f27f44 bl        0x92f45f60
+92f27f48 stw       r3, 0(r29)
+92f27f4c stw       r30, 0xab0(r3)
+92f27f50 lwz       r12, 0x34(r3)
+92f27f54 fmr       f1, f28
+92f27f58 lwz       r0, 0x78(r1)
+92f27f5c fmr       f2, f29
+92f27f60 fmr       f3, f31
+92f27f64 addi      r1, r1, 0x70
+92f27f68 fmr       f4, f30
+92f27f6c lwz       r3, 0(r3)
+92f27f70 mtctr     r12
+92f27f74 lmw       r28, -0x30(r1)
+92f27f78 lfd       f28, -0x20(r1)
+92f27f7c mtlr      r0
+92f27f80 lfd       f29, -0x18(r1)
+92f27f84 lfd       f30, -0x10(r1)
+92f27f88 lfd       f31, -8(r1)
+92f27f8c bctr      
+92f27f90 stfd      f14, -0x90(r1)
+92f27f94 stfd      f15, -0x88(r1)
+92f27f98 stfd      f16, -0x80(r1)
+92f27f9c stfd      f17, -0x78(r1)
+92f27fa0 stfd      f18, -0x70(r1)
+92f27fa4 stfd      f19, -0x68(r1)
+92f27fa8 stfd      f20, -0x60(r1)
+92f27fac stfd      f21, -0x58(r1)
+92f27fb0 stfd      f22, -0x50(r1)
+92f27fb4 stfd      f23, -0x48(r1)
+92f27fb8 stfd      f24, -0x40(r1)
+92f27fbc stfd      f25, -0x38(r1)
+92f27fc0 stfd      f26, -0x30(r1)
+92f27fc4 stfd      f27, -0x28(r1)
+92f27fc8 stfd      f28, -0x20(r1)
+92f27fcc stfd      f29, -0x18(r1)
+92f27fd0 stfd      f30, -0x10(r1)
+92f27fd4 stfd      f31, -8(r1)
+92f27fd8 stw       r0, 8(r1)
+92f27fdc blr       
+_glEnable [92f28060..92f280dc]:
+92f28060 mflr      r0
+92f28064 bdnzl     0x92f28068
+92f28068 stmw      r27, -0x14(r1)
+92f2806c mflr      r31
+92f28070 addis     r2, r31, 0x1000
+92f28074 stw       r0, 8(r1)
+92f28078 lwz       r28, -0x1048(r2)
+92f2807c mr        r29, r3
+92f28080 stwu      r1, -0x60(r1)
+92f28084 lwz       r2, 0(r28)
+92f28088 mr        r30, r1
+92f2808c lwz       r0, 0xab0(r2)
+92f28090 xor       r0, r0, r30
+92f28094 rlwinm.   r9, r0, 0, 0, 0x13
+92f28098 beq       0x92f280b8
+92f2809c addis     r2, r31, 0x1000
+92f280a0 lwz       r2, -0x104c(r2)
+92f280a4 lwz       r3, 0(r2)
+92f280a8 bl        0x92f45f60
+92f280ac stw       r3, 0(r28)
+92f280b0 mr        r2, r3
+92f280b4 stw       r30, 0xab0(r3)
+92f280b8 lwz       r0, 0x68(r1)
+92f280bc addi      r1, r1, 0x60
+92f280c0 lwz       r12, 0x124(r2)
+92f280c4 mr        r4, r29
+92f280c8 lwz       r3, 0(r2)
+92f280cc mtlr      r0
+92f280d0 lmw       r27, -0x14(r1)
+92f280d4 mtctr     r12
+92f280d8 bctr      
+_glViewport [92f27cf4..92f27d88]:
+92f27cf4 mflr      r0
+92f27cf8 bdnzl     0x92f27cfc
+92f27cfc stmw      r24, -0x20(r1)
+92f27d00 mflr      r31
+92f27d04 addis     r2, r31, 0x1000
+92f27d08 stw       r0, 8(r1)
+92f27d0c lwz       r25, -0xcdc(r2)
+92f27d10 mr        r26, r3
+92f27d14 stwu      r1, -0x60(r1)
+92f27d18 mr        r27, r4
+92f27d1c lwz       r2, 0(r25)
+92f27d20 mr        r29, r5
+92f27d24 mr        r30, r1
+92f27d28 mr        r28, r6
+92f27d2c lwz       r0, 0xab0(r2)
+92f27d30 xor       r0, r0, r30
+92f27d34 rlwinm.   r9, r0, 0, 0, 0x13
+92f27d38 beq       0x92f27d58
+92f27d3c addis     r2, r31, 0x1000
+92f27d40 lwz       r2, -0xce0(r2)
+92f27d44 lwz       r3, 0(r2)
+92f27d48 bl        0x92f45f60
+92f27d4c stw       r3, 0(r25)
+92f27d50 mr        r2, r3
+92f27d54 stw       r30, 0xab0(r3)
+92f27d58 lwz       r0, 0x68(r1)
+92f27d5c addi      r1, r1, 0x60
+92f27d60 lwz       r12, 0x540(r2)
+92f27d64 mr        r4, r26
+92f27d68 lwz       r3, 0(r2)
+92f27d6c mtlr      r0
+92f27d70 mr        r5, r27
+92f27d74 mr        r6, r29
+92f27d78 mtctr     r12
+92f27d7c mr        r7, r28
+92f27d80 lmw       r24, -0x20(r1)
+92f27d84 bctr      
+_glBindTexture [92f2948c..92f29510]:
+92f2948c mflr      r0
+92f29490 bdnzl     0x92f29494
+92f29494 stmw      r26, -0x18(r1)
+92f29498 mflr      r31
+92f2949c addis     r2, r31, 0x1000
+92f294a0 stw       r0, 8(r1)
+92f294a4 lwz       r27, -0x2474(r2)
+92f294a8 mr        r28, r3
+92f294ac stwu      r1, -0x60(r1)
+92f294b0 mr        r29, r4
+92f294b4 lwz       r2, 0(r27)
+92f294b8 mr        r30, r1
+92f294bc lwz       r0, 0xab0(r2)
+92f294c0 xor       r0, r0, r30
+92f294c4 rlwinm.   r9, r0, 0, 0, 0x13
+92f294c8 beq       0x92f294e8
+92f294cc addis     r2, r31, 0x1000
+92f294d0 lwz       r2, -0x2478(r2)
+92f294d4 lwz       r3, 0(r2)
+92f294d8 bl        0x92f45f60
+92f294dc stw       r3, 0(r27)
+92f294e0 mr        r2, r3
+92f294e4 stw       r30, 0xab0(r3)
+92f294e8 lwz       r0, 0x68(r1)
+92f294ec addi      r1, r1, 0x60
+92f294f0 lwz       r12, 0x18(r2)
+92f294f4 mr        r4, r28
+92f294f8 lwz       r3, 0(r2)
+92f294fc mtlr      r0
+92f29500 mr        r5, r29
+92f29504 lmw       r26, -0x18(r1)
+92f29508 mtctr     r12
+92f2950c bctr      
+_glTexParameteri [92f29510..92f2959c]:
+92f29510 mflr      r0
+92f29514 bdnzl     0x92f29518
+92f29518 stmw      r25, -0x1c(r1)
+92f2951c mflr      r31
+92f29520 addis     r2, r31, 0x1000
+92f29524 stw       r0, 8(r1)
+92f29528 lwz       r26, -0x24f8(r2)
+92f2952c mr        r27, r3
+92f29530 stwu      r1, -0x60(r1)
+92f29534 mr        r28, r4
+92f29538 lwz       r2, 0(r26)
+92f2953c mr        r29, r5
+92f29540 mr        r30, r1
+92f29544 lwz       r0, 0xab0(r2)
+92f29548 xor       r0, r0, r30
+92f2954c rlwinm.   r9, r0, 0, 0, 0x13
+92f29550 beq       0x92f29570
+92f29554 addis     r2, r31, 0x1000
+92f29558 lwz       r2, -0x24fc(r2)
+92f2955c lwz       r3, 0(r2)
+92f29560 bl        0x92f45f60
+92f29564 stw       r3, 0(r26)
+92f29568 mr        r2, r3
+92f2956c stw       r30, 0xab0(r3)
+92f29570 lwz       r0, 0x68(r1)
+92f29574 addi      r1, r1, 0x60
+92f29578 lwz       r12, 0x4c4(r2)
+92f2957c mr        r4, r27
+92f29580 lwz       r3, 0(r2)
+92f29584 mtlr      r0
+92f29588 mr        r5, r28
+92f2958c mr        r6, r29
+92f29590 mtctr     r12
+92f29594 lmw       r25, -0x1c(r1)
+92f29598 bctr      
+_glGetString [92f27c78..92f27cf4]:
+92f27c78 mflr      r0
+92f27c7c bdnzl     0x92f27c80
+92f27c80 stmw      r27, -0x14(r1)
+92f27c84 mflr      r31
+92f27c88 addis     r2, r31, 0x1000
+92f27c8c stw       r0, 8(r1)
+92f27c90 lwz       r28, -0xc60(r2)
+92f27c94 mr        r29, r3
+92f27c98 stwu      r1, -0x60(r1)
+92f27c9c lwz       r2, 0(r28)
+92f27ca0 mr        r30, r1
+92f27ca4 lwz       r0, 0xab0(r2)
+92f27ca8 xor       r0, r0, r30
+92f27cac rlwinm.   r9, r0, 0, 0, 0x13
+92f27cb0 beq       0x92f27cd0
+92f27cb4 addis     r2, r31, 0x1000
+92f27cb8 lwz       r2, -0xc64(r2)
+92f27cbc lwz       r3, 0(r2)
+92f27cc0 bl        0x92f45f60
+92f27cc4 stw       r3, 0(r28)
+92f27cc8 mr        r2, r3
+92f27ccc stw       r30, 0xab0(r3)
+92f27cd0 lwz       r0, 0x68(r1)
+92f27cd4 addi      r1, r1, 0x60
+92f27cd8 lwz       r12, 0x1d8(r2)
+92f27cdc mr        r4, r29
+92f27ce0 lwz       r3, 0(r2)
+92f27ce4 mtlr      r0
+92f27ce8 lmw       r27, -0x14(r1)
+92f27cec mtctr     r12
+92f27cf0 bctr      
+_CGLSetCurrentContext [92f279e4..92f27a44]:
+92f279e4 stmw      r30, -8(r1)
+92f279e8 or.       r30, r3, r3
+92f279ec mflr      r0
+92f279f0 bdnzl     0x92f279f4
+92f279f4 stw       r0, 8(r1)
+92f279f8 mflr      r31
+92f279fc stwu      r1, -0x50(r1)
+92f27a00 bne       0x92f27a0c
+92f27a04 addis     r2, r31, 0x1000
+92f27a08 lwz       r30, -0x9ec(r2)
+92f27a0c mr        r0, r1
+92f27a10 addis     r3, r31, 0x1000
+92f27a14 stw       r0, 0xab0(r30)
+92f27a18 mr        r4, r30
+92f27a1c lwz       r3, -0x9e8(r3)
+92f27a20 bl        0x92f45f80
+92f27a24 addis     r2, r31, 0x1000
+92f27a28 stw       r30, -0x9f0(r2)
+92f27a2c li        r3, 0
+92f27a30 lwz       r0, 0x58(r1)
+92f27a34 addi      r1, r1, 0x50
+92f27a38 lmw       r30, -8(r1)
+92f27a3c mtlr      r0
+92f27a40 blr       

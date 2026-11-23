@@ -1,0 +1,196 @@
+_glepPluginConnectAll [000015b4..00001630]:
+000015b4 mflr      r0
+000015b8 bdnzl     0x15bc
+000015bc stmw      r30, -8(r1)
+000015c0 mflr      r31
+000015c4 addis     r30, r31, 0x11
+000015c8 stw       r0, 8(r1)
+000015cc addi      r30, r30, 0x29b8
+000015d0 stwu      r1, -0x50(r1)
+000015d4 lwz       r0, 0(r30)
+000015d8 cmpwi     cr7, r0, 0
+000015dc bne       cr7, 0x161c
+000015e0 bl        0x1630 <_glepLoadRenderers>
+000015e4 lwz       r30, 0(r30)
+000015e8 cmpwi     cr7, r30, 0
+000015ec beq       cr7, 0x161c
+000015f0 mr        r3, r30
+000015f4 bl        0x1a40 <_glepPluginConnect>
+000015f8 cmpwi     cr7, r3, 0
+000015fc beq       cr7, 0x1608
+00001600 lwz       r30, 0(r30)
+00001604 b         0x1614
+00001608 mr        r3, r30
+0000160c bl        0x107740 <_glepDeletePlugin>
+00001610 mr        r30, r3
+00001614 cmpwi     cr7, r30, 0
+00001618 bne       cr7, 0x15f0
+0000161c lwz       r0, 0x58(r1)
+00001620 addi      r1, r1, 0x50
+00001624 lmw       r30, -8(r1)
+00001628 mtlr      r0
+0000162c blr       
+_glepPluginConnect [00001a40..00001b58]:
+00001a40 mflr      r0
+00001a44 stmw      r27, -0x14(r1)
+00001a48 stw       r0, 8(r1)
+00001a4c bdnzl     0x1a50
+00001a50 stwu      r1, -0x70(r1)
+00001a54 mflr      r31
+00001a58 lwz       r0, 0x108(r3)
+00001a5c mr        r30, r3
+00001a60 cmpwi     cr7, r0, 0
+00001a64 bne       cr7, 0x1b30
+00001a68 addi      r29, r3, 4
+00001a6c addi      r4, r1, 0x40
+00001a70 mr        r3, r29
+00001a74 bl        0x108a58
+00001a78 cmpwi     cr7, r3, 1
+00001a7c bne       cr7, 0x1a8c
+00001a80 lwz       r3, 0x40(r1)
+00001a84 cmpwi     cr7, r3, 0
+00001a88 bne       cr7, 0x1a9c
+00001a8c li        r0, 0
+00001a90 ori       r0, r0, 0xffff
+00001a94 stw       r0, 0x104(r30)
+00001a98 b         0x1b40
+00001a9c mr        r4, r29
+00001aa0 stw       r3, 0x108(r30)
+00001aa4 li        r5, 2
+00001aa8 bl        0x108a38
+00001aac cmpwi     cr7, r3, 0
+00001ab0 mr        r29, r3
+00001ab4 stw       r3, 0x10c(r30)
+00001ab8 bne       cr7, 0x1ad8
+00001abc li        r0, 0
+00001ac0 lwz       r3, 0x108(r30)
+00001ac4 ori       r0, r0, 0xffff
+00001ac8 stw       r0, 0x104(r30)
+00001acc bl        0x108a18
+00001ad0 stw       r29, 0x108(r30)
+00001ad4 b         0x1b40
+00001ad8 mr        r3, r30
+00001adc bl        0x1b58 <_glepValidatePlugin>
+00001ae0 cmpwi     cr7, r3, 0
+00001ae4 li        r3, 0
+00001ae8 beq       cr7, 0x1b44
+00001aec addis     r2, r31, 0x11
+00001af0 addi      r29, r30, 0x114
+00001af4 addi      r28, r2, -0x3e4
+00001af8 addi      r27, r30, 0x208
+00001afc lwz       r3, 0x10c(r30)
+00001b00 mr        r4, r28
+00001b04 bl        0x108a98
+00001b08 cmpwi     cr7, r3, 0
+00001b0c beq       cr7, 0x1b38
+00001b10 bl        0x108a78
+00001b14 cmpwi     cr7, r3, 0
+00001b18 stw       r3, 0(r29)
+00001b1c addi      r29, r29, 4
+00001b20 beq       cr7, 0x1b38
+00001b24 cmpw      cr7, r29, r27
+00001b28 addi      r28, r28, 0x20
+00001b2c blt       cr7, 0x1afc
+00001b30 li        r3, 1
+00001b34 b         0x1b44
+00001b38 mr        r3, r30
+00001b3c bl        0x559dc <_glepPluginDisconnect>
+00001b40 li        r3, 0
+00001b44 lwz       r0, 0x78(r1)
+00001b48 addi      r1, r1, 0x70
+00001b4c lmw       r27, -0x14(r1)
+00001b50 mtlr      r0
+00001b54 blr       
+_glepValidatePlugin [00001b58..00001cc8]:
+00001b58 mflr      r0
+00001b5c stmw      r30, -8(r1)
+00001b60 stw       r0, 8(r1)
+00001b64 li        r2, 0
+00001b68 stwu      r1, -0x60(r1)
+00001b6c ori       r2, r2, 0xffff
+00001b70 lwz       r0, 0x104(r3)
+00001b74 bdnzl     0x1b78
+00001b78 mflr      r31
+00001b7c mr        r30, r3
+00001b80 cmpw      cr7, r0, r2
+00001b84 beq       cr7, 0x1c9c
+00001b88 lwz       r3, 0x10c(r3)
+00001b8c addis     r4, r31, 0x11
+00001b90 addi      r4, r4, -0x75dc
+00001b94 bl        0x108a98
+00001b98 cmpwi     cr7, r3, 0
+00001b9c beq       cr7, 0x1c9c
+00001ba0 bl        0x108a78
+00001ba4 or.       r3, r3, r3
+00001ba8 beq       0x1c9c
+00001bac addis     r2, r31, 0x11
+00001bb0 mr        r12, r3
+00001bb4 lwz       r2, 0x8bc(r2)
+00001bb8 mtctr     r12
+00001bbc lwz       r5, 0x110(r30)
+00001bc0 lwz       r3, 4(r2)
+00001bc4 lwz       r4, 8(r2)
+00001bc8 lwz       r7, 0x10(r2)
+00001bcc lwz       r6, 0xc(r2)
+00001bd0 bctrl     
+00001bd4 lwz       r3, 0x10c(r30)
+00001bd8 addis     r4, r31, 0x11
+00001bdc addi      r4, r4, -0x50c
+00001be0 bl        0x108a98
+00001be4 cmpwi     cr7, r3, 0
+00001be8 beq       cr7, 0x1c9c
+00001bec bl        0x108a78
+00001bf0 or.       r3, r3, r3
+00001bf4 beq       0x1c9c
+00001bf8 mr        r12, r3
+00001bfc addi      r4, r1, 0x44
+00001c00 addi      r3, r1, 0x40
+00001c04 addi      r5, r1, 0x48
+00001c08 addi      r6, r1, 0x4c
+00001c0c mtctr     r12
+00001c10 bctrl     
+00001c14 cmpwi     cr7, r3, 0
+00001c18 beq       cr7, 0x1c9c
+00001c1c lwz       r0, 0x104(r30)
+00001c20 cmpwi     cr7, r0, 0
+00001c24 bne       cr7, 0x1c94
+00001c28 lwz       r0, 0x40(r1)
+00001c2c lwz       r2, 0x4c(r1)
+00001c30 cmpwi     cr7, r0, 2
+00001c34 rlwinm    r9, r2, 0, 0x10, 0x17
+00001c38 addis     r2, r31, 0x11
+00001c3c lwz       r2, 0x23fc(r2)
+00001c40 stw       r9, 0x4c(r1)
+00001c44 bne       cr7, 0x1c9c
+00001c48 lwz       r0, 0x44(r1)
+00001c4c cmpwi     cr7, r0, 4
+00001c50 bne       cr7, 0x1c9c
+00001c54 lwz       r0, 0x48(r1)
+00001c58 cmpwi     cr7, r0, 0xb
+00001c5c bne       cr7, 0x1c9c
+00001c60 cmpwi     cr6, r2, 0
+00001c64 beq       cr6, 0x1c90
+00001c68 lwz       r0, 0x104(r2)
+00001c6c cmpw      cr7, r9, r0
+00001c70 beq       cr7, 0x1c8c
+00001c74 lwz       r2, 0(r2)
+00001c78 cmpwi     cr6, r2, 0
+00001c7c beq       cr6, 0x1c90
+00001c80 lwz       r0, 0x104(r2)
+00001c84 cmpw      cr7, r9, r0
+00001c88 bne       cr7, 0x1c74
+00001c8c bne       cr6, 0x1c9c
+00001c90 stw       r9, 0x104(r30)
+00001c94 li        r3, 1
+00001c98 b         0x1cb4
+00001c9c mr        r3, r30
+00001ca0 bl        0x559dc <_glepPluginDisconnect>
+00001ca4 li        r0, 0
+00001ca8 ori       r0, r0, 0xffff
+00001cac li        r3, 0
+00001cb0 stw       r0, 0x104(r30)
+00001cb4 lwz       r0, 0x68(r1)
+00001cb8 addi      r1, r1, 0x60
+00001cbc lmw       r30, -8(r1)
+00001cc0 mtlr      r0
+00001cc4 blr       

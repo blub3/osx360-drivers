@@ -1,0 +1,25 @@
+Xenos WindowServer GPU submission diagnostic
+
+The gpuwssubmit profile loads XenonCoreGraphics 0.0.5d43. For a cold
+boot test, install GLDriverXenosWSProbe.bundle as root:wheel at
+/System/Library/Extensions/GLDriverXenosWSProbe.bundle on Tiger and
+activate kboot-gpu-windowserver-submit.conf. The working bundle and
+boot profile remain available separately.
+
+Over SSH after cold boot, run these from XenosWindowServerSubmitTest.
+
+    /bin/sh RunXenosWindowServerSubmit.sh --startup
+    /bin/sh RunXenosWindowServerSubmit.sh --require-native
+
+The startup check reads the two kernel GPU completion records made
+when the stock WindowServer loads the diagnostic GLD. The callback
+uses Tiger's native display surface methods to submit two offscreen
+clears and read back their pixels. The verifier requires the live
+WindowServer PID as owner, matching tickets and fences, and the
+expected 1,024-pixel checksums for both colors.
+
+The native check asks CoreGraphics for Quartz Extreme status and
+repaints and moves real windows. It requires the accelerated Xenos
+renderer and new WindowServer fences during that workload. Startup
+fences are excluded. The startup GLD advertises no accelerated pixel
+format or compositor context. Full desktop acceleration remains open.

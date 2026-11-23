@@ -1,0 +1,1135 @@
+_CGXAcquireDisplayDeviceSurface [903a6cfc..903a7eb4]:
+903a6cfc or.       r11, r6, r6
+903a6d00 mflr      r0
+903a6d04 stmw      r18, -0x40(r1)
+903a6d08 stfd      f31, -8(r1)
+903a6d0c li        r22, 0
+903a6d10 stw       r0, 8(r1)
+903a6d14 bdnzl     0x903a6d18
+903a6d18 stwu      r1, -0x320(r1)
+903a6d1c mflr      r31
+903a6d20 stw       r4, 0x33c(r1)
+903a6d24 stw       r5, 0x340(r1)
+903a6d28 mr        r26, r3
+903a6d2c stw       r6, 0x344(r1)
+903a6d30 mr        r27, r7
+903a6d34 mr        r25, r8
+903a6d38 mr        r18, r9
+903a6d3c mr        r19, r10
+903a6d40 stw       r22, 0x1b4(r1)
+903a6d44 stw       r22, 0x224(r1)
+903a6d48 li        r20, 1
+903a6d4c stw       r22, 0x228(r1)
+903a6d50 stw       r22, 0x220(r1)
+903a6d54 beq       0x903a6dd8
+903a6d58 lwz       r2, 8(r3)
+903a6d5c lbz       r0, 0xe8(r2)
+903a6d60 cmpwi     cr7, r0, 0
+903a6d64 beq       cr7, 0x903a6dd8
+903a6d68 xoris     r0, r7, 0x8000
+903a6d6c lis       r2, 0x4330
+903a6d70 stw       r0, 0xe4(r1)
+903a6d74 xoris     r0, r8, 0x8000
+903a6d78 stw       r2, 0xe0(r1)
+903a6d7c addis     r2, r31, 0x37
+903a6d80 lfd       f1, 0xe0(r1)
+903a6d84 mr        r3, r11
+903a6d88 stw       r0, 0xe4(r1)
+903a6d8c addi      r6, r1, 0x1b0
+903a6d90 lfd       f0, -0x71e8(r2)
+903a6d94 lfd       f2, 0xe0(r1)
+903a6d98 fsub      f1, f1, f0
+903a6d9c fsub      f2, f2, f0
+903a6da0 frsp      f1, f1
+903a6da4 frsp      f2, f2
+903a6da8 bl        0x90389e38 <_CGSOffsetRegion>
+903a6dac lwz       r4, 0x33c(r1)
+903a6db0 lwz       r3, 0x1b0(r1)
+903a6db4 addi      r5, r1, 0x33c
+903a6db8 bl        0x9038cc78 <_CGSUnionRegion>
+903a6dbc lwz       r4, 0x340(r1)
+903a6dc0 lwz       r3, 0x1b0(r1)
+903a6dc4 addi      r5, r1, 0x340
+903a6dc8 bl        0x9038cc78 <_CGSUnionRegion>
+903a6dcc lwz       r3, 0x1b0(r1)
+903a6dd0 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a6dd4 stw       r22, 0x344(r1)
+903a6dd8 lwz       r0, 0x2c(r26)
+903a6ddc andis.    r2, r0, 0x20
+903a6de0 bne       0x903a6e20
+903a6de4 bl        0x90391f40 <_CGXIsZoomed>
+903a6de8 andi.     r0, r3, 0xb
+903a6dec beq       0x903a6e20
+903a6df0 lwz       r4, 0x33c(r1)
+903a6df4 mr        r3, r26
+903a6df8 addi      r5, r1, 0x70
+903a6dfc addi      r6, r1, 0x1b4
+903a6e00 addi      r7, r1, 0x60
+903a6e04 addi      r8, r1, 0x1b8
+903a6e08 bl        0x9069bd24 <_CGXGetDisplayDeviceZoomedRegion>
+903a6e0c addi      r4, r1, 0x340
+903a6e10 mr        r22, r3
+903a6e14 lwz       r3, 0x1b8(r1)
+903a6e18 bl        0x9038cfd4 <_CGSCopyRegion>
+903a6e1c b         0x903a6e40
+903a6e20 lwz       r4, 0x10(r26)
+903a6e24 addi      r5, r1, 0x1b8
+903a6e28 lwz       r3, 0x33c(r1)
+903a6e2c bl        0x9038c650 <_CGSIntersectRegion>
+903a6e30 lwz       r3, 0x340(r1)
+903a6e34 lwz       r4, 0x10(r26)
+903a6e38 addi      r5, r1, 0x340
+903a6e3c bl        0x9038c650 <_CGSIntersectRegion>
+903a6e40 lwz       r0, 0x1b8(r1)
+903a6e44 mr        r3, r0
+903a6e48 stw       r0, 0x33c(r1)
+903a6e4c bl        0x90390578 <_CGSRegionIsEmpty>
+903a6e50 or.       r29, r3, r3
+903a6e54 beq       0x903a6e60
+903a6e58 lwz       r3, 0x1b8(r1)
+903a6e5c b         0x903a70ec
+903a6e60 lwz       r3, 0x344(r1)
+903a6e64 cmpwi     cr7, r3, 0
+903a6e68 beq       cr7, 0x903a7044
+903a6e6c lwz       r4, 0x10(r26)
+903a6e70 addi      r5, r1, 0x1bc
+903a6e74 bl        0x9038c650 <_CGSIntersectRegion>
+903a6e78 lis       r30, 0x4330
+903a6e7c xoris     r0, r27, 0x8000
+903a6e80 stw       r30, 0xe0(r1)
+903a6e84 stw       r0, 0xe4(r1)
+903a6e88 xoris     r0, r25, 0x8000
+903a6e8c addis     r2, r31, 0x37
+903a6e90 lfd       f1, 0xe0(r1)
+903a6e94 stw       r0, 0xe4(r1)
+903a6e98 addi      r6, r1, 0x1c0
+903a6e9c lfd       f31, -0x71e8(r2)
+903a6ea0 lfd       f2, 0xe0(r1)
+903a6ea4 fsub      f1, f1, f31
+903a6ea8 lwz       r3, 0x1bc(r1)
+903a6eac fsub      f2, f2, f31
+903a6eb0 frsp      f1, f1
+903a6eb4 frsp      f2, f2
+903a6eb8 bl        0x90389e38 <_CGSOffsetRegion>
+903a6ebc lwz       r3, 0x1bc(r1)
+903a6ec0 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a6ec4 lwz       r4, 0x10(r26)
+903a6ec8 lwz       r3, 0x1c0(r1)
+903a6ecc addi      r5, r1, 0x344
+903a6ed0 bl        0x9038c650 <_CGSIntersectRegion>
+903a6ed4 lwz       r3, 0x1c0(r1)
+903a6ed8 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a6edc lwz       r3, 0x344(r1)
+903a6ee0 bl        0x90390578 <_CGSRegionIsEmpty>
+903a6ee4 cmpwi     cr7, r3, 0
+903a6ee8 lwz       r3, 0x344(r1)
+903a6eec bne       cr7, 0x903a703c
+903a6ef0 lwz       r4, 0x33c(r1)
+903a6ef4 addi      r5, r1, 0x1b8
+903a6ef8 bl        0x9038cc78 <_CGSUnionRegion>
+903a6efc lwz       r9, 8(r26)
+903a6f00 neg       r0, r25
+903a6f04 stw       r30, 0xe0(r1)
+903a6f08 xoris     r0, r0, 0x8000
+903a6f0c addi      r9, r9, 0x9c
+903a6f10 stw       r0, 0xe4(r1)
+903a6f14 addi      r11, r1, 0xf0
+903a6f18 lfd       f2, 0xe0(r1)
+903a6f1c addi      r2, r1, 0x1c4
+903a6f20 lswi      r5, r9, 0x10
+903a6f24 stswi     r5, r11, 0x10
+903a6f28 fsub      f2, f2, f31
+903a6f2c lwz       r0, 0xf0(r1)
+903a6f30 stw       r0, 0x1c4(r1)
+903a6f34 frsp      f2, f2
+903a6f38 lwz       r0, 0xf4(r1)
+903a6f3c lwbrx     r2, 0, r2
+903a6f40 stw       r2, 0xf0(r1)
+903a6f44 stw       r0, 0x1c8(r1)
+903a6f48 addi      r2, r1, 0x100
+903a6f4c lwz       r0, 0xf8(r1)
+903a6f50 stw       r0, 0x1cc(r1)
+903a6f54 lwz       r0, 0xfc(r1)
+903a6f58 stw       r0, 0x1d0(r1)
+903a6f5c addi      r0, r1, 0x1c8
+903a6f60 lwbrx     r0, 0, r0
+903a6f64 stw       r0, 0xf4(r1)
+903a6f68 addi      r0, r1, 0x1cc
+903a6f6c lwbrx     r0, 0, r0
+903a6f70 stw       r0, 0xf8(r1)
+903a6f74 addi      r0, r1, 0x1d0
+903a6f78 lwbrx     r0, 0, r0
+903a6f7c stw       r0, 0xfc(r1)
+903a6f80 neg       r0, r27
+903a6f84 lswi      r5, r11, 0x10
+903a6f88 stswi     r5, r2, 0x10
+903a6f8c xoris     r0, r0, 0x8000
+903a6f90 addi      r11, r1, 0x110
+903a6f94 stw       r0, 0x154(r1)
+903a6f98 addi      r0, r1, 0x1d4
+903a6f9c stw       r30, 0x150(r1)
+903a6fa0 lfs       f13, 0x104(r1)
+903a6fa4 lfd       f0, 0x150(r1)
+903a6fa8 lswi      r5, r9, 0x10
+903a6fac stswi     r5, r11, 0x10
+903a6fb0 fsubs     f2, f2, f13
+903a6fb4 fsub      f0, f0, f31
+903a6fb8 lwz       r2, 0x110(r1)
+903a6fbc stw       r2, 0x1d4(r1)
+903a6fc0 addi      r2, r1, 0x120
+903a6fc4 lwbrx     r0, 0, r0
+903a6fc8 stw       r0, 0x110(r1)
+903a6fcc lwz       r0, 0x114(r1)
+903a6fd0 frsp      f0, f0
+903a6fd4 stw       r0, 0x1d8(r1)
+903a6fd8 lwz       r0, 0x118(r1)
+903a6fdc stw       r0, 0x1dc(r1)
+903a6fe0 lwz       r0, 0x11c(r1)
+903a6fe4 stw       r0, 0x1e0(r1)
+903a6fe8 addi      r0, r1, 0x1d8
+903a6fec lwbrx     r0, 0, r0
+903a6ff0 stw       r0, 0x114(r1)
+903a6ff4 addi      r0, r1, 0x1dc
+903a6ff8 lwbrx     r0, 0, r0
+903a6ffc stw       r0, 0x118(r1)
+903a7000 addi      r0, r1, 0x1e0
+903a7004 lwbrx     r0, 0, r0
+903a7008 stw       r0, 0x11c(r1)
+903a700c lswi      r5, r11, 0x10
+903a7010 stswi     r5, r2, 0x10
+903a7014 addi      r6, r1, 0x1bc
+903a7018 lfs       f1, 0x120(r1)
+903a701c lwz       r3, 0x344(r1)
+903a7020 fsubs     f1, f0, f1
+903a7024 bl        0x90389e38 <_CGSOffsetRegion>
+903a7028 lwz       r3, 0x344(r1)
+903a702c bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7030 lwz       r0, 0x1bc(r1)
+903a7034 stw       r0, 0x344(r1)
+903a7038 b         0x903a7044
+903a703c bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7040 stw       r29, 0x344(r1)
+903a7044 lwz       r3, 0x1b8(r1)
+903a7048 bl        0x9038f814 <_CGSGetRegionRectCount>
+903a704c lwz       r0, 0x1b8(r1)
+903a7050 mr        r24, r3
+903a7054 lwz       r3, 0x33c(r1)
+903a7058 cmpw      cr7, r0, r3
+903a705c beq       cr7, 0x903a707c
+903a7060 bl        0x9038f814 <_CGSGetRegionRectCount>
+903a7064 mr        r30, r24
+903a7068 cmplw     cr7, r24, r3
+903a706c mr        r21, r3
+903a7070 bge       cr7, 0x903a7084
+903a7074 mr        r30, r3
+903a7078 b         0x903a7084
+903a707c mr        r21, r24
+903a7080 mr        r30, r24
+903a7084 lwz       r3, 0x1b4(r1)
+903a7088 cmpwi     cr7, r3, 0
+903a708c beq       cr7, 0x903a70a4
+903a7090 bl        0x9038f814 <_CGSGetRegionRectCount>
+903a7094 cmplw     cr7, r3, r30
+903a7098 bge       cr7, 0x903a70a0
+903a709c mr        r3, r30
+903a70a0 mr        r30, r3
+903a70a4 slwi      r2, r30, 3
+903a70a8 addi      r30, r2, 0x78
+903a70ac bl        0x903a6b84 <_CGXUpdateZone>
+903a70b0 mr        r4, r30
+903a70b4 lwz       r12, 4(r3)
+903a70b8 lwz       r3, 0(r3)
+903a70bc mtctr     r12
+903a70c0 bctrl     
+903a70c4 or.       r29, r3, r3
+903a70c8 bne       0x903a7108
+903a70cc lwz       r3, 0x33c(r1)
+903a70d0 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a70d4 lwz       r3, 0x1b8(r1)
+903a70d8 lwz       r0, 0x33c(r1)
+903a70dc cmpw      cr7, r0, r3
+903a70e0 beq       cr7, 0x903a70e8
+903a70e4 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a70e8 lwz       r3, 0x344(r1)
+903a70ec bl        0x9037f9d0 <_CGSReleaseRegion>
+903a70f0 lwz       r3, 0x340(r1)
+903a70f4 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a70f8 lwz       r3, 0x1b4(r1)
+903a70fc bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7100 li        r3, 0
+903a7104 b         0x903a7e9c
+903a7108 li        r2, 0
+903a710c stw       r26, 0(r29)
+903a7110 stw       r2, 4(r29)
+903a7114 addi      r28, r29, 0x38
+903a7118 stw       r2, 8(r29)
+903a711c addi      r11, r1, 0x1ec
+903a7120 stw       r2, 0x5c(r29)
+903a7124 stw       r2, 0xc(r29)
+903a7128 stw       r2, 0x10(r29)
+903a712c lwz       r0, 0x340(r1)
+903a7130 stw       r0, 0x14(r29)
+903a7134 lwz       r0, 0x1b4(r1)
+903a7138 stw       r19, 0x60(r29)
+903a713c stw       r0, 0x24(r29)
+903a7140 stw       r2, 0x18(r28)
+903a7144 stw       r2, 0x1c(r28)
+903a7148 stw       r2, 0x20(r28)
+903a714c stw       r2, 0x14(r28)
+903a7150 addi      r2, r1, 0x1e4
+903a7154 lwz       r9, 8(r26)
+903a7158 lwz       r0, 0x1c(r9)
+903a715c addi      r9, r1, 0x1e8
+903a7160 stw       r0, 0x1e4(r1)
+903a7164 lwz       r0, 0x38(r29)
+903a7168 lwbrx     r2, 0, r2
+903a716c rlwimi    r0, r2, 0x16, 0, 9
+903a7170 stw       r0, 0x38(r29)
+903a7174 lwz       r2, 8(r26)
+903a7178 lwz       r0, 0x20(r2)
+903a717c stw       r0, 0x1e8(r1)
+903a7180 lwz       r0, 0x38(r29)
+903a7184 lwbrx     r9, 0, r9
+903a7188 rlwimi    r0, r9, 0x10, 0xa, 0xf
+903a718c stw       r0, 0x38(r29)
+903a7190 lwz       r2, 8(r26)
+903a7194 lwz       r0, 0x24(r2)
+903a7198 stw       r0, 0x1ec(r1)
+903a719c lwz       r0, 0x38(r29)
+903a71a0 lwbrx     r11, 0, r11
+903a71a4 rlwimi    r0, r11, 0xc, 0x10, 0x13
+903a71a8 rlwinm    r0, r0, 0, 0, 0x13
+903a71ac stw       r0, 0x38(r29)
+903a71b0 lwz       r0, 0x344(r1)
+903a71b4 cmpwi     cr7, r0, 0
+903a71b8 beq       cr7, 0x903a71d0
+903a71bc stw       r27, 0x18(r29)
+903a71c0 stw       r25, 0x1c(r29)
+903a71c4 lwz       r0, 0x344(r1)
+903a71c8 stw       r0, 0x20(r29)
+903a71cc b         0x903a71dc
+903a71d0 stw       r0, 0x20(r29)
+903a71d4 stw       r0, 0x18(r29)
+903a71d8 stw       r0, 0x1c(r29)
+903a71dc lwz       r0, 0x344(r1)
+903a71e0 cmpwi     cr7, r0, 0
+903a71e4 beq       cr7, 0x903a7224
+903a71e8 lwz       r2, 8(r26)
+903a71ec addi      r0, r1, 0x1f0
+903a71f0 lwz       r2, 0xac(r2)
+903a71f4 stw       r2, 0x1f0(r1)
+903a71f8 lwbrx     r0, 0, r0
+903a71fc andi.     r2, r0, 0x10
+903a7200 bne       0x903a7224
+903a7204 lwz       r3, 0x1b8(r1)
+903a7208 lwz       r0, 0x33c(r1)
+903a720c cmpw      cr7, r3, r0
+903a7210 beq       cr7, 0x903a7218
+903a7214 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7218 lwz       r0, 0x33c(r1)
+903a721c mr        r24, r21
+903a7220 stw       r0, 0x1b8(r1)
+903a7224 lwz       r3, 0x1b8(r1)
+903a7228 addi      r4, r1, 0x50
+903a722c addi      r23, r1, 0x80
+903a7230 addi      r27, r29, 0x64
+903a7234 bl        0x9038a530 <_CGSGetRegionBounds>
+903a7238 lwz       r3, 0x340(r1)
+903a723c mr        r4, r23
+903a7240 mr        r25, r27
+903a7244 bl        0x9038a530 <_CGSGetRegionBounds>
+903a7248 addi      r2, r1, 0x50
+903a724c lswi      r8, r2, 0xc
+903a7250 mr        r3, r23
+903a7254 lswi      r4, r23, 0x10
+903a7258 lwz       r0, 0x5c(r1)
+903a725c stw       r0, 0x38(r1)
+903a7260 bl        0x903a7eb4 <_CGRectUnion>
+903a7264 lwz       r9, 0x1b8(r1)
+903a7268 mr        r3, r26
+903a726c lswi      r5, r23, 0x10
+903a7270 mr        r4, r27
+903a7274 bl        0x903a80ac <_set_surface_region>
+903a7278 stw       r3, 0x10(r29)
+903a727c lwz       r3, 0x1b8(r1)
+903a7280 lwz       r0, 0x33c(r1)
+903a7284 cmpw      cr7, r3, r0
+903a7288 beq       cr7, 0x903a7290
+903a728c bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7290 lha       r0, 4(r27)
+903a7294 stw       r0, 4(r28)
+903a7298 lha       r0, 6(r27)
+903a729c stw       r0, 8(r28)
+903a72a0 lha       r0, 8(r27)
+903a72a4 stw       r0, 0xc(r28)
+903a72a8 lha       r0, 0xa(r27)
+903a72ac stw       r0, 0x10(r28)
+903a72b0 lwz       r0, 0x1b4(r1)
+903a72b4 cmpwi     cr7, r0, 0
+903a72b8 beq       cr7, 0x903a7398
+903a72bc lfs       f0, 0x50(r1)
+903a72c0 lfs       f13, 0x60(r1)
+903a72c4 fsubs     f0, f0, f13
+903a72c8 mffs      f13
+903a72cc mtfsfi    cr7, 3
+903a72d0 fctiw     f0, f0
+903a72d4 stfd      f0, 0x1f8(r1)
+903a72d8 mtfsf     0xff, f13
+903a72dc lwz       r0, 0x1fc(r1)
+903a72e0 stw       r0, 0x28(r29)
+903a72e4 lfs       f0, 0x54(r1)
+903a72e8 lfs       f13, 0x64(r1)
+903a72ec fsubs     f0, f0, f13
+903a72f0 mffs      f13
+903a72f4 mtfsfi    cr7, 3
+903a72f8 fctiw     f0, f0
+903a72fc stfd      f0, 0x200(r1)
+903a7300 mtfsf     0xff, f13
+903a7304 lwz       r0, 0x204(r1)
+903a7308 stw       r0, 0x2c(r29)
+903a730c lfs       f0, 0x68(r1)
+903a7310 mffs      f13
+903a7314 mtfsfi    cr7, 2
+903a7318 fctiw     f0, f0
+903a731c stfd      f0, 0x208(r1)
+903a7320 mtfsf     0xff, f13
+903a7324 lwz       r0, 0x20c(r1)
+903a7328 stw       r0, 0x30(r29)
+903a732c lfs       f0, 0x6c(r1)
+903a7330 mffs      f13
+903a7334 mtfsfi    cr7, 2
+903a7338 fctiw     f0, f0
+903a733c stfd      f0, 0x210(r1)
+903a7340 mtfsf     0xff, f13
+903a7344 lwz       r0, 0x214(r1)
+903a7348 addi      r2, r1, 0x70
+903a734c mr        r3, r26
+903a7350 stw       r0, 0x34(r29)
+903a7354 mr        r4, r27
+903a7358 lswi      r5, r2, 0x10
+903a735c lwz       r9, 0x1b4(r1)
+903a7360 bl        0x903a80ac <_set_surface_region>
+903a7364 addi      r0, r1, 0x218
+903a7368 stw       r3, 0x10(r29)
+903a736c lwz       r2, 8(r26)
+903a7370 lwz       r2, 0xac(r2)
+903a7374 stw       r2, 0x218(r1)
+903a7378 lwbrx     r0, 0, r0
+903a737c andi.     r2, r0, 0x80
+903a7380 beq       0x903a78ec
+903a7384 addis     r2, r31, 0xffd
+903a7388 lwz       r2, -0x2620(r2)
+903a738c lwz       r0, 0(r2)
+903a7390 andis.    r2, r0, 0x100
+903a7394 bne       0x903a78ec
+903a7398 mr        r3, r26
+903a739c bl        0x903a846c <_CGXIsRecordingEnabled>
+903a73a0 cmpwi     cr7, r3, 0
+903a73a4 bne       cr7, 0x903a78ec
+903a73a8 addis     r30, r31, 0xffd
+903a73ac lwz       r2, -0x2620(r30)
+903a73b0 lwz       r9, 0(r2)
+903a73b4 andis.    r12, r9, 0x401
+903a73b8 bne       0x903a78ec
+903a73bc lwz       r11, 8(r26)
+903a73c0 addi      r0, r1, 0x21c
+903a73c4 lwz       r2, 0xac(r11)
+903a73c8 stw       r2, 0x21c(r1)
+903a73cc lwbrx     r0, 0, r0
+903a73d0 andi.     r2, r0, 8
+903a73d4 beq       0x903a78ec
+903a73d8 andi.     r0, r9, 0x2000
+903a73dc beq       0x903a7488
+903a73e0 addis     r3, r31, 0x36
+903a73e4 addis     r4, r31, 0x36
+903a73e8 addis     r6, r31, 0x36
+903a73ec addi      r3, r3, -0x5ae8
+903a73f0 addi      r4, r4, -0x60b8
+903a73f4 addi      r6, r6, -0x5ac8
+903a73f8 li        r5, 0xbce
+903a73fc li        r7, 0
+903a7400 li        r8, 0
+903a7404 li        r9, 0
+903a7408 li        r10, 0
+903a740c stw       r12, 0x3c(r1)
+903a7410 stw       r12, 0x38(r1)
+903a7414 bl        0x9037f078 <__CGSLogTrace>
+903a7418 mr        r3, r26
+903a741c addi      r4, r1, 0x220
+903a7420 bl        0x903a88f8 <_CGXGLAccelForDisplayDevice>
+903a7424 cmpwi     cr7, r3, 0
+903a7428 bne       cr7, 0x903a78ec
+903a742c lwz       r0, 0x220(r1)
+903a7430 cmpwi     cr7, r0, 0
+903a7434 beq       cr7, 0x903a7878
+903a7438 mr        r4, r19
+903a743c mr        r3, r29
+903a7440 bl        0x903aa998 <_CGXGLAccelAccess>
+903a7444 or.       r0, r3, r3
+903a7448 bne       0x903a7878
+903a744c addis     r3, r31, 0x36
+903a7450 addis     r4, r31, 0x36
+903a7454 addis     r6, r31, 0x36
+903a7458 addi      r3, r3, -0x5ae8
+903a745c addi      r4, r4, -0x60b8
+903a7460 addi      r6, r6, -0x5aac
+903a7464 li        r5, 0xbd4
+903a7468 li        r7, 0
+903a746c li        r8, 0
+903a7470 li        r9, 0
+903a7474 li        r10, 0
+903a7478 stw       r0, 0x3c(r1)
+903a747c stw       r0, 0x38(r1)
+903a7480 bl        0x9037f078 <__CGSLogTrace>
+903a7484 b         0x903a78ec
+903a7488 lbz       r0, 0xe9(r11)
+903a748c cmpwi     cr7, r0, 0
+903a7490 beq       cr7, 0x903a74bc
+903a7494 mr        r3, r26
+903a7498 addi      r4, r1, 0x220
+903a749c bl        0x903a88f8 <_CGXGLAccelForDisplayDevice>
+903a74a0 cmpwi     cr7, r3, 0
+903a74a4 bne       cr7, 0x903a74bc
+903a74a8 mr        r3, r29
+903a74ac mr        r4, r19
+903a74b0 bl        0x903aa998 <_CGXGLAccelAccess>
+903a74b4 cmpwi     cr7, r3, 0
+903a74b8 beq       cr7, 0x903a78ec
+903a74bc addis     r3, r31, 0x36
+903a74c0 addis     r4, r31, 0x36
+903a74c4 addis     r6, r31, 0x36
+903a74c8 li        r0, 0
+903a74cc addi      r3, r3, -0x5ae8
+903a74d0 addi      r4, r4, -0x60b8
+903a74d4 addi      r6, r6, -0x5a90
+903a74d8 li        r5, 0xbe7
+903a74dc li        r7, 0
+903a74e0 li        r8, 0
+903a74e4 li        r9, 0
+903a74e8 li        r10, 0
+903a74ec stw       r0, 0x3c(r1)
+903a74f0 stw       r0, 0x38(r1)
+903a74f4 bl        0x9037f078 <__CGSLogTrace>
+903a74f8 mr        r3, r26
+903a74fc addi      r4, r1, 0x224
+903a7500 addi      r5, r1, 0x228
+903a7504 bl        0x903a850c <_CGXAccessSurfaceForDisplayDevice>
+903a7508 or.       r2, r3, r3
+903a750c bne       0x903a7878
+903a7510 lwz       r0, 0x224(r1)
+903a7514 addis     r3, r31, 0x36
+903a7518 addis     r4, r31, 0x36
+903a751c addis     r6, r31, 0x36
+903a7520 stw       r0, 4(r29)
+903a7524 addi      r3, r3, -0x5ae8
+903a7528 lwz       r0, 0x228(r1)
+903a752c addi      r4, r4, -0x60b8
+903a7530 addi      r6, r6, -0x5a74
+903a7534 li        r5, 0xbf0
+903a7538 stw       r0, 8(r29)
+903a753c li        r7, 0
+903a7540 li        r8, 0
+903a7544 li        r9, 0
+903a7548 li        r10, 0
+903a754c stw       r2, 0x3c(r1)
+903a7550 stw       r2, 0x38(r1)
+903a7554 bl        0x9037f078 <__CGSLogTrace>
+903a7558 mr        r3, r26
+903a755c addi      r4, r1, 0x22c
+903a7560 addi      r5, r1, 0x230
+903a7564 bl        0x903a8810 <_CGXAcceleratorForDisplayDevice>
+903a7568 or.       r11, r3, r3
+903a756c bne       0x903a7878
+903a7570 lwz       r0, 0x1b4(r1)
+903a7574 cmpwi     cr7, r0, 0
+903a7578 beq       cr7, 0x903a7628
+903a757c lwz       r2, -0x2620(r30)
+903a7580 li        r30, 2
+903a7584 lwz       r0, 0(r2)
+903a7588 andis.    r2, r0, 0x800
+903a758c bne       0x903a7594
+903a7590 li        r30, 3
+903a7594 cmpwi     cr7, r22, 0
+903a7598 bne       cr7, 0x903a75a0
+903a759c ori       r30, r30, 0x10
+903a75a0 lhz       r0, 0x2a(r29)
+903a75a4 addis     r3, r31, 0x36
+903a75a8 addis     r4, r31, 0x36
+903a75ac addis     r6, r31, 0x36
+903a75b0 sth       r0, 0xf0(r1)
+903a75b4 addi      r3, r3, -0x5ae8
+903a75b8 lhz       r0, 0x2e(r29)
+903a75bc addi      r4, r4, -0x60b8
+903a75c0 addi      r6, r6, -0x5a54
+903a75c4 li        r5, 0xc04
+903a75c8 sth       r0, 0xf2(r1)
+903a75cc li        r7, 0
+903a75d0 lhz       r0, 0xe(r28)
+903a75d4 li        r8, 0
+903a75d8 li        r9, 0
+903a75dc li        r10, 0
+903a75e0 sth       r0, 0xf4(r1)
+903a75e4 lhz       r0, 0x12(r28)
+903a75e8 sth       r0, 0xf6(r1)
+903a75ec lhz       r0, 0x32(r29)
+903a75f0 sth       r0, 0xf8(r1)
+903a75f4 lhz       r0, 0x36(r29)
+903a75f8 stw       r11, 0x3c(r1)
+903a75fc sth       r0, 0xfa(r1)
+903a7600 stw       r11, 0x38(r1)
+903a7604 bl        0x9037f078 <__CGSLogTrace>
+903a7608 lwz       r3, 0x224(r1)
+903a760c mr        r4, r30
+903a7610 addi      r5, r1, 0xf0
+903a7614 li        r6, 0x2c
+903a7618 bl        0x906d80a0
+903a761c cmpwi     cr7, r3, 0
+903a7620 beq       cr7, 0x903a762c
+903a7624 b         0x903a7878
+903a7628 li        r20, 5
+903a762c addis     r2, r31, 0xffd
+903a7630 lwz       r2, -0x2620(r2)
+903a7634 lwz       r0, 0(r2)
+903a7638 andis.    r2, r0, 0x800
+903a763c bne       0x903a7654
+903a7640 cmpwi     cr7, r18, 0
+903a7644 beq       cr7, 0x903a7650
+903a7648 ori       r20, r20, 8
+903a764c b         0x903a7654
+903a7650 ori       r20, r20, 0x10
+903a7654 addis     r3, r31, 0x36
+903a7658 addis     r4, r31, 0x36
+903a765c addis     r6, r31, 0x36
+903a7660 li        r30, 0
+903a7664 addi      r3, r3, -0x5ae8
+903a7668 addi      r4, r4, -0x60b8
+903a766c addi      r6, r6, -0x5ac8
+903a7670 li        r5, 0xc17
+903a7674 li        r7, 0
+903a7678 li        r8, 0
+903a767c li        r9, 0
+903a7680 li        r10, 0
+903a7684 stw       r30, 0x38(r1)
+903a7688 stw       r30, 0x3c(r1)
+903a768c bl        0x9037f078 <__CGSLogTrace>
+903a7690 mr        r3, r26
+903a7694 addi      r4, r1, 0x220
+903a7698 bl        0x903a88f8 <_CGXGLAccelForDisplayDevice>
+903a769c cmpwi     cr7, r3, 0
+903a76a0 beq       cr7, 0x903a76a8
+903a76a4 stw       r30, 0x220(r1)
+903a76a8 addis     r3, r31, 0x36
+903a76ac addis     r4, r31, 0x36
+903a76b0 addis     r6, r31, 0x36
+903a76b4 addi      r3, r3, -0x5ae8
+903a76b8 addi      r4, r4, -0x60b8
+903a76bc addi      r6, r6, -0x5a3c
+903a76c0 li        r5, 0xc1c
+903a76c4 li        r7, 0
+903a76c8 li        r8, 0
+903a76cc li        r9, 0
+903a76d0 li        r10, 0
+903a76d4 stw       r30, 0x3c(r1)
+903a76d8 stw       r30, 0x38(r1)
+903a76dc bl        0x9037f078 <__CGSLogTrace>
+903a76e0 lwz       r3, 0x224(r1)
+903a76e4 mr        r5, r20
+903a76e8 lwz       r6, 0x230(r1)
+903a76ec mr        r4, r27
+903a76f0 bl        0x906d8180
+903a76f4 cmpwi     cr7, r3, 0
+903a76f8 bne       cr7, 0x903a7878
+903a76fc lwz       r0, 0x220(r1)
+903a7700 cmpwi     cr7, r0, 0
+903a7704 beq       cr7, 0x903a7764
+903a7708 mr        r4, r19
+903a770c mr        r3, r29
+903a7710 bl        0x903aa998 <_CGXGLAccelAccess>
+903a7714 or.       r30, r3, r3
+903a7718 bne       0x903a7764
+903a771c addis     r3, r31, 0x36
+903a7720 addis     r4, r31, 0x36
+903a7724 addis     r6, r31, 0x36
+903a7728 addi      r3, r3, -0x5ae8
+903a772c addi      r4, r4, -0x60b8
+903a7730 addi      r6, r6, -0x5aac
+903a7734 li        r5, 0xc22
+903a7738 li        r7, 0
+903a773c li        r8, 0
+903a7740 li        r9, 0
+903a7744 li        r10, 0
+903a7748 stw       r30, 0x38(r1)
+903a774c stw       r30, 0x3c(r1)
+903a7750 bl        0x9037f078 <__CGSLogTrace>
+903a7754 li        r0, 4
+903a7758 stw       r30, 0x90(r1)
+903a775c stw       r0, 0xa0(r1)
+903a7760 b         0x903a7854
+903a7764 lwz       r3, 0x224(r1)
+903a7768 bl        0x906d8080
+903a776c or.       r30, r3, r3
+903a7770 beq       0x903a77b0
+903a7774 li        r0, 0
+903a7778 addis     r3, r31, 0x36
+903a777c addis     r4, r31, 0x36
+903a7780 addis     r6, r31, 0x36
+903a7784 addi      r3, r3, -0x5ae8
+903a7788 addi      r4, r4, -0x60b8
+903a778c addi      r6, r6, -0x5a18
+903a7790 li        r5, 0xc2a
+903a7794 li        r7, 0
+903a7798 li        r8, 0
+903a779c li        r9, 0
+903a77a0 li        r10, 0
+903a77a4 stw       r0, 0x3c(r1)
+903a77a8 stw       r0, 0x38(r1)
+903a77ac b         0x903a77fc
+903a77b0 lwz       r3, 0x224(r1)
+903a77b4 addi      r4, r1, 0x90
+903a77b8 li        r5, 0x44
+903a77bc bl        0x906d8060
+903a77c0 cmpwi     cr7, r3, 0
+903a77c4 beq       cr7, 0x903a7804
+903a77c8 addis     r3, r31, 0x36
+903a77cc addis     r4, r31, 0x36
+903a77d0 addis     r6, r31, 0x36
+903a77d4 addi      r3, r3, -0x5ae8
+903a77d8 addi      r4, r4, -0x60b8
+903a77dc addi      r6, r6, -0x59f8
+903a77e0 li        r5, 0xc30
+903a77e4 li        r7, 0
+903a77e8 li        r8, 0
+903a77ec li        r9, 0
+903a77f0 li        r10, 0
+903a77f4 stw       r30, 0x3c(r1)
+903a77f8 stw       r30, 0x38(r1)
+903a77fc bl        0x9037f078 <__CGSLogTrace>
+903a7800 b         0x903a7878
+903a7804 lwz       r0, 0x90(r1)
+903a7808 cmpwi     cr7, r0, 0
+903a780c bne       cr7, 0x903a7854
+903a7810 addis     r3, r31, 0x36
+903a7814 addis     r4, r31, 0x36
+903a7818 addis     r6, r31, 0x36
+903a781c addi      r4, r4, -0x60b8
+903a7820 addi      r6, r6, -0x59d8
+903a7824 li        r5, 0xc36
+903a7828 li        r7, 0
+903a782c li        r8, 0
+903a7830 li        r9, 0
+903a7834 li        r10, 0
+903a7838 addi      r3, r3, -0x5ae8
+903a783c stw       r0, 0x3c(r1)
+903a7840 stw       r0, 0x38(r1)
+903a7844 bl        0x9037f078 <__CGSLogTrace>
+903a7848 lwz       r3, 0x224(r1)
+903a784c bl        0x906d8040
+903a7850 b         0x903a7878
+903a7854 li        r2, 1
+903a7858 lwz       r0, 0(r28)
+903a785c rlwimi    r0, r2, 0, 0x14, 0x1f
+903a7860 stw       r0, 0(r28)
+903a7864 lwz       r0, 0x90(r1)
+903a7868 stw       r0, 0x1c(r28)
+903a786c lwz       r0, 0xa0(r1)
+903a7870 stw       r0, 0x14(r28)
+903a7874 b         0x903a7e54
+903a7878 addis     r3, r31, 0x36
+903a787c addis     r4, r31, 0x36
+903a7880 addis     r6, r31, 0x36
+903a7884 li        r30, 0
+903a7888 addi      r3, r3, -0x5ae8
+903a788c addi      r4, r4, -0x60b8
+903a7890 addi      r6, r6, -0x59b8
+903a7894 li        r5, 0xc44
+903a7898 li        r7, 0
+903a789c li        r8, 0
+903a78a0 li        r9, 0
+903a78a4 li        r10, 0
+903a78a8 stw       r30, 0x38(r1)
+903a78ac stw       r30, 0x3c(r1)
+903a78b0 bl        0x9037f078 <__CGSLogTrace>
+903a78b4 lwz       r0, 0x5c(r29)
+903a78b8 cmpwi     cr7, r0, 0
+903a78bc beq       cr7, 0x903a78cc
+903a78c0 mr        r3, r29
+903a78c4 li        r4, 0
+903a78c8 bl        0x903b108c <_CGXGLAccelFinish>
+903a78cc lwz       r0, 8(r29)
+903a78d0 cmpwi     cr7, r0, 0
+903a78d4 beq       cr7, 0x903a78e4
+903a78d8 mr        r3, r26
+903a78dc li        r4, 0
+903a78e0 bl        0x903b11e8 <_CGXFinishSurfaceForDisplayDevice>
+903a78e4 stw       r30, 8(r29)
+903a78e8 stw       r30, 4(r29)
+903a78ec lwz       r0, 0x33c(r1)
+903a78f0 lwz       r2, 0x1b8(r1)
+903a78f4 cmpw      cr7, r0, r2
+903a78f8 beq       cr7, 0x903a7c64
+903a78fc lwz       r3, 0x340(r1)
+903a7900 mr        r4, r23
+903a7904 bl        0x9038a530 <_CGSGetRegionBounds>
+903a7908 stw       r21, 0x64(r29)
+903a790c lwz       r2, 8(r26)
+903a7910 addi      r9, r1, 0x160
+903a7914 addi      r2, r2, 0x9c
+903a7918 lswi      r5, r2, 0x10
+903a791c stswi     r5, r9, 0x10
+903a7920 addi      r2, r1, 0x234
+903a7924 lwz       r0, 0x160(r1)
+903a7928 stw       r0, 0x234(r1)
+903a792c lwz       r0, 0x164(r1)
+903a7930 lwbrx     r2, 0, r2
+903a7934 stw       r2, 0x160(r1)
+903a7938 stw       r0, 0x238(r1)
+903a793c addi      r2, r1, 0x170
+903a7940 lwz       r0, 0x168(r1)
+903a7944 stw       r0, 0x23c(r1)
+903a7948 lwz       r0, 0x16c(r1)
+903a794c stw       r0, 0x240(r1)
+903a7950 addi      r0, r1, 0x238
+903a7954 lwbrx     r0, 0, r0
+903a7958 stw       r0, 0x164(r1)
+903a795c addi      r0, r1, 0x23c
+903a7960 lwbrx     r0, 0, r0
+903a7964 stw       r0, 0x168(r1)
+903a7968 addi      r0, r1, 0x240
+903a796c lwbrx     r0, 0, r0
+903a7970 stw       r0, 0x16c(r1)
+903a7974 lswi      r5, r9, 0x10
+903a7978 stswi     r5, r2, 0x10
+903a797c lfs       f0, 0x80(r1)
+903a7980 lfs       f13, 0x170(r1)
+903a7984 fsubs     f0, f0, f13
+903a7988 mffs      f13
+903a798c mtfsfi    cr7, 3
+903a7990 fctiw     f0, f0
+903a7994 stfd      f0, 0x248(r1)
+903a7998 mtfsf     0xff, f13
+903a799c lwz       r0, 0x24c(r1)
+903a79a0 addi      r11, r1, 0x170
+903a79a4 addi      r9, r1, 0x250
+903a79a8 sth       r0, 4(r27)
+903a79ac addi      r23, r1, 0xf0
+903a79b0 lwz       r2, 8(r26)
+903a79b4 addi      r2, r2, 0x9c
+903a79b8 lswi      r5, r2, 0x10
+903a79bc stswi     r5, r11, 0x10
+903a79c0 addi      r2, r1, 0x254
+903a79c4 lwz       r0, 0x170(r1)
+903a79c8 stw       r0, 0x250(r1)
+903a79cc lwz       r0, 0x174(r1)
+903a79d0 lwbrx     r9, 0, r9
+903a79d4 stw       r9, 0x170(r1)
+903a79d8 stw       r0, 0x254(r1)
+903a79dc lwz       r0, 0x178(r1)
+903a79e0 lwbrx     r2, 0, r2
+903a79e4 stw       r2, 0x174(r1)
+903a79e8 stw       r0, 0x258(r1)
+903a79ec lwz       r0, 0x17c(r1)
+903a79f0 stw       r0, 0x25c(r1)
+903a79f4 addi      r0, r1, 0x258
+903a79f8 lwbrx     r0, 0, r0
+903a79fc stw       r0, 0x178(r1)
+903a7a00 addi      r0, r1, 0x25c
+903a7a04 lwbrx     r0, 0, r0
+903a7a08 stw       r0, 0x17c(r1)
+903a7a0c lswi      r5, r11, 0x10
+903a7a10 stswi     r5, r23, 0x10
+903a7a14 lfs       f0, 0x84(r1)
+903a7a18 lfs       f13, 0xf4(r1)
+903a7a1c fsubs     f0, f0, f13
+903a7a20 mffs      f13
+903a7a24 mtfsfi    cr7, 3
+903a7a28 fctiw     f0, f0
+903a7a2c stfd      f0, 0x260(r1)
+903a7a30 mtfsf     0xff, f13
+903a7a34 lwz       r0, 0x264(r1)
+903a7a38 sth       r0, 6(r27)
+903a7a3c lfs       f0, 0x88(r1)
+903a7a40 mffs      f13
+903a7a44 mtfsfi    cr7, 2
+903a7a48 fctiw     f0, f0
+903a7a4c stfd      f0, 0x268(r1)
+903a7a50 mtfsf     0xff, f13
+903a7a54 lwz       r0, 0x26c(r1)
+903a7a58 sth       r0, 8(r27)
+903a7a5c lfs       f0, 0x8c(r1)
+903a7a60 mffs      f13
+903a7a64 mtfsfi    cr7, 2
+903a7a68 fctiw     f0, f0
+903a7a6c stfd      f0, 0x270(r1)
+903a7a70 mtfsf     0xff, f13
+903a7a74 cmpwi     cr7, r24, 0
+903a7a78 lwz       r0, 0x274(r1)
+903a7a7c sth       r0, 0xa(r27)
+903a7a80 bne       cr7, 0x903a7aa8
+903a7a84 lhz       r0, 4(r25)
+903a7a88 li        r2, 1
+903a7a8c lhz       r9, 6(r25)
+903a7a90 stw       r2, 0(r25)
+903a7a94 sth       r0, 0xc(r25)
+903a7a98 sth       r9, 0xe(r25)
+903a7a9c sth       r24, 0x12(r25)
+903a7aa0 sth       r24, 0x10(r25)
+903a7aa4 b         0x903a7c44
+903a7aa8 lwz       r3, 0x33c(r1)
+903a7aac addi      r30, r25, 0xc
+903a7ab0 bl        0x903a000c <_CGSRegionEnumerator>
+903a7ab4 mr        r24, r3
+903a7ab8 b         0x903a7c2c
+903a7abc lwz       r2, 8(r26)
+903a7ac0 addi      r9, r1, 0x278
+903a7ac4 addi      r2, r2, 0x9c
+903a7ac8 lswi      r5, r2, 0x10
+903a7acc stswi     r5, r23, 0x10
+903a7ad0 addi      r2, r1, 0x27c
+903a7ad4 lwz       r0, 0xf0(r1)
+903a7ad8 stw       r0, 0x278(r1)
+903a7adc lwz       r0, 0xf4(r1)
+903a7ae0 lwbrx     r9, 0, r9
+903a7ae4 stw       r9, 0xf0(r1)
+903a7ae8 stw       r0, 0x27c(r1)
+903a7aec lwz       r0, 0xf8(r1)
+903a7af0 lwbrx     r2, 0, r2
+903a7af4 stw       r2, 0xf4(r1)
+903a7af8 stw       r0, 0x280(r1)
+903a7afc addi      r2, r1, 0x100
+903a7b00 lwz       r0, 0xfc(r1)
+903a7b04 stw       r0, 0x284(r1)
+903a7b08 addi      r0, r1, 0x280
+903a7b0c lwbrx     r0, 0, r0
+903a7b10 stw       r0, 0xf8(r1)
+903a7b14 addi      r0, r1, 0x284
+903a7b18 lwbrx     r0, 0, r0
+903a7b1c stw       r0, 0xfc(r1)
+903a7b20 lswi      r5, r23, 0x10
+903a7b24 stswi     r5, r2, 0x10
+903a7b28 lfs       f0, 0(r3)
+903a7b2c lfs       f13, 0x100(r1)
+903a7b30 fsubs     f0, f0, f13
+903a7b34 mffs      f13
+903a7b38 mtfsfi    cr7, 3
+903a7b3c fctiw     f0, f0
+903a7b40 stfd      f0, 0x288(r1)
+903a7b44 mtfsf     0xff, f13
+903a7b48 lwz       r0, 0x28c(r1)
+903a7b4c addi      r11, r1, 0x100
+903a7b50 addi      r9, r1, 0x290
+903a7b54 sth       r0, 0(r30)
+903a7b58 lwz       r2, 8(r26)
+903a7b5c addi      r2, r2, 0x9c
+903a7b60 lswi      r5, r2, 0x10
+903a7b64 stswi     r5, r11, 0x10
+903a7b68 addi      r2, r1, 0x294
+903a7b6c lwz       r0, 0x100(r1)
+903a7b70 stw       r0, 0x290(r1)
+903a7b74 lwz       r0, 0x104(r1)
+903a7b78 lwbrx     r9, 0, r9
+903a7b7c stw       r9, 0x100(r1)
+903a7b80 stw       r0, 0x294(r1)
+903a7b84 lwz       r0, 0x108(r1)
+903a7b88 lwbrx     r2, 0, r2
+903a7b8c stw       r2, 0x104(r1)
+903a7b90 stw       r0, 0x298(r1)
+903a7b94 addi      r2, r1, 0x110
+903a7b98 lwz       r0, 0x10c(r1)
+903a7b9c stw       r0, 0x29c(r1)
+903a7ba0 addi      r0, r1, 0x298
+903a7ba4 lwbrx     r0, 0, r0
+903a7ba8 stw       r0, 0x108(r1)
+903a7bac addi      r0, r1, 0x29c
+903a7bb0 lwbrx     r0, 0, r0
+903a7bb4 stw       r0, 0x10c(r1)
+903a7bb8 lswi      r5, r11, 0x10
+903a7bbc stswi     r5, r2, 0x10
+903a7bc0 lfs       f0, 4(r3)
+903a7bc4 lfs       f13, 0x114(r1)
+903a7bc8 fsubs     f0, f0, f13
+903a7bcc mffs      f13
+903a7bd0 mtfsfi    cr7, 3
+903a7bd4 fctiw     f0, f0
+903a7bd8 stfd      f0, 0x2a0(r1)
+903a7bdc mtfsf     0xff, f13
+903a7be0 lwz       r0, 0x2a4(r1)
+903a7be4 sth       r0, 2(r30)
+903a7be8 lfs       f0, 8(r3)
+903a7bec mffs      f13
+903a7bf0 mtfsfi    cr7, 2
+903a7bf4 fctiw     f0, f0
+903a7bf8 stfd      f0, 0x2a8(r1)
+903a7bfc mtfsf     0xff, f13
+903a7c00 lwz       r0, 0x2ac(r1)
+903a7c04 sth       r0, 4(r30)
+903a7c08 lfs       f0, 0xc(r3)
+903a7c0c mffs      f13
+903a7c10 mtfsfi    cr7, 2
+903a7c14 fctiw     f0, f0
+903a7c18 stfd      f0, 0x2b0(r1)
+903a7c1c mtfsf     0xff, f13
+903a7c20 lwz       r0, 0x2b4(r1)
+903a7c24 sth       r0, 6(r30)
+903a7c28 addi      r30, r30, 8
+903a7c2c mr        r3, r24
+903a7c30 bl        0x903a0364 <_CGSNextRect>
+903a7c34 or.       r3, r3, r3
+903a7c38 bne       0x903a7abc
+903a7c3c mr        r3, r24
+903a7c40 bl        0x903a08c4 <_CGSReleaseRegionEnumerator>
+903a7c44 lha       r0, 4(r25)
+903a7c48 stw       r0, 4(r28)
+903a7c4c lha       r0, 6(r25)
+903a7c50 stw       r0, 8(r28)
+903a7c54 lha       r0, 8(r25)
+903a7c58 stw       r0, 0xc(r28)
+903a7c5c lha       r0, 0xa(r25)
+903a7c60 stw       r0, 0x10(r28)
+903a7c64 lwz       r9, 8(r26)
+903a7c68 lbz       r0, 0xe9(r9)
+903a7c6c cmpwi     cr7, r0, 0
+903a7c70 bne       cr7, 0x903a7cac
+903a7c74 lwz       r0, 0x1b4(r1)
+903a7c78 cmpwi     cr7, r0, 0
+903a7c7c bne       cr7, 0x903a7d24
+903a7c80 addis     r2, r31, 0xffd
+903a7c84 lwz       r2, -0x2620(r2)
+903a7c88 lwz       r0, 0(r2)
+903a7c8c andi.     r2, r0, 0x2000
+903a7c90 bne       0x903a7cac
+903a7c94 lwz       r0, 0xac(r9)
+903a7c98 addi      r2, r1, 0x2b8
+903a7c9c stw       r0, 0x2b8(r1)
+903a7ca0 lwbrx     r2, 0, r2
+903a7ca4 andi.     r0, r2, 0x100
+903a7ca8 beq       0x903a7d24
+903a7cac li        r2, 1
+903a7cb0 lwz       r0, 0(r28)
+903a7cb4 rlwimi    r0, r2, 0, 0x14, 0x1f
+903a7cb8 addi      r9, r1, 0x2c4
+903a7cbc stw       r0, 0(r28)
+903a7cc0 addi      r0, r1, 0x2bc
+903a7cc4 lwz       r2, 8(r26)
+903a7cc8 addi      r11, r1, 0x2c0
+903a7ccc lwz       r2, 0x18(r2)
+903a7cd0 stw       r2, 0x2bc(r1)
+903a7cd4 lwbrx     r0, 0, r0
+903a7cd8 stw       r0, 0x14(r28)
+903a7cdc lwz       r10, 8(r26)
+903a7ce0 lha       r2, 6(r27)
+903a7ce4 lwz       r0, 0x18(r10)
+903a7ce8 stw       r0, 0x2c0(r1)
+903a7cec lwz       r0, 0x1c(r10)
+903a7cf0 lha       r8, 4(r27)
+903a7cf4 stw       r0, 0x2c4(r1)
+903a7cf8 lwz       r0, 0x88(r10)
+903a7cfc lwbrx     r9, 0, r9
+903a7d00 srwi      r9, r9, 3
+903a7d04 mullw     r8, r8, r9
+903a7d08 lwz       r9, 0xc(r26)
+903a7d0c lwbrx     r11, 0, r11
+903a7d10 stw       r0, 0x2c8(r1)
+903a7d14 addi      r0, r1, 0x2c8
+903a7d18 lwbrx     r0, 0, r0
+903a7d1c mullw     r2, r2, r11
+903a7d20 b         0x903a7e44
+903a7d24 lwz       r0, 0(r28)
+903a7d28 lwz       r2, 0xc(r28)
+903a7d2c rlwinm    r0, r0, 0, 0, 0x13
+903a7d30 srwi      r9, r0, 0x19
+903a7d34 stw       r0, 0(r28)
+903a7d38 mullw     r2, r2, r9
+903a7d3c addi      r2, r2, 0x3f
+903a7d40 rlwinm    r2, r2, 0, 0, 0x19
+903a7d44 stw       r2, 0x14(r28)
+903a7d48 bl        0x903a6b84 <_CGXUpdateZone>
+903a7d4c lwz       r0, 0x14(r28)
+903a7d50 lwz       r12, 4(r3)
+903a7d54 lwz       r4, 0x10(r28)
+903a7d58 lwz       r3, 0(r3)
+903a7d5c mtctr     r12
+903a7d60 mullw     r4, r0, r4
+903a7d64 bctrl     
+903a7d68 cmpwi     cr7, r3, 0
+903a7d6c stw       r3, 0x1c(r28)
+903a7d70 bne       cr7, 0x903a7e54
+903a7d74 lwz       r0, 0x1b4(r1)
+903a7d78 cmpwi     cr7, r0, 0
+903a7d7c beq       cr7, 0x903a7dd0
+903a7d80 lwz       r3, 0x14(r29)
+903a7d84 cmpwi     cr7, r3, 0
+903a7d88 beq       cr7, 0x903a7d90
+903a7d8c bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7d90 lwz       r3, 0x24(r29)
+903a7d94 cmpwi     cr7, r3, 0
+903a7d98 beq       cr7, 0x903a7da0
+903a7d9c bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7da0 lwz       r3, 0x20(r29)
+903a7da4 cmpwi     cr7, r3, 0
+903a7da8 beq       cr7, 0x903a7db0
+903a7dac bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7db0 bl        0x903a6b84 <_CGXUpdateZone>
+903a7db4 mr        r4, r29
+903a7db8 lwz       r12, 0x10(r3)
+903a7dbc li        r29, 0
+903a7dc0 lwz       r3, 0(r3)
+903a7dc4 mtctr     r12
+903a7dc8 bctrl     
+903a7dcc b         0x903a7e54
+903a7dd0 li        r2, 1
+903a7dd4 lwz       r0, 0(r28)
+903a7dd8 rlwimi    r0, r2, 0, 0x14, 0x1f
+903a7ddc addi      r11, r1, 0x2d0
+903a7de0 stw       r0, 0(r28)
+903a7de4 addi      r0, r1, 0x2cc
+903a7de8 lwz       r2, 8(r26)
+903a7dec addi      r9, r1, 0x2d4
+903a7df0 lwz       r2, 0x18(r2)
+903a7df4 stw       r2, 0x2cc(r1)
+903a7df8 lwbrx     r0, 0, r0
+903a7dfc stw       r0, 0x14(r28)
+903a7e00 lwz       r10, 8(r26)
+903a7e04 lha       r2, 6(r27)
+903a7e08 lwz       r0, 0x18(r10)
+903a7e0c stw       r0, 0x2d0(r1)
+903a7e10 lwz       r0, 0x1c(r10)
+903a7e14 lwbrx     r11, 0, r11
+903a7e18 mullw     r2, r2, r11
+903a7e1c lha       r8, 4(r27)
+903a7e20 stw       r0, 0x2d4(r1)
+903a7e24 lwz       r0, 0x88(r10)
+903a7e28 lwbrx     r9, 0, r9
+903a7e2c srwi      r9, r9, 3
+903a7e30 mullw     r8, r8, r9
+903a7e34 lwz       r9, 0xc(r26)
+903a7e38 stw       r0, 0x2d8(r1)
+903a7e3c addi      r0, r1, 0x2d8
+903a7e40 lwbrx     r0, 0, r0
+903a7e44 add       r2, r2, r8
+903a7e48 add       r9, r9, r0
+903a7e4c add       r2, r2, r9
+903a7e50 stw       r2, 0x1c(r28)
+903a7e54 addis     r3, r31, 0x36
+903a7e58 addis     r4, r31, 0x36
+903a7e5c addis     r6, r31, 0x36
+903a7e60 li        r0, 0
+903a7e64 addi      r3, r3, -0x5ae8
+903a7e68 addi      r4, r4, -0x60b8
+903a7e6c addi      r6, r6, -0x5994
+903a7e70 li        r5, 0xc9d
+903a7e74 li        r7, 0
+903a7e78 li        r8, 0
+903a7e7c li        r9, 0
+903a7e80 li        r10, 0
+903a7e84 stw       r0, 0x3c(r1)
+903a7e88 stw       r0, 0x38(r1)
+903a7e8c bl        0x9037f078 <__CGSLogTrace>
+903a7e90 lwz       r3, 0x33c(r1)
+903a7e94 bl        0x9037f9d0 <_CGSReleaseRegion>
+903a7e98 mr        r3, r29
+903a7e9c lwz       r0, 0x328(r1)
+903a7ea0 addi      r1, r1, 0x320
+903a7ea4 lmw       r18, -0x40(r1)
+903a7ea8 lfd       f31, -8(r1)
+903a7eac mtlr      r0
+903a7eb0 blr       

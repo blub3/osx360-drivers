@@ -1,10 +1,15 @@
 #include "XenosQuadClient.hpp"
 #include "XenosController.hpp"
 
+extern "C" int proc_selfpid(void);
+
 OSDefineMetaClassAndStructors(XenosQuadClient, IOUserClient);
 
 bool XenosQuadClient::initWithTask(task_t task, void *securityToken, UInt32 type,
                                    OSDictionary *properties) {
+  _ownerPID = static_cast<UInt32>(proc_selfpid());
+  _quadCapturePixels = NULL;
+  _captureQuad = false;
   _surface = _surfacePixels = _drawableView = NULL;
   _drawableReader = type == kXenosDrawableReaderType;
   _surfaceHandle = _surfaceTicket = 0;
@@ -30,6 +35,8 @@ void XenosQuadClient::stop(IOService *provider) {
 }
 
 void XenosQuadClient::free() {
+  if (_quadCapturePixels)
+    IOFree(_quadCapturePixels, kXenosQuadReadbackPixels * sizeof(UInt32));
   if (_surface)
     _surface->release();
   if (_surfacePixels)
@@ -88,6 +95,10 @@ IOExternalMethod *XenosQuadClient::getTargetAndMethodForIndex(IOService **target
     {NULL, (IOMethod)&XenosQuadClient::enqueueSurface, kIOUCScalarIScalarO, 2, 2},
     {NULL, (IOMethod)&XenosQuadClient::surfaceQueueStatus, kIOUCStructIStructO,
      sizeof(UInt32), sizeof(XenosSurfaceQueueInfo)},
+    {NULL, (IOMethod)&XenosQuadClient::uploadCapture, kIOUCStructIStructO,
+     sizeof(XenosQuadGeometryUpload), sizeof(UInt32)},
+    {NULL, (IOMethod)&XenosQuadClient::readCapture, kIOUCStructIStructO,
+     sizeof(XenosQuadReadRequest), sizeof(XenosSurfaceReadback)},
   };
 
   if (selector >= sizeof(methods) / sizeof(methods[0]) ||
@@ -118,6 +129,21 @@ IOReturn XenosQuadClient::uploadGeometry(void *input, void *ticket, void *inputS
                                          void *outputSize, void *, void *) {
   return sendUpload(input, ticket, inputSize, outputSize, sizeof(XenosQuadGeometryUpload),
                     &XenosController::queueQuadGeometry);
+}
+
+IOReturn XenosQuadClient::uploadCapture(void *input, void *ticket, void *inputSize,
+                                        void *outputSize, void *, void *) {
+  return sendUpload(input, ticket, inputSize, outputSize, sizeof(XenosQuadGeometryUpload),
+                    &XenosController::queueQuadCapture);
+}
+
+IOReturn XenosQuadClient::readCapture(void *input, void *output, void *inputSize,
+                                      void *outputSize, void *, void *) {
+  if (!input || !output || !outputSize ||
+      reinterpret_cast<uintptr_t>(inputSize) != sizeof(XenosQuadReadRequest) ||
+      *static_cast<IOByteCount *>(outputSize) != sizeof(XenosSurfaceReadback))
+    return kIOReturnBadArgument;
+  return surfaceAction(&XenosController::readQuadCapture, input, output, NULL);
 }
 
 IOReturn XenosQuadClient::uploadRotated(void *input, void *ticket, void *inputSize,

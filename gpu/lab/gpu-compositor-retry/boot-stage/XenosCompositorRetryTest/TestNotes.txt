@@ -1,0 +1,31 @@
+Xenos GLD compositor retry
+
+Profile gpucompretry selects GLDriverXenosCompositorRetry (0x0002eb00).
+It reuses the 0.0.5d45 GPU and 0.0.5d2 framebuffer binaries. The
+candidate archive differs in the two IOGLBundleName properties.
+gpucompositor remains active until a later activation.
+
+The real WindowServer skipped CGLS during ordinary window repaints. In
+Tiger's mapped-display path the GL entry is gated by successful legacy
+framebuffer blit-engine setup and IOAccelRevision greater than one for
+surface support. The current framebuffer has neither. A transition
+request for one private test window independently reached stock CGLS on
+the original build. WindowServer selected the GLD and requested a pixel
+format, then returned transition status 1004 before creating a context.
+The current software delegate reports zero renderer video memory.
+
+After installing the unique retry GLD and cold booting, run
+RunXenosTransitionProbe.sh once before any other transition request.
+It checks the real WindowServer PID, a fresh GPU completion, 1,024
+matching pixels and a log record from the transition format callback.
+The arm file is removed when the runner exits. The private
+RunXenosCompositorContext.sh --format control tests this same callback
+and verifies that subsequent requests do not create a second fence.
+The --drawable control tests two private offscreen CGL attachments.
+
+RunXenosCompositorRepaint.sh --repaint checks for fresh WindowServer
+fences from ordinary window repaints with a separate arm file. A
+transition-format fence is evidence that WindowServer entered the GLD
+and submitted an offscreen GPU command before context creation.
+Quartz Extreme is checked on the display by the repaint verifier.
+Full compositor drawable testing needs the framebuffer surface path.

@@ -1,0 +1,17 @@
+Xenos WindowServer display surface diagnostic
+
+The gpudisplaysurface profile loads XenonCoreGraphics 0.0.5d42.
+Over SSH, use /bin/sh RunXenosDisplaySurface.sh --probe from this
+directory after cold boot. The probe uses Tiger's IOAccelFindAccelerator
+on the active Xbox framebuffer, then creates a 32x32 surface through
+IOAccelCreateSurface. Two native flush calls clear the offscreen surface
+to different colors. Each IOAccelReadLockSurface returns a read-only
+linear pixel page. The probe checks all 1,024 pixels per flush, verifies
+a fresh GPU ticket and fence owned by its PID, unlocks and destroys
+the surface. It also checks that a malformed shape and a flush while
+locked are rejected. On 0.0.5d41, --baseline verifies that the native
+surface open is unavailable.
+
+The driver accepts a reserved diagnostic surface ID and keeps AccelCaps
+at zero. The surface is offscreen and controlled by the SSH probe.
+Normal windows and Quartz Extreme still use the software compositor.

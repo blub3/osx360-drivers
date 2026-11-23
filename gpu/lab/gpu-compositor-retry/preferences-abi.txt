@@ -1,0 +1,181 @@
+_isDisplayContextEnabledInPrefs [903aa8f0..903aa978]:
+903aa8f0 mflr      r0
+903aa8f4 bdnzl     0x903aa8f8
+903aa8f8 stmw      r28, -0x10(r1)
+903aa8fc mflr      r31
+903aa900 mr        r28, r3
+903aa904 addis     r3, r31, 0xffe
+903aa908 stw       r0, 8(r1)
+903aa90c addi      r3, r3, 0x4178
+903aa910 stwu      r1, -0x50(r1)
+903aa914 bl        0x9037befc <_CGXPreferenceForKey>
+903aa918 or.       r30, r3, r3
+903aa91c beq       0x903aa960
+903aa920 bl        0x906d61e0
+903aa924 mr        r29, r3
+903aa928 mr        r3, r30
+903aa92c bl        0x906d5760
+903aa930 cmpw      cr7, r29, r3
+903aa934 bne       cr7, 0x903aa960
+903aa938 mr        r3, r30
+903aa93c bl        0x906d61c0
+903aa940 or.       r3, r3, r3
+903aa944 beq       0x903aa954
+903aa948 li        r0, 1
+903aa94c stw       r0, 0(r28)
+903aa950 b         0x903aa958
+903aa954 stw       r3, 0(r28)
+903aa958 li        r3, 1
+903aa95c b         0x903aa964
+903aa960 li        r3, 0
+903aa964 lwz       r0, 0x58(r1)
+903aa968 addi      r1, r1, 0x50
+903aa96c lmw       r28, -0x10(r1)
+903aa970 mtlr      r0
+903aa974 blr       
+_CGXSetServerOperationState [9037f4f0..9037f54c]:
+9037f4f0 mflr      r0
+9037f4f4 bdnzl     0x9037f4f8
+9037f4f8 mflr      r10
+9037f4fc mtlr      r0
+9037f500 addis     r2, r10, 0xfff
+9037f504 li        r0, 0x3e8
+9037f508 lwz       r2, 0x4904(r2)
+9037f50c lwz       r2, 0(r2)
+9037f510 lwz       r2, 0x7c(r2)
+9037f514 lwz       r2, 0xc(r2)
+9037f518 cmpwi     cr7, r2, 0
+9037f51c beq       cr7, 0x9037f544
+9037f520 cmplwi    cr7, r3, 0xf
+9037f524 ble       cr7, 0x9037f538
+9037f528 addis     r4, r10, 0x38
+9037f52c li        r3, 0x3e9
+9037f530 addi      r4, r4, -0x4d60
+9037f534 b         0x903ecb48 <_CGSGlobalErrorv>
+9037f538 add       r2, r3, r2
+9037f53c li        r0, 0
+9037f540 stb       r4, 0x2a0(r2)
+9037f544 mr        r3, r0
+9037f548 blr       
+_CGXServerInitialize [9037606c..90376250]:
+9037606c mflr      r0
+90376070 mfcr      r2
+90376074 bl        0x906d4e70
+90376078 stmw      r13, -0xdc(r1)
+9037607c bdnzl     0x90376080
+90376080 stw       r2, 4(r1)
+90376084 mflr      r31
+90376088 stwu      r1, -0x130(r1)
+9037608c addis     r2, r31, 0x1002
+90376090 lwz       r2, -0x5da0(r2)
+90376094 cmpwi     cr7, r2, 0
+90376098 bne       cr7, 0x9037623c
+9037609c addis     r3, r31, 0x1000
+903760a0 lwz       r3, -0x23a4(r3)
+903760a4 bl        0x90376250 <_CGSSetGlobalErrorHandler>
+903760a8 addis     r3, r31, 0x1000
+903760ac lwz       r3, -0x23a8(r3)
+903760b0 bl        0x90376278 <_CGSSetMessageLogger>
+903760b4 addis     r3, r31, 0x38
+903760b8 addi      r3, r3, 0x500
+903760bc bl        0x90376294 <_CGSLogMessage>
+903760c0 bl        0x90376754 <_CGXVirtualConsoleOnly>
+903760c4 cmpwi     cr7, r3, 0
+903760c8 bne       cr7, 0x90376104
+903760cc bl        0x90376774 <_CGXOpenEventDriver>
+903760d0 or.       r3, r3, r3
+903760d4 beq       0x90376104
+903760d8 cmpwi     cr7, r3, 0x3f6
+903760dc bne       cr7, 0x903760ec
+903760e0 li        r3, 1
+903760e4 bl        0x906d7380
+903760e8 bl        0x90376774 <_CGXOpenEventDriver>
+903760ec cmpwi     cr7, r3, 0
+903760f0 beq       cr7, 0x90376104
+903760f4 addis     r3, r31, 0x38
+903760f8 addi      r3, r3, 0x518
+903760fc bl        0x90376294 <_CGSLogMessage>
+90376100 b         0x90376134
+90376104 addis     r2, r31, 0x1000
+90376108 addis     r5, r31, 0x1002
+9037610c lwz       r2, -0x19c0(r2)
+90376110 li        r4, 3
+90376114 addi      r5, r5, -0x5da0
+90376118 lwz       r3, 0(r2)
+9037611c bl        0x906d7040
+90376120 or.       r4, r3, r3
+90376124 beq       0x9037613c
+90376128 addis     r3, r31, 0x38
+9037612c addi      r3, r3, 0x548
+90376130 bl        0x906d7360
+90376134 li        r3, 1
+90376138 bl        0x906d69c0
+9037613c li        r3, 1
+90376140 li        r4, 0
+90376144 bl        0x906d6ee0
+90376148 addis     r2, r31, 0x1002
+9037614c addi      r2, r2, -0x5d9c
+90376150 lbz       r0, 0(r2)
+90376154 cmpwi     cr7, r0, 1
+90376158 bne       cr7, 0x90376214
+9037615c li        r3, 0x300
+90376160 addis     r29, r31, 0x1002
+90376164 bl        0x906d54c0
+90376168 addis     r2, r31, 0x1000
+9037616c lwz       r2, -0x23ac(r2)
+90376170 addi      r29, r29, -0x5d70
+90376174 li        r0, -1
+90376178 stw       r3, 0(r29)
+9037617c addi      r4, r1, 0x40
+90376180 stw       r0, 0x44(r1)
+90376184 li        r5, 0
+90376188 li        r0, 0x40
+9037618c li        r3, 0xa
+90376190 stw       r2, 0x40(r1)
+90376194 stw       r0, 0x48(r1)
+90376198 bl        0x906d6f00
+9037619c addi      r4, r1, 0x40
+903761a0 li        r5, 0
+903761a4 li        r3, 0xb
+903761a8 bl        0x906d6f00
+903761ac addi      r4, r1, 0x40
+903761b0 li        r5, 0
+903761b4 li        r3, 6
+903761b8 bl        0x906d6f00
+903761bc lwz       r3, 0(r29)
+903761c0 bl        0x906d7340
+903761c4 or.       r29, r3, r3
+903761c8 beq       0x90376214
+903761cc li        r4, 0
+903761d0 li        r3, 0xa
+903761d4 bl        0x906d6ee0
+903761d8 li        r4, 0
+903761dc li        r3, 0xb
+903761e0 bl        0x906d6ee0
+903761e4 li        r4, 0
+903761e8 li        r3, 6
+903761ec bl        0x906d6ee0
+903761f0 li        r3, 0
+903761f4 bl        0x9040e708 <_CGXBufferErrorLog>
+903761f8 addis     r5, r31, 0x1002
+903761fc lwz       r5, -0x5d6c(r5)
+90376200 addis     r3, r31, 0x38
+90376204 addi      r3, r3, 0x564
+90376208 mr        r4, r29
+9037620c bl        0x90376294 <_CGSLogMessage>
+90376210 bl        0x9065c83c <_performDirtyServerShutdown>
+90376214 bl        0x9037697c <_CGXProcessDeathNotificationInit>
+90376218 bl        0x90661df0 <_CGXSessionInitialize>
+9037621c addis     r3, r31, 0x38
+90376220 addi      r3, r3, 0x594
+90376224 li        r4, 1
+90376228 li        r5, 0x18
+9037622c bl        0x906d7320
+90376230 addis     r3, r31, 0x38
+90376234 addi      r3, r3, 0x5a4
+90376238 bl        0x906d7300
+9037623c addi      r1, r1, 0x130
+90376240 lwz       r11, 4(r1)
+90376244 lmw       r13, -0xdc(r1)
+90376248 mtcrf     0x38, r11
+9037624c b         0x906d4ec0

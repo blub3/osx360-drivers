@@ -1,0 +1,131 @@
+_CGXGLCompositorInitialize [903818c0..903819f8]:
+903818c0 mflr      r0
+903818c4 bdnzl     0x903818c8
+903818c8 stmw      r26, -0x18(r1)
+903818cc mflr      r31
+903818d0 addis     r2, r31, 0x1001
+903818d4 stw       r0, 8(r1)
+903818d8 addi      r2, r2, -0x2dc8
+903818dc stwu      r1, -0x60(r1)
+903818e0 cmpwi     cr7, r2, 0
+903818e4 bne       cr7, 0x903818ec
+903818e8 bl        0x90375fb4 <_CGXInitializeConfiguration>
+903818ec addis     r3, r31, 0x1001
+903818f0 addi      r3, r3, -0x2dc8
+903818f4 bl        0x9037befc <_CGXPreferenceForKey>
+903818f8 or.       r29, r3, r3
+903818fc beq       0x90381928
+90381900 addis     r4, r31, 0x1001
+90381904 addi      r4, r4, -0x2db8
+90381908 bl        0x9037d05c <_CGXGetCFDictIntValueForKey>
+9038190c addis     r4, r31, 0x1001
+90381910 mr        r27, r3
+90381914 addi      r4, r4, -0x2da8
+90381918 mr        r3, r29
+9038191c bl        0x9037d05c <_CGXGetCFDictIntValueForKey>
+90381920 mr        r30, r3
+90381924 b         0x903819c8
+90381928 bl        0x90374694 <_CGXCoreGraphicsConfiguration>
+9038192c addis     r4, r31, 0x1001
+90381930 addi      r4, r4, -0x2e88
+90381934 bl        0x906d5340
+90381938 or.       r29, r3, r3
+9038193c beq       0x903819e4
+90381940 addis     r4, r31, 0x1001
+90381944 addi      r4, r4, -0x2db8
+90381948 bl        0x9037d05c <_CGXGetCFDictIntValueForKey>
+9038194c addis     r4, r31, 0x1001
+90381950 addi      r4, r4, -0x2da8
+90381954 mr        r27, r3
+90381958 mr        r3, r29
+9038195c bl        0x9037d05c <_CGXGetCFDictIntValueForKey>
+90381960 mr        r30, r3
+90381964 bl        0x903819f8 <_CGSIsPortableMachine>
+90381968 cmpwi     cr7, r3, 0
+9038196c beq       cr7, 0x903819c8
+90381970 cmpwi     cr7, r27, 0
+90381974 bne       cr7, 0x90381980
+90381978 cmpwi     cr7, r30, 0
+9038197c beq       cr7, 0x903819c8
+90381980 addis     r4, r31, 0x1001
+90381984 mr        r3, r29
+90381988 addi      r4, r4, -0x2d98
+9038198c bl        0x906d5340
+90381990 or.       r28, r3, r3
+90381994 beq       0x903819c8
+90381998 bl        0x906d61e0
+9038199c mr        r29, r3
+903819a0 mr        r3, r28
+903819a4 bl        0x906d5760
+903819a8 cmpw      cr7, r29, r3
+903819ac bne       cr7, 0x903819c8
+903819b0 mr        r3, r28
+903819b4 bl        0x906d61c0
+903819b8 cmpwi     cr7, r3, 0
+903819bc bne       cr7, 0x903819c8
+903819c0 li        r27, 0
+903819c4 li        r30, 0
+903819c8 lwz       r0, 0x68(r1)
+903819cc addi      r1, r1, 0x60
+903819d0 mr        r3, r27
+903819d4 mr        r4, r30
+903819d8 mtlr      r0
+903819dc lmw       r26, -0x18(r1)
+903819e0 b         0x90381acc <_CGXGLCompositorSetTileSize>
+903819e4 lwz       r0, 0x68(r1)
+903819e8 addi      r1, r1, 0x60
+903819ec lmw       r26, -0x18(r1)
+903819f0 mtlr      r0
+903819f4 blr       
+_CGXCompositorInitialize [903816ec..903817b8]:
+903816ec mflr      r0
+903816f0 bdnzl     0x903816f4
+903816f4 stmw      r29, -0xc(r1)
+903816f8 mflr      r31
+903816fc addis     r2, r31, 0x1001
+90381700 stw       r0, 8(r1)
+90381704 addi      r2, r2, -0x2d24
+90381708 stwu      r1, -0x60(r1)
+9038170c cmpwi     cr7, r2, 0
+90381710 bne       cr7, 0x90381718
+90381714 bl        0x90375fb4 <_CGXInitializeConfiguration>
+90381718 addis     r3, r31, 0x1001
+9038171c addi      r3, r3, -0x2d24
+90381720 bl        0x9037befc <_CGXPreferenceForKey>
+90381724 cmpwi     cr7, r3, 0
+90381728 beq       cr7, 0x90381778
+9038172c addis     r4, r31, 0x1001
+90381730 addi      r4, r4, -0x2d14
+90381734 bl        0x906d5340
+90381738 or.       r30, r3, r3
+9038173c beq       0x90381780
+90381740 bl        0x906d56e0
+90381744 mr        r29, r3
+90381748 mr        r3, r30
+9038174c bl        0x906d5760
+90381750 cmpw      cr7, r29, r3
+90381754 bne       cr7, 0x90381780
+90381758 mr        r3, r30
+9038175c li        r4, 9
+90381760 addi      r5, r1, 0x40
+90381764 bl        0x906d56c0
+90381768 cmpwi     cr7, r3, 0
+9038176c beq       cr7, 0x90381780
+90381770 lwz       r3, 0x40(r1)
+90381774 b         0x9038177c
+90381778 li        r3, 1
+9038177c bl        0x903817b8 <_CGXSetDeferredUpdates>
+90381780 addis     r29, r31, 0xfff
+90381784 li        r4, 0x6a
+90381788 lwz       r3, 0x28f8(r29)
+9038178c li        r5, 0
+90381790 bl        0x903750a4 <_CGSRegisterNotifyProc>
+90381794 lwz       r3, 0x28f8(r29)
+90381798 li        r4, 0x6c
+9038179c li        r5, 0
+903817a0 bl        0x903750a4 <_CGSRegisterNotifyProc>
+903817a4 lwz       r0, 0x68(r1)
+903817a8 addi      r1, r1, 0x60
+903817ac mtlr      r0
+903817b0 lmw       r29, -0xc(r1)
+903817b4 blr       

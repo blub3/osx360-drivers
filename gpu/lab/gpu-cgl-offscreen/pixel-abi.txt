@@ -1,0 +1,1140 @@
+_glcPluginChoosePixelFormat [93706350..937065a4]:
+93706350 mflr      r0
+93706354 bdnzl     0x93706358
+93706358 stmw      r24, -0x20(r1)
+9370635c stw       r0, 8(r1)
+93706360 mflr      r31
+93706364 stwu      r1, -0x70(r1)
+93706368 mr        r27, r4
+9370636c mr        r25, r5
+93706370 mr        r29, r3
+93706374 bl        0x937065a4 <_glcGetPlugin>
+93706378 or.       r30, r3, r3
+9370637c li        r26, 0
+93706380 bne       0x937063a8
+93706384 addis     r2, r31, 0x1000
+93706388 lwz       r2, -0x323c(r2)
+9370638c lbz       r0, 0(r2)
+93706390 cmpwi     cr7, r0, 0
+93706394 beq       cr7, 0x937063a0
+93706398 li        r3, 0x271f
+9370639c bl        0x9370ddc0
+937063a0 li        r3, 0x271f
+937063a4 b         0x93706590
+937063a8 mr        r4, r27
+937063ac bl        0x9370e500
+937063b0 cmpwi     cr7, r3, -1
+937063b4 beq       cr7, 0x937063c4
+937063b8 stw       r3, 0(r25)
+937063bc li        r3, 0
+937063c0 b         0x93706590
+937063c4 lwz       r9, 0x414(r30)
+937063c8 li        r28, 0
+937063cc cmpwi     cr7, r9, 0
+937063d0 bne       cr7, 0x93706400
+937063d4 addis     r2, r31, 0x1000
+937063d8 lwz       r2, -0x3228(r2)
+937063dc lbz       r0, 0(r2)
+937063e0 cmpwi     cr7, r0, 0
+937063e4 beq       cr7, 0x93706400
+937063e8 mr        r3, r29
+937063ec bl        0x937066d4 <_glcPluginConnect>
+937063f0 or.       r26, r3, r3
+937063f4 bne       0x93706590
+937063f8 lwz       r9, 0x414(r30)
+937063fc stw       r26, 0x410(r30)
+93706400 cmpwi     cr7, r9, 0
+93706404 beq       cr7, 0x93706458
+93706408 lwz       r2, 0x41c(r30)
+9370640c mr        r4, r27
+93706410 addi      r3, r1, 0x40
+93706414 lwz       r12, 0(r2)
+93706418 mtctr     r12
+9370641c bctrl     
+93706420 lwz       r5, 0x40(r1)
+93706424 mr        r26, r3
+93706428 mr        r4, r27
+9370642c mr        r3, r30
+93706430 bl        0x9370e4c0
+93706434 mr        r28, r3
+93706438 lwz       r3, 0x40(r1)
+9370643c cmpwi     cr7, r3, 0
+93706440 beq       cr7, 0x93706564
+93706444 lwz       r2, 0x41c(r30)
+93706448 lwz       r12, 4(r2)
+9370644c mtctr     r12
+93706450 bctrl     
+93706454 b         0x93706564
+93706458 addi      r29, r30, 4
+9370645c addi      r4, r30, 0x414
+93706460 mr        r3, r29
+93706464 bl        0x9370e280
+93706468 cmpwi     cr7, r3, 1
+9370646c bne       cr7, 0x9370648c
+93706470 lwz       r3, 0x414(r30)
+93706474 cmpwi     cr7, r3, 0
+93706478 beq       cr7, 0x9370648c
+9370647c mr        r4, r29
+93706480 li        r5, 2
+93706484 bl        0x9370e260
+93706488 stw       r3, 0x418(r30)
+9370648c mr        r3, r30
+93706490 bl        0x93706844 <_glcValidatePlugin>
+93706494 cmpwi     cr7, r3, 0
+93706498 beq       cr7, 0x93706564
+9370649c lwz       r3, 0x418(r30)
+937064a0 addis     r4, r31, 1
+937064a4 addi      r4, r4, -0x6d7c
+937064a8 li        r29, 0
+937064ac bl        0x9370e240
+937064b0 li        r24, 0
+937064b4 cmpwi     cr7, r3, 0
+937064b8 beq       cr7, 0x937064c4
+937064bc bl        0x9370e220
+937064c0 mr        r29, r3
+937064c4 addis     r4, r31, 1
+937064c8 lwz       r3, 0x418(r30)
+937064cc addi      r4, r4, -0x6d7c
+937064d0 addi      r4, r4, 0x20
+937064d4 bl        0x9370e240
+937064d8 cmpwi     cr7, r3, 0
+937064dc beq       cr7, 0x937064e8
+937064e0 bl        0x9370e220
+937064e4 mr        r24, r3
+937064e8 cmpwi     cr7, r29, 0
+937064ec beq       cr7, 0x9370653c
+937064f0 cmpwi     cr7, r24, 0
+937064f4 beq       cr7, 0x9370653c
+937064f8 mr        r12, r29
+937064fc mr        r4, r27
+93706500 mtctr     r29
+93706504 addi      r3, r1, 0x40
+93706508 bctrl     
+9370650c lwz       r5, 0x40(r1)
+93706510 mr        r26, r3
+93706514 mr        r4, r27
+93706518 mr        r3, r30
+9370651c bl        0x9370e4c0
+93706520 mr        r28, r3
+93706524 lwz       r3, 0x40(r1)
+93706528 cmpwi     cr7, r3, 0
+9370652c beq       cr7, 0x9370653c
+93706530 mr        r12, r24
+93706534 mtctr     r24
+93706538 bctrl     
+9370653c lwz       r3, 0x418(r30)
+93706540 li        r29, 0
+93706544 bl        0x9370c37c <_glcTerminatePlugin>
+93706548 lwz       r3, 0x418(r30)
+9370654c li        r4, 0
+93706550 bl        0x9370e1e0
+93706554 lwz       r3, 0x414(r30)
+93706558 stw       r29, 0x418(r30)
+9370655c bl        0x9370e1c0
+93706560 stw       r29, 0x414(r30)
+93706564 cmpwi     cr7, r26, 0
+93706568 beq       cr7, 0x93706588
+9370656c addis     r2, r31, 0x1000
+93706570 lwz       r2, -0x323c(r2)
+93706574 lbz       r0, 0(r2)
+93706578 cmpwi     cr7, r0, 0
+9370657c beq       cr7, 0x93706588
+93706580 mr        r3, r26
+93706584 bl        0x9370ddc0
+93706588 stw       r28, 0(r25)
+9370658c mr        r3, r26
+93706590 lwz       r0, 0x78(r1)
+93706594 addi      r1, r1, 0x70
+93706598 lmw       r24, -0x20(r1)
+9370659c mtlr      r0
+937065a0 blr       
+_cglChoosePixelFormat [93704880..937050c8]:
+93704880 mfcr      r2
+93704884 mflr      r0
+93704888 stmw      r13, -0x4c(r1)
+9370488c stw       r0, 8(r1)
+93704890 stw       r2, 4(r1)
+93704894 li        r21, 0
+93704898 stwu      r1, -0x240(r1)
+9370489c bdnzl     0x937048a0
+937048a0 stw       r5, 0x260(r1)
+937048a4 mr        r28, r6
+937048a8 stw       r4, 0x25c(r1)
+937048ac mflr      r31
+937048b0 stw       r21, 0(r4)
+937048b4 addi      r5, r1, 0x1d0
+937048b8 lwz       r2, 0x260(r1)
+937048bc addi      r4, r1, 0x40
+937048c0 li        r6, 0
+937048c4 mr        r7, r28
+937048c8 stw       r21, 0(r2)
+937048cc addi      r8, r1, 0x1d4
+937048d0 stw       r21, 0x1d4(r1)
+937048d4 mr        r27, r3
+937048d8 bl        0x937050c8 <_cglConvertAttribs>
+937048dc li        r18, 0
+937048e0 cmpwi     cr7, r3, 0
+937048e4 li        r15, 0
+937048e8 li        r16, 0
+937048ec li        r30, 0
+937048f0 beq       cr7, 0x93704954
+937048f4 lwz       r0, 0x1d4(r1)
+937048f8 cmpwi     cr7, r0, 0
+937048fc beq       cr7, 0x93704914
+93704900 li        r3, 1
+93704904 bl        0x9370efa0
+93704908 li        r3, 1
+9370490c bl        0x9370de20
+93704910 b         0x93704930
+93704914 bl        0x9370ef80
+93704918 mr        r29, r3
+9370491c bl        0x9370ef60
+93704920 cmpwi     cr7, r29, 0
+93704924 beq       cr7, 0x93704954
+93704928 cmpwi     cr7, r3, 0
+9370492c bne       cr7, 0x93704954
+93704930 mr        r3, r27
+93704934 addi      r4, r1, 0x40
+93704938 addi      r5, r1, 0x1d0
+9370493c addi      r6, r1, 0x1d8
+93704940 mr        r7, r28
+93704944 li        r8, 0
+93704948 bl        0x937050c8 <_cglConvertAttribs>
+9370494c cmpwi     cr7, r3, 0
+93704950 bne       cr7, 0x93704968
+93704954 addis     r2, r31, 0x1000
+93704958 li        r21, 0x2710
+9370495c lwz       r2, -0x1784(r2)
+93704960 li        r3, 0x2710
+93704964 b         0x9370499c
+93704968 addi      r20, r1, 0x110
+9370496c addi      r19, r1, 0x100
+93704970 lwz       r4, 0x1d0(r1)
+93704974 mr        r3, r27
+93704978 mr        r7, r28
+9370497c mr        r5, r20
+93704980 mr        r6, r19
+93704984 bl        0x9370ef40
+93704988 or.       r21, r3, r3
+9370498c mfcr      r26
+93704990 beq       0x937049ac
+93704994 addis     r2, r31, 0x1000
+93704998 lwz       r2, -0x1784(r2)
+9370499c lbz       r0, 0(r2)
+937049a0 cmpwi     cr7, r0, 0
+937049a4 beq       cr7, 0x93705098
+937049a8 b         0x93704ae8
+937049ac addis     r2, r31, 0x1000
+937049b0 stw       r2, 0x1e4(r1)
+937049b4 lwz       r2, -0x1754(r2)
+937049b8 lbz       r0, 3(r2)
+937049bc cmpwi     cr7, r0, 0
+937049c0 beq       cr7, 0x937049e0
+937049c4 lwz       r2, 0x118(r1)
+937049c8 lwz       r0, 0x1d0(r1)
+937049cc ori       r2, r2, 0x100
+937049d0 rlwinm    r9, r0, 0, 0x1c, 0x1a
+937049d4 stw       r2, 0x118(r1)
+937049d8 stw       r9, 0x1d0(r1)
+937049dc b         0x937049e4
+937049e0 lwz       r2, 0x118(r1)
+937049e4 andi.     r9, r2, 4
+937049e8 beq       0x937049f8
+937049ec stw       r21, 0x1d8(r1)
+937049f0 li        r30, 0
+937049f4 b         0x93704a18
+937049f8 lwz       r0, 0x1d4(r1)
+937049fc cmpwi     cr7, r0, 0
+93704a00 bne       cr7, 0x93704a18
+93704a04 lwz       r3, 0x1d8(r1)
+93704a08 bl        0x9370ef20
+93704a0c or.       r30, r3, r3
+93704a10 beq       0x93704acc
+93704a14 lwz       r2, 0x118(r1)
+93704a18 andi.     r0, r2, 2
+93704a1c beq       0x93704a28
+93704a20 cmpwi     cr7, r30, 1
+93704a24 bne       cr7, 0x93704acc
+93704a28 li        r3, 0
+93704a2c bl        0x9370de20
+93704a30 cmpwi     cr7, r3, 0x270f
+93704a34 mr        r22, r3
+93704a38 ble       cr7, 0x93704a44
+93704a3c mr        r21, r3
+93704a40 b         0x93705098
+93704a44 lwz       r0, 0x1d4(r1)
+93704a48 cmpwi     cr7, r0, 0
+93704a4c beq       cr7, 0x93704af0
+93704a50 li        r0, 0
+93704a54 li        r3, 0x20
+93704a58 addi      r4, r1, 0x150
+93704a5c addi      r5, r1, 0x1dc
+93704a60 stw       r0, 0x1dc(r1)
+93704a64 bl        0x9370e660
+93704a68 lwz       r0, 0x1dc(r1)
+93704a6c cmpwi     cr7, r0, 0
+93704a70 bne       cr7, 0x93704ab8
+93704a74 li        r27, 0
+93704a78 cmpw      cr7, r27, r22
+93704a7c stw       r27, 0x1d8(r1)
+93704a80 bge       cr7, 0x93704aa8
+93704a84 mr        r2, r27
+93704a88 li        r9, 1
+93704a8c slw       r0, r9, r27
+93704a90 addi      r27, r27, 1
+93704a94 cmpw      cr7, r27, r22
+93704a98 or        r2, r2, r0
+93704a9c stw       r2, 0x1d8(r1)
+93704aa0 blt       cr7, 0x93704a8c
+93704aa4 b         0x93704aac
+93704aa8 lwz       r2, 0x1d8(r1)
+93704aac stw       r2, 0x140(r1)
+93704ab0 mr        r30, r22
+93704ab4 b         0x93704ac4
+93704ab8 lwz       r3, 0x1d8(r1)
+93704abc bl        0x9370ef20
+93704ac0 mr        r30, r3
+93704ac4 cmpwi     cr7, r30, 0
+93704ac8 bne       cr7, 0x93704af0
+93704acc addis     r2, r31, 0x1000
+93704ad0 li        r21, 0x2716
+93704ad4 lwz       r2, -0x1784(r2)
+93704ad8 lbz       r0, 0(r2)
+93704adc cmpwi     cr7, r0, 0
+93704ae0 beq       cr7, 0x93705098
+93704ae4 li        r3, 0x2716
+93704ae8 bl        0x9370ddc0
+93704aec b         0x93705098
+93704af0 addi      r27, r30, 1
+93704af4 slwi      r3, r22, 2
+93704af8 slwi      r29, r27, 2
+93704afc bl        0x9370de80
+93704b00 stw       r3, 0x1e0(r1)
+93704b04 mr        r3, r29
+93704b08 bl        0x9370de80
+93704b0c li        r27, 0
+93704b10 mr        r14, r3
+93704b14 mr        r3, r29
+93704b18 bl        0x9370de80
+93704b1c mr        r17, r3
+93704b20 mr        r3, r29
+93704b24 bl        0x9370de80
+93704b28 cmpw      cr7, r27, r22
+93704b2c mr        r13, r3
+93704b30 bge       cr7, 0x93704b64
+93704b34 lwz       r28, 0x1e0(r1)
+93704b38 mr        r3, r27
+93704b3c addi      r4, r1, 0x40
+93704b40 mr        r5, r28
+93704b44 bl        0x9370ef00
+93704b48 or.       r21, r3, r3
+93704b4c mfcr      r26
+93704b50 bne       0x93705054
+93704b54 addi      r27, r27, 1
+93704b58 addi      r28, r28, 4
+93704b5c cmpw      cr7, r27, r22
+93704b60 blt       cr7, 0x93704b38
+93704b64 rotlwi    r26, r26, 4
+93704b68 mtocrf    1, r26
+93704b6c rotlwi    r26, r26, 0x1c
+93704b70 bne       cr7, 0x93705054
+93704b74 lwz       r0, 0x1d8(r1)
+93704b78 lwz       r2, 0x118(r1)
+93704b7c cmpwi     cr7, r0, 0
+93704b80 rlwinm    r2, r2, 0, 0x19, 0x17
+93704b84 stw       r2, 0x118(r1)
+93704b88 beq       cr7, 0x93704c5c
+93704b8c li        r25, 0
+93704b90 li        r26, 0
+93704b94 cmpw      cr7, r25, r22
+93704b98 li        r23, 0
+93704b9c li        r24, 0
+93704ba0 li        r27, 0
+93704ba4 bge       cr7, 0x93704c5c
+93704ba8 lwz       r28, 0x1e0(r1)
+93704bac lwz       r30, 0(r28)
+93704bb0 addi      r28, r28, 4
+93704bb4 cmpwi     cr7, r30, 0
+93704bb8 beq       cr7, 0x93704c10
+93704bbc lwz       r0, 0x30(r30)
+93704bc0 lwz       r2, 0x1d8(r1)
+93704bc4 and.      r29, r0, r2
+93704bc8 beq       0x93704c04
+93704bcc mr        r3, r29
+93704bd0 bl        0x9370eee0
+93704bd4 lwz       r7, 0x1d0(r1)
+93704bd8 mr        r6, r3
+93704bdc mr        r4, r19
+93704be0 mr        r3, r20
+93704be4 mr        r5, r30
+93704be8 bl        0x9370eec0
+93704bec cmpw      cr7, r3, r26
+93704bf0 ble       cr7, 0x93704c04
+93704bf4 mr        r26, r3
+93704bf8 mr        r24, r29
+93704bfc mr        r23, r27
+93704c00 mr        r25, r30
+93704c04 lwz       r30, 0(r30)
+93704c08 cmpwi     cr7, r30, 0
+93704c0c bne       cr7, 0x93704bbc
+93704c10 addi      r27, r27, 1
+93704c14 cmpw      cr7, r27, r22
+93704c18 blt       cr7, 0x93704bac
+93704c1c cmpwi     cr7, r25, 0
+93704c20 beq       cr7, 0x93704c5c
+93704c24 slwi      r0, r18, 2
+93704c28 addi      r18, r18, 1
+93704c2c stwx      r23, r17, r0
+93704c30 stwx      r25, r14, r0
+93704c34 stwx      r24, r13, r0
+93704c38 lwz       r2, 8(r25)
+93704c3c andi.     r0, r2, 0x80
+93704c40 beq       0x93704c48
+93704c44 li        r15, 1
+93704c48 lwz       r0, 0x1d8(r1)
+93704c4c andc      r2, r0, r24
+93704c50 cmpwi     cr7, r2, 0
+93704c54 stw       r2, 0x1d8(r1)
+93704c58 bne       cr7, 0x93704b8c
+93704c5c cmpwi     cr4, r18, 0
+93704c60 mcrf      cr3, cr4
+93704c64 beq       cr4, 0x93704c9c
+93704c68 lwz       r9, 0x1d0(r1)
+93704c6c andi.     r2, r9, 0x10
+93704c70 beq       0x93704d64
+93704c74 cmpwi     cr7, r15, 0
+93704c78 bne       cr7, 0x93704d64
+93704c7c beq       cr4, 0x93704c9c
+93704c80 beq       0x93704c9c
+93704c84 bne       cr7, 0x93704c9c
+93704c88 lwz       r0, 0x118(r1)
+93704c8c stw       r15, 0x114(r1)
+93704c90 ori       r2, r0, 0x80
+93704c94 rlwinm    r2, r2, 0, 0x18, 0x16
+93704c98 stw       r2, 0x118(r1)
+93704c9c li        r25, 0
+93704ca0 li        r26, 0
+93704ca4 cmpw      cr7, r25, r22
+93704ca8 li        r23, 0
+93704cac li        r27, 0
+93704cb0 bge       cr7, 0x93704d54
+93704cb4 lwz       r29, 0x1e0(r1)
+93704cb8 lwz       r30, 0(r29)
+93704cbc addi      r29, r29, 4
+93704cc0 cmpwi     cr7, r30, 0
+93704cc4 beq       cr7, 0x93704d08
+93704cc8 lwz       r3, 0x30(r30)
+93704ccc bl        0x9370eee0
+93704cd0 lwz       r7, 0x1d0(r1)
+93704cd4 mr        r6, r3
+93704cd8 mr        r4, r19
+93704cdc mr        r3, r20
+93704ce0 mr        r5, r30
+93704ce4 bl        0x9370eec0
+93704ce8 cmpw      cr7, r3, r26
+93704cec ble       cr7, 0x93704cfc
+93704cf0 mr        r26, r3
+93704cf4 mr        r23, r27
+93704cf8 mr        r25, r30
+93704cfc lwz       r30, 0(r30)
+93704d00 cmpwi     cr7, r30, 0
+93704d04 bne       cr7, 0x93704cc8
+93704d08 addi      r27, r27, 1
+93704d0c cmpw      cr7, r27, r22
+93704d10 blt       cr7, 0x93704cb8
+93704d14 cmpwi     cr7, r25, 0
+93704d18 beq       cr7, 0x93704d54
+93704d1c ble       cr3, 0x93704d28
+93704d20 li        r0, 0
+93704d24 stw       r0, 0x1d8(r1)
+93704d28 lwz       r2, 0x1d8(r1)
+93704d2c slwi      r0, r18, 2
+93704d30 stwx      r23, r17, r0
+93704d34 addi      r18, r18, 1
+93704d38 stwx      r2, r13, r0
+93704d3c stwx      r25, r14, r0
+93704d40 lwz       r2, 8(r25)
+93704d44 andi.     r0, r2, 0x80
+93704d48 beq       0x93704d5c
+93704d4c li        r15, 1
+93704d50 b         0x93704d5c
+93704d54 lwz       r9, 0x1d0(r1)
+93704d58 b         0x93704d64
+93704d5c lwz       r9, 0x1d0(r1)
+93704d60 cmpwi     cr4, r18, 0
+93704d64 andi.     r2, r9, 0x10
+93704d68 li        r2, 0
+93704d6c beq       0x93704d7c
+93704d70 cmpwi     cr7, r15, 0
+93704d74 bne       cr7, 0x93704d7c
+93704d78 li        r2, 1
+93704d7c lwz       r0, 0x118(r1)
+93704d80 rlwinm    r11, r0, 0, 0x1d, 0x1d
+93704d84 beq       cr4, 0x93705054
+93704d88 cmpwi     cr7, r11, 0
+93704d8c bne       cr7, 0x93704d9c
+93704d90 cmpwi     cr7, r2, 0
+93704d94 bne       cr7, 0x93705054
+93704d98 b         0x93704e64
+93704d9c cmpwi     cr7, r2, 0
+93704da0 beq       cr7, 0x93704e64
+93704da4 li        r25, 0
+93704da8 ori       r2, r0, 0x80
+93704dac cmpw      cr7, r25, r22
+93704db0 rlwinm    r2, r2, 0, 0x18, 0x16
+93704db4 rlwinm    r0, r2, 0, 0x1e, 0x1c
+93704db8 li        r2, 0
+93704dbc stw       r0, 0x118(r1)
+93704dc0 li        r26, 0
+93704dc4 stw       r2, 0x114(r1)
+93704dc8 li        r23, 0
+93704dcc li        r27, 0
+93704dd0 bge       cr7, 0x93705054
+93704dd4 lwz       r29, 0x1e0(r1)
+93704dd8 lwz       r30, 0(r29)
+93704ddc addi      r29, r29, 4
+93704de0 cmpwi     cr7, r30, 0
+93704de4 beq       cr7, 0x93704e28
+93704de8 lwz       r3, 0x30(r30)
+93704dec bl        0x9370eee0
+93704df0 lwz       r7, 0x1d0(r1)
+93704df4 mr        r6, r3
+93704df8 mr        r4, r19
+93704dfc mr        r3, r20
+93704e00 mr        r5, r30
+93704e04 bl        0x9370eec0
+93704e08 cmpw      cr7, r3, r26
+93704e0c ble       cr7, 0x93704e1c
+93704e10 mr        r26, r3
+93704e14 mr        r23, r27
+93704e18 mr        r25, r30
+93704e1c lwz       r30, 0(r30)
+93704e20 cmpwi     cr7, r30, 0
+93704e24 bne       cr7, 0x93704de8
+93704e28 addi      r27, r27, 1
+93704e2c cmpw      cr7, r27, r22
+93704e30 blt       cr7, 0x93704dd8
+93704e34 cmpwi     cr7, r25, 0
+93704e38 beq       cr7, 0x93705054
+93704e3c lwz       r0, 8(r25)
+93704e40 andi.     r2, r0, 0x80
+93704e44 beq       0x93705054
+93704e48 lwz       r0, 0x1d8(r1)
+93704e4c slwi      r2, r18, 2
+93704e50 lwz       r9, 0x1d0(r1)
+93704e54 addi      r18, r18, 1
+93704e58 stwx      r0, r2, r13
+93704e5c stwx      r25, r2, r14
+93704e60 stwx      r23, r2, r17
+93704e64 andi.     r0, r9, 8
+93704e68 beq       0x93704e70
+93704e6c li        r18, 1
+93704e70 mulli     r3, r18, 0x38
+93704e74 bl        0x9370de80
+93704e78 lwz       r9, 0x1e4(r1)
+93704e7c mr        r16, r3
+93704e80 lwz       r2, -0x1754(r9)
+93704e84 lbz       r0, 1(r2)
+93704e88 cmpwi     cr7, r0, 0
+93704e8c beq       cr7, 0x93704f08
+93704e90 li        r27, 0
+93704e94 addi      r3, r18, -1
+93704e98 cmpw      cr7, r27, r3
+93704e9c bge       cr7, 0x93704f08
+93704ea0 slwi      r6, r27, 2
+93704ea4 add       r4, r6, r14
+93704ea8 lwzx      r9, r6, r14
+93704eac lwz       r5, 4(r4)
+93704eb0 lwz       r2, 4(r9)
+93704eb4 lwz       r0, 4(r5)
+93704eb8 rlwinm    r2, r2, 0, 0, 7
+93704ebc rlwinm    r0, r0, 0, 0, 7
+93704ec0 cmplw     cr7, r2, r0
+93704ec4 ble       cr7, 0x93704efc
+93704ec8 add       r11, r6, r17
+93704ecc add       r10, r6, r13
+93704ed0 lwz       r8, 4(r11)
+93704ed4 li        r27, 0
+93704ed8 lwz       r7, 4(r10)
+93704edc lwzx      r0, r6, r17
+93704ee0 lwzx      r2, r6, r13
+93704ee4 stw       r0, 4(r11)
+93704ee8 stw       r2, 4(r10)
+93704eec stw       r9, 4(r4)
+93704ef0 stwx      r5, r6, r14
+93704ef4 stwx      r8, r6, r17
+93704ef8 stwx      r7, r6, r13
+93704efc addi      r27, r27, 1
+93704f00 cmpw      cr7, r27, r3
+93704f04 blt       cr7, 0x93704ea0
+93704f08 li        r27, 0
+93704f0c li        r15, 0
+93704f10 cmpw      cr7, r27, r18
+93704f14 bge       cr7, 0x93704fbc
+93704f18 li        r26, 0
+93704f1c li        r24, 1
+93704f20 li        r23, 3
+93704f24 li        r25, 0
+93704f28 addi      r29, r16, 4
+93704f2c mr        r30, r16
+93704f30 slwi      r6, r27, 2
+93704f34 stb       r26, 0(r30)
+93704f38 stb       r26, 1(r30)
+93704f3c add       r2, r6, r17
+93704f40 lbz       r9, 3(r2)
+93704f44 mr        r28, r6
+93704f48 stb       r9, 2(r30)
+93704f4c lwz       r0, 0x1d0(r1)
+93704f50 andi.     r0, r0, 0x10
+93704f54 beq       0x93704f80
+93704f58 cmpwi     cr7, r15, 0
+93704f5c stb       r24, 3(r30)
+93704f60 bne       cr7, 0x93704f84
+93704f64 lwzx      r2, r6, r14
+93704f68 lwz       r0, 8(r2)
+93704f6c andi.     r2, r0, 0x80
+93704f70 beq       0x93704f84
+93704f74 stb       r23, 3(r30)
+93704f78 li        r15, 1
+93704f7c b         0x93704f84
+93704f80 stb       r0, 3(r30)
+93704f84 lwzx      r4, r28, r14
+93704f88 mr        r3, r29
+93704f8c addi      r27, r27, 1
+93704f90 li        r5, 0x34
+93704f94 bl        0x9370de60
+93704f98 cmpw      cr7, r27, r18
+93704f9c lwzx      r2, r28, r13
+93704fa0 addi      r29, r29, 0x38
+93704fa4 lwz       r0, 0x34(r30)
+93704fa8 stw       r25, 4(r30)
+93704fac and       r0, r0, r2
+93704fb0 stw       r0, 0x34(r30)
+93704fb4 addi      r30, r30, 0x38
+93704fb8 blt       cr7, 0x93704f30
+93704fbc li        r27, 0
+93704fc0 mr        r4, r18
+93704fc4 cmpw      cr7, r27, r18
+93704fc8 bge       cr7, 0x9370504c
+93704fcc addi      r5, r27, 1
+93704fd0 cmpw      cr7, r5, r18
+93704fd4 mr        r10, r5
+93704fd8 bge       cr7, 0x93705040
+93704fdc mulli     r2, r5, 0x38
+93704fe0 slwi      r0, r5, 2
+93704fe4 mulli     r9, r27, 0x38
+93704fe8 add       r11, r0, r17
+93704fec add       r2, r2, r16
+93704ff0 slwi      r6, r27, 2
+93704ff4 add       r9, r9, r16
+93704ff8 addi      r7, r2, 4
+93704ffc addi      r8, r2, 3
+93705000 lwz       r2, 0(r11)
+93705004 addi      r11, r11, 4
+93705008 lwzx      r0, r6, r17
+9370500c cmpw      cr7, r0, r2
+93705010 bne       cr7, 0x9370502c
+93705014 lbz       r0, 0(r8)
+93705018 addi      r4, r4, -1
+9370501c stw       r7, 4(r9)
+93705020 ori       r0, r0, 4
+93705024 stb       r0, 0(r8)
+93705028 b         0x93705040
+9370502c addi      r10, r10, 1
+93705030 addi      r7, r7, 0x38
+93705034 cmpw      cr7, r10, r18
+93705038 addi      r8, r8, 0x38
+9370503c blt       cr7, 0x93705000
+93705040 cmpw      cr7, r5, r18
+93705044 mr        r27, r5
+93705048 blt       cr7, 0x93704fcc
+9370504c stb       r4, 1(r16)
+93705050 stb       r18, 0(r16)
+93705054 cmpwi     cr7, r13, 0
+93705058 beq       cr7, 0x93705064
+9370505c mr        r3, r13
+93705060 bl        0x9370dea0
+93705064 cmpwi     cr7, r17, 0
+93705068 beq       cr7, 0x93705074
+9370506c mr        r3, r17
+93705070 bl        0x9370dea0
+93705074 cmpwi     cr7, r14, 0
+93705078 beq       cr7, 0x93705084
+9370507c mr        r3, r14
+93705080 bl        0x9370dea0
+93705084 lwz       r0, 0x1e0(r1)
+93705088 cmpwi     cr7, r0, 0
+9370508c beq       cr7, 0x93705098
+93705090 mr        r3, r0
+93705094 bl        0x9370dea0
+93705098 lwz       r2, 0x25c(r1)
+9370509c mr        r3, r21
+937050a0 stw       r16, 0(r2)
+937050a4 lwz       r9, 0x260(r1)
+937050a8 stw       r18, 0(r9)
+937050ac lwz       r0, 0x248(r1)
+937050b0 addi      r1, r1, 0x240
+937050b4 lwz       r11, 4(r1)
+937050b8 lmw       r13, -0x4c(r1)
+937050bc mtlr      r0
+937050c0 mtcrf     0x18, r11
+937050c4 blr       
+_CGLDescribePixelFormat [937082ec..9370874c]:
+937082ec stmw      r27, -0x14(r1)
+937082f0 or.       r30, r4, r4
+937082f4 mflr      r0
+937082f8 bdnzl     0x937082fc
+937082fc stw       r0, 8(r1)
+93708300 mflr      r31
+93708304 stwu      r1, -0x60(r1)
+93708308 mr        r29, r3
+9370830c mr        r28, r5
+93708310 mr        r27, r6
+93708314 blt       0x93708324
+93708318 lbz       r3, 0(r3)
+9370831c cmpw      cr7, r30, r3
+93708320 blt       cr7, 0x93708348
+93708324 addis     r2, r31, 0x1000
+93708328 lwz       r2, -0x51e0(r2)
+9370832c lbz       r0, 0(r2)
+93708330 cmpwi     cr7, r0, 0
+93708334 beq       cr7, 0x93708340
+93708338 li        r3, 0x2718
+9370833c bl        0x9370ddc0
+93708340 li        r3, 0x2718
+93708344 b         0x93708738
+93708348 cmplwi    cr7, r5, 0x80
+9370834c mulli     r2, r30, 0x38
+93708350 add       r2, r29, r2
+93708354 addi      r11, r2, 4
+93708358 bgt       cr7, 0x937086dc
+9370835c addis     r2, r31, 0
+93708360 slwi      r9, r5, 2
+93708364 addi      r2, r2, 0x7c
+93708368 lwzx      r0, r9, r2
+9370836c add       r0, r0, r2
+93708370 mtctr     r0
+93708374 bctr      
+93708378 .byte     0x00, 0x00, 0x03, 0x64
+9370837c .byte     0x00, 0x00, 0x03, 0x50
+93708380 .byte     0x00, 0x00, 0x03, 0x64
+93708384 .byte     0x00, 0x00, 0x03, 0x64
+93708388 .byte     0x00, 0x00, 0x03, 0x64
+9370838c .byte     0x00, 0x00, 0x02, 0x20
+93708390 .byte     0x00, 0x00, 0x02, 0x28
+93708394 .byte     0x00, 0x00, 0x02, 0x30
+93708398 .byte     0x00, 0x00, 0x02, 0x38
+9370839c .byte     0x00, 0x00, 0x03, 0x64
+937083a0 .byte     0x00, 0x00, 0x03, 0x64
+937083a4 .byte     0x00, 0x00, 0x02, 0x40
+937083a8 .byte     0x00, 0x00, 0x02, 0x4c
+937083ac .byte     0x00, 0x00, 0x02, 0x54
+937083b0 .byte     0x00, 0x00, 0x02, 0x60
+937083b4 .byte     0x00, 0x00, 0x03, 0x64
+937083b8 .byte     0x00, 0x00, 0x03, 0x64
+937083bc .byte     0x00, 0x00, 0x03, 0x64
+937083c0 .byte     0x00, 0x00, 0x03, 0x64
+937083c4 .byte     0x00, 0x00, 0x03, 0x64
+937083c8 .byte     0x00, 0x00, 0x03, 0x64
+937083cc .byte     0x00, 0x00, 0x03, 0x64
+937083d0 .byte     0x00, 0x00, 0x03, 0x64
+937083d4 .byte     0x00, 0x00, 0x03, 0x64
+937083d8 .byte     0x00, 0x00, 0x03, 0x64
+937083dc .byte     0x00, 0x00, 0x03, 0x64
+937083e0 .byte     0x00, 0x00, 0x03, 0x64
+937083e4 .byte     0x00, 0x00, 0x03, 0x64
+937083e8 .byte     0x00, 0x00, 0x03, 0x64
+937083ec .byte     0x00, 0x00, 0x03, 0x64
+937083f0 .byte     0x00, 0x00, 0x03, 0x64
+937083f4 .byte     0x00, 0x00, 0x03, 0x64
+937083f8 .byte     0x00, 0x00, 0x03, 0x64
+937083fc .byte     0x00, 0x00, 0x03, 0x64
+93708400 .byte     0x00, 0x00, 0x03, 0x64
+93708404 .byte     0x00, 0x00, 0x03, 0x64
+93708408 .byte     0x00, 0x00, 0x03, 0x64
+9370840c .byte     0x00, 0x00, 0x03, 0x64
+93708410 .byte     0x00, 0x00, 0x03, 0x64
+93708414 .byte     0x00, 0x00, 0x03, 0x64
+93708418 .byte     0x00, 0x00, 0x03, 0x64
+9370841c .byte     0x00, 0x00, 0x03, 0x64
+93708420 .byte     0x00, 0x00, 0x03, 0x64
+93708424 .byte     0x00, 0x00, 0x03, 0x64
+93708428 .byte     0x00, 0x00, 0x03, 0x64
+9370842c .byte     0x00, 0x00, 0x03, 0x64
+93708430 .byte     0x00, 0x00, 0x03, 0x64
+93708434 .byte     0x00, 0x00, 0x03, 0x64
+93708438 .byte     0x00, 0x00, 0x03, 0x64
+9370843c .byte     0x00, 0x00, 0x03, 0x64
+93708440 .byte     0x00, 0x00, 0x03, 0x64
+93708444 .byte     0x00, 0x00, 0x03, 0x50
+93708448 .byte     0x00, 0x00, 0x03, 0x50
+9370844c .byte     0x00, 0x00, 0x02, 0x6c
+93708450 .byte     0x00, 0x00, 0x02, 0x78
+93708454 .byte     0x00, 0x00, 0x02, 0x80
+93708458 .byte     0x00, 0x00, 0x02, 0x88
+9370845c .byte     0x00, 0x00, 0x02, 0xac
+93708460 .byte     0x00, 0x00, 0x02, 0xb8
+93708464 .byte     0x00, 0x00, 0x02, 0x90
+93708468 .byte     0x00, 0x00, 0x02, 0x9c
+9370846c .byte     0x00, 0x00, 0x02, 0xa4
+93708470 .byte     0x00, 0x00, 0x03, 0x64
+93708474 .byte     0x00, 0x00, 0x03, 0x64
+93708478 .byte     0x00, 0x00, 0x03, 0x64
+9370847c .byte     0x00, 0x00, 0x03, 0x64
+93708480 .byte     0x00, 0x00, 0x03, 0x64
+93708484 .byte     0x00, 0x00, 0x03, 0x64
+93708488 .byte     0x00, 0x00, 0x03, 0x64
+9370848c .byte     0x00, 0x00, 0x03, 0x64
+93708490 .byte     0x00, 0x00, 0x03, 0x2c
+93708494 .byte     0x00, 0x00, 0x02, 0x04
+93708498 .byte     0x00, 0x00, 0x02, 0x14
+9370849c .byte     0x00, 0x00, 0x02, 0xe4
+937084a0 .byte     0x00, 0x00, 0x03, 0x50
+937084a4 .byte     0x00, 0x00, 0x02, 0xfc
+937084a8 .byte     0x00, 0x00, 0x03, 0x08
+937084ac .byte     0x00, 0x00, 0x03, 0x64
+937084b0 .byte     0x00, 0x00, 0x03, 0x14
+937084b4 .byte     0x00, 0x00, 0x03, 0x64
+937084b8 .byte     0x00, 0x00, 0x02, 0xcc
+937084bc .byte     0x00, 0x00, 0x02, 0xd8
+937084c0 .byte     0x00, 0x00, 0x03, 0x64
+937084c4 .byte     0x00, 0x00, 0x03, 0x20
+937084c8 .byte     0x00, 0x00, 0x03, 0x58
+937084cc .byte     0x00, 0x00, 0x03, 0x64
+937084d0 .byte     0x00, 0x00, 0x03, 0x64
+937084d4 .byte     0x00, 0x00, 0x03, 0x64
+937084d8 .byte     0x00, 0x00, 0x03, 0x64
+937084dc .byte     0x00, 0x00, 0x03, 0x64
+937084e0 .byte     0x00, 0x00, 0x02, 0xf0
+937084e4 .byte     0x00, 0x00, 0x02, 0xf0
+937084e8 .byte     0x00, 0x00, 0x03, 0x64
+937084ec .byte     0x00, 0x00, 0x03, 0x64
+937084f0 .byte     0x00, 0x00, 0x03, 0x64
+937084f4 .byte     0x00, 0x00, 0x03, 0x64
+937084f8 .byte     0x00, 0x00, 0x03, 0x64
+937084fc .byte     0x00, 0x00, 0x03, 0x64
+93708500 .byte     0x00, 0x00, 0x03, 0x64
+93708504 .byte     0x00, 0x00, 0x03, 0x64
+93708508 .byte     0x00, 0x00, 0x03, 0x64
+9370850c .byte     0x00, 0x00, 0x03, 0x64
+93708510 .byte     0x00, 0x00, 0x03, 0x64
+93708514 .byte     0x00, 0x00, 0x03, 0x64
+93708518 .byte     0x00, 0x00, 0x03, 0x64
+9370851c .byte     0x00, 0x00, 0x03, 0x64
+93708520 .byte     0x00, 0x00, 0x03, 0x64
+93708524 .byte     0x00, 0x00, 0x03, 0x64
+93708528 .byte     0x00, 0x00, 0x03, 0x64
+9370852c .byte     0x00, 0x00, 0x03, 0x64
+93708530 .byte     0x00, 0x00, 0x03, 0x64
+93708534 .byte     0x00, 0x00, 0x03, 0x64
+93708538 .byte     0x00, 0x00, 0x03, 0x64
+9370853c .byte     0x00, 0x00, 0x03, 0x64
+93708540 .byte     0x00, 0x00, 0x03, 0x64
+93708544 .byte     0x00, 0x00, 0x03, 0x64
+93708548 .byte     0x00, 0x00, 0x03, 0x64
+9370854c .byte     0x00, 0x00, 0x03, 0x64
+93708550 .byte     0x00, 0x00, 0x03, 0x64
+93708554 .byte     0x00, 0x00, 0x03, 0x64
+93708558 .byte     0x00, 0x00, 0x03, 0x64
+9370855c .byte     0x00, 0x00, 0x03, 0x64
+93708560 .byte     0x00, 0x00, 0x03, 0x64
+93708564 .byte     0x00, 0x00, 0x03, 0x64
+93708568 .byte     0x00, 0x00, 0x03, 0x64
+9370856c .byte     0x00, 0x00, 0x03, 0x64
+93708570 .byte     0x00, 0x00, 0x03, 0x64
+93708574 .byte     0x00, 0x00, 0x03, 0x64
+93708578 .byte     0x00, 0x00, 0x03, 0x5c
+9370857c xori      r3, r3, 1
+93708580 subfic    r0, r3, 0
+93708584 adde      r3, r0, r3
+93708588 b         0x937086d4
+9370858c lbz       r0, 3(r29)
+93708590 xori      r0, r0, 1
+93708594 b         0x93708648
+93708598 lwz       r0, 0xc(r11)
+9370859c b         0x93708684
+937085a0 lwz       r0, 0xc(r11)
+937085a4 b         0x9370860c
+937085a8 lha       r3, 0x22(r11)
+937085ac b         0x937086d4
+937085b0 lwz       r3, 0x10(r11)
+937085b4 b         0x937085dc
+937085b8 lwz       r3, 0x10(r11)
+937085bc bl        0x9370ee80
+937085c0 b         0x937086d4
+937085c4 lwz       r3, 0x18(r11)
+937085c8 b         0x937085d0
+937085cc lwz       r3, 0x1c(r11)
+937085d0 bl        0x9370ee60
+937085d4 b         0x937086d4
+937085d8 lwz       r3, 0x14(r11)
+937085dc bl        0x9370eea0
+937085e0 b         0x937086d4
+937085e4 lwz       r0, 8(r11)
+937085e8 rlwinm    r3, r0, 0x1e, 0x1f, 0x1f
+937085ec b         0x937086d4
+937085f0 lwz       r0, 8(r11)
+937085f4 b         0x9370860c
+937085f8 lha       r3, 0x24(r11)
+937085fc b         0x937086d4
+93708600 lha       r3, 0x26(r11)
+93708604 b         0x937086d4
+93708608 lwz       r0, 0x28(r11)
+9370860c rlwinm    r3, r0, 0x1f, 0x1f, 0x1f
+93708610 b         0x937086d4
+93708614 lwz       r0, 0x28(r11)
+93708618 b         0x93708648
+9370861c lbz       r3, 0x2c(r11)
+93708620 b         0x937086d4
+93708624 lwz       r0, 8(r11)
+93708628 rlwinm    r3, r0, 0x15, 0x1f, 0x1f
+9370862c b         0x937086d4
+93708630 lwz       r0, 0x10(r11)
+93708634 rlwinm    r0, r0, 0, 2, 7
+93708638 neg       r0, r0
+9370863c srwi      r3, r0, 0x1f
+93708640 b         0x937086d4
+93708644 lwz       r0, 8(r11)
+93708648 clrlwi    r3, r0, 0x1f
+9370864c b         0x937086d4
+93708650 lwz       r0, 8(r11)
+93708654 rlwinm    r3, r0, 0x17, 0x1f, 0x1f
+93708658 b         0x937086d4
+9370865c lwz       r0, 8(r11)
+93708660 rlwinm    r3, r0, 0x18, 0x1f, 0x1f
+93708664 b         0x937086d4
+93708668 lwz       r0, 8(r11)
+9370866c rlwinm    r3, r0, 0x13, 0x1f, 0x1f
+93708670 b         0x937086d4
+93708674 lwz       r0, 8(r11)
+93708678 rlwinm    r3, r0, 0x1a, 0x1f, 0x1f
+9370867c b         0x937086d4
+93708680 lwz       r0, 8(r11)
+93708684 rlwinm    r3, r0, 0x1d, 0x1f, 0x1f
+93708688 b         0x937086d4
+9370868c lwz       r0, 8(r11)
+93708690 rlwinm    r3, r0, 0x1c, 0x1f, 0x1f
+93708694 b         0x937086d4
+93708698 lwz       r0, 8(r11)
+9370869c rlwinm    r3, r0, 0x16, 0x1f, 0x1f
+937086a0 b         0x937086d4
+937086a4 addis     r2, r31, 0x1000
+937086a8 lis       r3, 2
+937086ac lwz       r2, -0x51b0(r2)
+937086b0 ori       r3, r3, 0x1200
+937086b4 lbz       r0, 0(r2)
+937086b8 cmpwi     cr7, r0, 0
+937086bc bne       cr7, 0x93708700
+937086c0 lwz       r3, 4(r11)
+937086c4 b         0x937086d4
+937086c8 li        r3, 0
+937086cc b         0x93708700
+937086d0 lwz       r3, 0x30(r11)
+937086d4 cmpwi     cr7, r3, -1
+937086d8 bne       cr7, 0x93708700
+937086dc addis     r2, r31, 0x1000
+937086e0 lwz       r2, -0x51e0(r2)
+937086e4 lbz       r0, 0(r2)
+937086e8 cmpwi     cr7, r0, 0
+937086ec beq       cr7, 0x937086f8
+937086f0 li        r3, 0x2710
+937086f4 bl        0x9370ddc0
+937086f8 li        r3, 0x2710
+937086fc b         0x93708738
+93708700 addis     r2, r31, 0x1000
+93708704 stw       r3, 0(r27)
+93708708 lwz       r2, -0x51c0(r2)
+9370870c lwz       r2, 0(r2)
+93708710 cmpwi     cr7, r2, 0
+93708714 beq       cr7, 0x93708734
+93708718 lwz       r12, 8(r2)
+9370871c mr        r3, r29
+93708720 mr        r4, r30
+93708724 mr        r5, r28
+93708728 mr        r6, r27
+9370872c mtctr     r12
+93708730 bctrl     
+93708734 li        r3, 0
+93708738 lwz       r0, 0x68(r1)
+9370873c addi      r1, r1, 0x60
+93708740 lmw       r27, -0x14(r1)
+93708744 mtlr      r0
+93708748 blr       
+_cglSetAnyDrawable [93709540..93709678]:
+93709540 mflr      r0
+93709544 stmw      r25, -0x1c(r1)
+93709548 stw       r0, 8(r1)
+9370954c bdnzl     0x93709550
+93709550 stwu      r1, -0x60(r1)
+93709554 mr        r27, r5
+93709558 lwz       r30, 0xaac(r3)
+9370955c mflr      r31
+93709560 mr        r25, r3
+93709564 mr        r29, r4
+93709568 lwz       r0, 4(r30)
+9370956c mr        r3, r0
+93709570 addic     r2, r0, -1
+93709574 subfe     r28, r2, r0
+93709578 bl        0x93709678 <_cglReleaseDrawable>
+9370957c cmpwi     cr7, r27, 0
+93709580 stw       r29, 4(r30)
+93709584 addi      r28, r28, 1
+93709588 bne       cr7, 0x93709598
+9370958c mr        r3, r30
+93709590 bl        0x93709758 <_cglGetCoveringScreen>
+93709594 mr        r27, r3
+93709598 mr        r3, r25
+9370959c mr        r4, r27
+937095a0 bl        0x9370ede0
+937095a4 or.       r26, r3, r3
+937095a8 mr        r3, r28
+937095ac beq       0x93709664
+937095b0 cmpwi     cr7, r26, 0x2720
+937095b4 bne       cr7, 0x937095e0
+937095b8 lwz       r4, 0x50(r30)
+937095bc cmpwi     cr7, r4, 0
+937095c0 beq       cr7, 0x937095e0
+937095c4 cmpw      cr7, r27, r4
+937095c8 beq       cr7, 0x937095e0
+937095cc mr        r3, r25
+937095d0 bl        0x9370ede0
+937095d4 or.       r26, r3, r3
+937095d8 mr        r3, r28
+937095dc beq       0x93709664
+937095e0 addis     r2, r31, 0x1000
+937095e4 lwz       r2, -0x6434(r2)
+937095e8 lbz       r0, 0(r2)
+937095ec cmpwi     cr7, r0, 0
+937095f0 beq       cr7, 0x937095fc
+937095f4 mr        r3, r26
+937095f8 bl        0x9370ddc0
+937095fc lwz       r3, 4(r30)
+93709600 li        r28, 0
+93709604 bl        0x93709678 <_cglReleaseDrawable>
+93709608 lha       r0, 0x4e(r30)
+9370960c li        r2, 0
+93709610 cmpw      cr7, r28, r0
+93709614 stw       r2, 4(r30)
+93709618 bge       cr7, 0x93709660
+9370961c li        r29, 0
+93709620 lwz       r11, 0x48(r30)
+93709624 li        r4, 0
+93709628 li        r5, 0
+9370962c li        r6, 0
+93709630 add       r2, r29, r11
+93709634 lwzx      r3, r29, r11
+93709638 lwz       r9, 8(r2)
+9370963c li        r7, 0
+93709640 addi      r28, r28, 1
+93709644 addi      r29, r29, 0xab4
+93709648 lwz       r12, 0x1c(r9)
+9370964c mtctr     r12
+93709650 bctrl     
+93709654 lha       r0, 0x4e(r30)
+93709658 cmpw      cr7, r28, r0
+9370965c blt       cr7, 0x93709620
+93709660 mr        r3, r26
+93709664 lwz       r0, 0x68(r1)
+93709668 addi      r1, r1, 0x60
+9370966c lmw       r25, -0x1c(r1)
+93709670 mtlr      r0
+93709674 blr       
+_cglSetContextDefaults [93704318..937044a0]:
+93704318 cmpwi     cr7, r3, 0
+9370431c mflr      r0
+93704320 bdnzl     0x93704324
+93704324 lwz       r10, 0xaac(r3)
+93704328 mflr      r5
+9370432c mtlr      r0
+93704330 beqlr     cr7
+93704334 cmpwi     cr7, r10, 0
+93704338 beqlr     cr7
+9370433c lha       r0, 0x4c(r10)
+93704340 cmpwi     cr7, r0, 0
+93704344 beq       cr7, 0x93704354
+93704348 lwz       r0, 0x44(r10)
+9370434c cmpwi     cr7, r0, 0
+93704350 beqlr     cr7
+93704354 lha       r0, 0x4e(r10)
+93704358 cmpwi     cr7, r0, 0
+9370435c beq       cr7, 0x9370436c
+93704360 lwz       r0, 0x48(r10)
+93704364 cmpwi     cr7, r0, 0
+93704368 beqlr     cr7
+9370436c li        r0, 0
+93704370 addis     r2, r5, 0x1000
+93704374 stw       r0, 0(r3)
+93704378 li        r0, 0x2aa
+9370437c lwz       r9, -0x11dc(r2)
+93704380 mtctr     r0
+93704384 addi      r2, r3, 4
+93704388 stw       r9, 0(r2)
+9370438c addi      r2, r2, 4
+93704390 bdnz      0x93704388
+93704394 lha       r0, 0x4c(r10)
+93704398 li        r6, 0
+9370439c lwz       r11, 0x44(r10)
+937043a0 li        r2, -1
+937043a4 cmpw      cr7, r6, r0
+937043a8 lwz       r9, 0x48(r10)
+937043ac li        r0, 0
+937043b0 stw       r2, 0x60(r10)
+937043b4 stw       r9, 0x40(r10)
+937043b8 stb       r0, 0x5b(r10)
+937043bc stw       r0, 0(r10)
+937043c0 stw       r0, 4(r10)
+937043c4 stb       r0, 0x58(r10)
+937043c8 stb       r0, 0x59(r10)
+937043cc stw       r0, 0x50(r10)
+937043d0 stw       r0, 0x54(r10)
+937043d4 stb       r0, 0x5a(r10)
+937043d8 stw       r11, 0x3c(r10)
+937043dc stw       r0, 0x5c(r10)
+937043e0 bge       cr7, 0x93704424
+937043e4 li        r7, 0
+937043e8 li        r8, 0
+937043ec b         0x937043f4
+937043f0 lwz       r11, 0x44(r10)
+937043f4 stwx      r7, r8, r11
+937043f8 addi      r6, r6, 1
+937043fc lwz       r9, 0x44(r10)
+93704400 add       r9, r8, r9
+93704404 sth       r7, 4(r9)
+93704408 lwz       r2, 0x44(r10)
+9370440c add       r2, r8, r2
+93704410 addi      r8, r8, 0xc
+93704414 stw       r7, 8(r2)
+93704418 lha       r0, 0x4c(r10)
+9370441c cmpw      cr7, r6, r0
+93704420 blt       cr7, 0x937043f0
+93704424 lha       r0, 0x4e(r10)
+93704428 li        r6, 0
+9370442c cmpw      cr7, r6, r0
+93704430 bge       cr7, 0x93704494
+93704434 li        r7, 0
+93704438 li        r11, 1
+9370443c li        r8, 0
+93704440 lwz       r9, 0x48(r10)
+93704444 li        r0, 0x2aa
+93704448 mtctr     r0
+9370444c stwx      r7, r8, r9
+93704450 lwz       r2, 0x48(r10)
+93704454 add       r2, r8, r2
+93704458 sth       r7, 4(r2)
+9370445c lwz       r9, 0x48(r10)
+93704460 add       r9, r8, r9
+93704464 stw       r7, 8(r9)
+93704468 lwz       r2, 0x48(r10)
+9370446c add       r2, r2, r8
+93704470 addi      r2, r2, 0xc
+93704474 stw       r11, 0(r2)
+93704478 addi      r2, r2, 4
+9370447c bdnz      0x93704474
+93704480 lha       r0, 0x4e(r10)
+93704484 addi      r6, r6, 1
+93704488 addi      r8, r8, 0xab4
+9370448c cmpw      cr7, r6, r0
+93704490 blt       cr7, 0x93704440
+93704494 li        r0, 0
+93704498 stw       r0, 0xab0(r3)
+9370449c blr       

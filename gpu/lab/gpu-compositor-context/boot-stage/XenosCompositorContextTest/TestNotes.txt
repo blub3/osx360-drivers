@@ -1,0 +1,29 @@
+Xenos GLD compositor context diagnostic
+
+Boot profile gpucompositor
+XenonCoreGraphics 0.0.5d45 and XenonFramebufferTest 0.0.5d2
+Renderer 0x0002ea00
+
+RunXenosCompositorContext.sh uses a private CGL resource directory to
+verify two offscreen drawables. It checks two GPU fences against the
+test process PID and verifies both software OpenGL color readbacks.
+This test can run on gpuwsfbretry before the GLD is installed.
+
+RunXenosCompositorRepaint.sh --baseline creates and repaints two
+overlapping Tiger windows and queries Quartz Extreme before and after.
+The --repaint mode requires a cold boot into gpucompositor and the
+matching GLDriverXenosCompositor bundle in /System/Library/Extensions.
+While armed it checks for at least two fresh 1,024-pixel GPU completions
+from the actual WindowServer PID. Existing framebuffer-open GPU fences
+are excluded. At most eight offscreen jobs can run in the daemon per
+boot, separated by at least 180 ms.
+
+The stock Tiger software GLD draws the desktop. The test's GPU work is
+an offscreen probe triggered by a successful CGS-backed drawable
+attachment. Direct display drawables still depend on what the stock
+delegate accepts. Quartz Extreme reports the display's actual state
+independently of the probe.
+
+To roll back after a later activation, restore the previous kboot.conf
+and cold boot. This profile's staged configuration includes the
+gpuwsfbretry entry.

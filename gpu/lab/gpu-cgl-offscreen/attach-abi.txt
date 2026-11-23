@@ -1,0 +1,128 @@
+_cglSetContextScreen [9370984c..93709a48]:
+9370984c mflr      r0
+93709850 stmw      r26, -0x18(r1)
+93709854 stw       r0, 8(r1)
+93709858 mr        r27, r3
+9370985c stwu      r1, -0x70(r1)
+93709860 mr        r26, r4
+93709864 lwz       r28, 0xaac(r3)
+93709868 lwz       r30, 0(r4)
+9370986c lbz       r0, 0x58(r28)
+93709870 cmpwi     cr7, r0, 0
+93709874 bne       cr7, 0x93709888
+93709878 lwz       r0, 0x40(r28)
+9370987c cmpw      cr7, r30, r0
+93709880 beq       cr7, 0x9370995c
+93709884 b         0x9370988c
+93709888 lwz       r0, 0x40(r28)
+9370988c addi      r29, r27, 4
+93709890 mr        r30, r0
+93709894 lwz       r12, 0x1a0(r29)
+93709898 li        r4, 0xbb0
+9370989c lwz       r3, 0(r30)
+937098a0 addi      r5, r1, 0x40
+937098a4 mtctr     r12
+937098a8 bctrl     
+937098ac lwz       r0, 0x40(r1)
+937098b0 li        r3, 0x2717
+937098b4 cmpwi     cr7, r0, 0
+937098b8 bne       cr7, 0x93709a34
+937098bc lwz       r12, 0x1a0(r29)
+937098c0 li        r4, 0xba3
+937098c4 lwz       r3, 0(r30)
+937098c8 addi      r5, r1, 0x40
+937098cc mtctr     r12
+937098d0 bctrl     
+937098d4 lwz       r0, 0x40(r1)
+937098d8 li        r3, 0x2717
+937098dc cmpwi     cr7, r0, 1
+937098e0 bne       cr7, 0x93709a34
+937098e4 lwz       r12, 0x1a0(r29)
+937098e8 li        r4, 0xba4
+937098ec lwz       r3, 0(r30)
+937098f0 addi      r5, r1, 0x40
+937098f4 mtctr     r12
+937098f8 bctrl     
+937098fc lwz       r0, 0x40(r1)
+93709900 li        r3, 0x2717
+93709904 cmpwi     cr7, r0, 1
+93709908 bne       cr7, 0x93709a34
+9370990c lwz       r12, 0x1a0(r29)
+93709910 li        r4, 0xba5
+93709914 lwz       r3, 0(r30)
+93709918 addi      r5, r1, 0x40
+9370991c mtctr     r12
+93709920 bctrl     
+93709924 lwz       r0, 0x40(r1)
+93709928 li        r3, 0x2717
+9370992c cmpwi     cr7, r0, 1
+93709930 bne       cr7, 0x93709a34
+93709934 lwz       r12, 0x1a0(r29)
+93709938 li        r4, 0xc40
+9370993c lwz       r3, 0(r30)
+93709940 addi      r5, r1, 0x40
+93709944 mtctr     r12
+93709948 bctrl     
+9370994c lwz       r0, 0x40(r1)
+93709950 li        r3, 0x2717
+93709954 cmpwi     cr7, r0, 0x1c00
+93709958 bne       cr7, 0x93709a34
+9370995c lwz       r0, 0x3c(r28)
+93709960 cmpw      cr7, r0, r26
+93709964 beq       cr7, 0x937099f4
+93709968 lwz       r29, 0x40(r28)
+9370996c stw       r26, 0x3c(r28)
+93709970 cmpw      cr7, r29, r30
+93709974 beq       cr7, 0x937099d0
+93709978 mr        r3, r27
+9370997c bl        0x9370e9a0
+93709980 stw       r30, 0x40(r28)
+93709984 lwz       r0, 0(r30)
+93709988 mr        r3, r27
+9370998c stw       r0, 0(r27)
+93709990 bl        0x9370e9e0
+93709994 lis       r5, 0xf
+93709998 mr        r3, r29
+9370999c mr        r4, r30
+937099a0 ori       r5, r5, 0xffff
+937099a4 bl        0x9370e980
+937099a8 or.       r3, r3, r3
+937099ac bne       0x93709a34
+937099b0 mr        r3, r29
+937099b4 mr        r4, r30
+937099b8 bl        0x9370c708 <_cglCopyRendererMatrices>
+937099bc mr        r3, r29
+937099c0 mr        r4, r30
+937099c4 bl        0x9370c82c <_cglCopyRendererMaps>
+937099c8 or.       r3, r3, r3
+937099cc bne       0x93709a34
+937099d0 lwz       r2, 8(r30)
+937099d4 li        r4, 0
+937099d8 lwz       r3, 0(r30)
+937099dc li        r5, 0
+937099e0 lwz       r12, 0x1c(r2)
+937099e4 li        r7, 0
+937099e8 lha       r6, 4(r26)
+937099ec mtctr     r12
+937099f0 bctrl     
+937099f4 lwz       r9, 4(r28)
+937099f8 li        r3, 0
+937099fc cmpwi     cr7, r9, 0
+93709a00 beq       cr7, 0x93709a34
+93709a04 lwz       r2, 8(r30)
+93709a08 lwz       r7, 8(r28)
+93709a0c lwz       r0, 0xc(r28)
+93709a10 lwz       r12, 0x1c(r2)
+93709a14 slwi      r7, r7, 8
+93709a18 or        r7, r7, r0
+93709a1c lwz       r3, 0(r30)
+93709a20 lwz       r5, 0xc(r9)
+93709a24 mtctr     r12
+93709a28 lha       r6, 4(r26)
+93709a2c lwz       r4, 8(r9)
+93709a30 bctrl     
+93709a34 lwz       r0, 0x78(r1)
+93709a38 addi      r1, r1, 0x70
+93709a3c lmw       r26, -0x18(r1)
+93709a40 mtlr      r0
+93709a44 blr       

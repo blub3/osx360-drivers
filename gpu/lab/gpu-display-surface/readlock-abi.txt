@@ -1,0 +1,246 @@
+__ZN25XenosDisplaySurfaceClient12lockReadbackEP8OSObjectPvS2_S2_S2_ [0001a688..0001aa5c]:
+0001a688 mflr      r0
+0001a68c stmw      r30, -8(r1)
+0001a690 stw       r0, 8(r1)
+0001a694 stwu      r1, -0x480(r1)
+0001a698 mr        r30, r1
+0001a69c stw       r3, 0x498(r30)
+0001a6a0 stw       r4, 0x49c(r30)
+0001a6a4 stw       r5, 0x4a0(r30)
+0001a6a8 stw       r6, 0x4a4(r30)
+0001a6ac stw       r7, 0x4a8(r30)
+0001a6b0 lwz       r0, 0x49c(r30)
+0001a6b4 stw       r0, 0x50(r30)
+0001a6b8 lwz       r0, 0x50(r30)
+0001a6bc mr        r3, r0
+0001a6c0 bl        0x1aa4c
+0001a6c4 mr        r0, r3
+0001a6c8 cmpwi     cr7, r0, 0
+0001a6cc bne       cr7, 0x1a6e4
+0001a6d0 lwz       r2, 0x50(r30)
+0001a6d4 lwz       r0, 0xb4(r2)
+0001a6d8 xori      r0, r0, 1
+0001a6dc cmpwi     cr7, r0, 0
+0001a6e0 beq       cr7, 0x1a6f0
+0001a6e4 li        r0, 1
+0001a6e8 stw       r0, 0x46c(r30)
+0001a6ec b         0x1a6f8
+0001a6f0 li        r0, 0
+0001a6f4 stw       r0, 0x46c(r30)
+0001a6f8 lwz       r0, 0x46c(r30)
+0001a6fc cmpwi     cr7, r0, 0
+0001a700 beq       cr7, 0x1a71c
+0001a704 lis       r0, -0x2000
+0001a708 stw       r0, 0x468(r30)
+0001a70c lwz       r0, 0x468(r30)
+0001a710 ori       r0, r0, 0x2d8
+0001a714 stw       r0, 0x468(r30)
+0001a718 b         0x1a9f0
+0001a71c lwz       r2, 0x50(r30)
+0001a720 lwz       r0, 0xc4(r2)
+0001a724 cmpwi     cr7, r0, 0
+0001a728 beq       cr7, 0x1a744
+0001a72c lis       r0, -0x2000
+0001a730 stw       r0, 0x468(r30)
+0001a734 lwz       r0, 0x468(r30)
+0001a738 ori       r0, r0, 0x2d5
+0001a73c stw       r0, 0x468(r30)
+0001a740 b         0x1a9f0
+0001a744 lis       r3, 1
+0001a748 li        r4, 0x1000
+0001a74c li        r5, 0x1000
+0001a750 bl        0x1aa3c
+0001a754 mr        r0, r3
+0001a758 stw       r0, 0x4c(r30)
+0001a75c lwz       r0, 0x4c(r30)
+0001a760 cmpwi     cr7, r0, 0
+0001a764 bne       cr7, 0x1a780
+0001a768 lis       r0, -0x2000
+0001a76c stw       r0, 0x468(r30)
+0001a770 lwz       r0, 0x468(r30)
+0001a774 ori       r0, r0, 0x2bd
+0001a778 stw       r0, 0x468(r30)
+0001a77c b         0x1a9f0
+0001a780 lwz       r2, 0x4c(r30)
+0001a784 lwz       r2, 0(r2)
+0001a788 addi      r2, r2, 0x1cc
+0001a78c lwz       r0, 0(r2)
+0001a790 lwz       r3, 0x4c(r30)
+0001a794 mr        r12, r0
+0001a798 mtctr     r12
+0001a79c bctrl     
+0001a7a0 mr        r0, r3
+0001a7a4 stw       r0, 0x48(r30)
+0001a7a8 lwz       r0, 0x48(r30)
+0001a7ac cmpwi     cr7, r0, 0
+0001a7b0 bne       cr7, 0x1a7f0
+0001a7b4 lwz       r2, 0x4c(r30)
+0001a7b8 lwz       r2, 0(r2)
+0001a7bc addi      r2, r2, 0x18
+0001a7c0 lwz       r2, 0(r2)
+0001a7c4 lwz       r0, 0x4c(r30)
+0001a7c8 mr        r3, r0
+0001a7cc mr        r12, r2
+0001a7d0 mtctr     r12
+0001a7d4 bctrl     
+0001a7d8 lis       r0, -0x2000
+0001a7dc stw       r0, 0x468(r30)
+0001a7e0 lwz       r0, 0x468(r30)
+0001a7e4 ori       r0, r0, 0x2bd
+0001a7e8 stw       r0, 0x468(r30)
+0001a7ec b         0x1a9f0
+0001a7f0 li        r0, 0
+0001a7f4 stw       r0, 0x3c(r30)
+0001a7f8 b         0x1a8cc
+0001a7fc li        r0, 0
+0001a800 stw       r0, 0x54(r30)
+0001a804 li        r0, 0
+0001a808 stw       r0, 0x58(r30)
+0001a80c li        r0, 0
+0001a810 stw       r0, 0x5c(r30)
+0001a814 lwz       r2, 0x50(r30)
+0001a818 lwz       r0, 0xac(r2)
+0001a81c stw       r0, 0x54(r30)
+0001a820 lwz       r2, 0x50(r30)
+0001a824 lwz       r0, 0xb0(r2)
+0001a828 stw       r0, 0x58(r30)
+0001a82c lwz       r0, 0x3c(r30)
+0001a830 stw       r0, 0x5c(r30)
+0001a834 addi      r0, r30, 0x54
+0001a838 addi      r2, r30, 0x60
+0001a83c lwz       r3, 0x498(r30)
+0001a840 lwz       r4, 0x50(r30)
+0001a844 mr        r5, r0
+0001a848 mr        r6, r2
+0001a84c li        r7, 0
+0001a850 bl        0x1aa2c
+0001a854 mr        r0, r3
+0001a858 stw       r0, 0x38(r30)
+0001a85c lwz       r0, 0x38(r30)
+0001a860 cmpwi     cr7, r0, 0
+0001a864 beq       cr7, 0x1a898
+0001a868 lwz       r2, 0x4c(r30)
+0001a86c lwz       r2, 0(r2)
+0001a870 addi      r2, r2, 0x18
+0001a874 lwz       r2, 0(r2)
+0001a878 lwz       r0, 0x4c(r30)
+0001a87c mr        r3, r0
+0001a880 mr        r12, r2
+0001a884 mtctr     r12
+0001a888 bctrl     
+0001a88c lwz       r0, 0x38(r30)
+0001a890 stw       r0, 0x468(r30)
+0001a894 b         0x1a9f0
+0001a898 lwz       r0, 0x3c(r30)
+0001a89c slwi      r0, r0, 7
+0001a8a0 mr        r2, r0
+0001a8a4 lwz       r0, 0x48(r30)
+0001a8a8 add       r0, r2, r0
+0001a8ac addi      r2, r30, 0x60
+0001a8b0 mr        r3, r0
+0001a8b4 mr        r4, r2
+0001a8b8 li        r5, 0x400
+0001a8bc bl        0x1aa1c
+0001a8c0 lwz       r2, 0x3c(r30)
+0001a8c4 addi      r0, r2, 8
+0001a8c8 stw       r0, 0x3c(r30)
+0001a8cc lwz       r0, 0x3c(r30)
+0001a8d0 cmplwi    cr7, r0, 0x1f
+0001a8d4 ble       cr7, 0x1a7fc
+0001a8d8 lwz       r2, 0x4c(r30)
+0001a8dc lwz       r2, 0(r2)
+0001a8e0 addi      r2, r2, 0x14c
+0001a8e4 lwz       r11, 0(r2)
+0001a8e8 lwz       r9, 0x4c(r30)
+0001a8ec lwz       r2, 0x50(r30)
+0001a8f0 lwz       r0, 0xb8(r2)
+0001a8f4 mr        r3, r9
+0001a8f8 mr        r4, r0
+0001a8fc li        r5, 0
+0001a900 li        r6, 0x1001
+0001a904 li        r7, 0
+0001a908 li        r8, 0x1000
+0001a90c mr        r12, r11
+0001a910 mtctr     r12
+0001a914 bctrl     
+0001a918 mr        r0, r3
+0001a91c stw       r0, 0x44(r30)
+0001a920 lwz       r2, 0x4c(r30)
+0001a924 lwz       r2, 0(r2)
+0001a928 addi      r2, r2, 0x18
+0001a92c lwz       r2, 0(r2)
+0001a930 lwz       r0, 0x4c(r30)
+0001a934 mr        r3, r0
+0001a938 mr        r12, r2
+0001a93c mtctr     r12
+0001a940 bctrl     
+0001a944 lwz       r0, 0x44(r30)
+0001a948 cmpwi     cr7, r0, 0
+0001a94c bne       cr7, 0x1a968
+0001a950 lis       r0, -0x2000
+0001a954 stw       r0, 0x468(r30)
+0001a958 lwz       r0, 0x468(r30)
+0001a95c ori       r0, r0, 0x2bd
+0001a960 stw       r0, 0x468(r30)
+0001a964 b         0x1a9f0
+0001a968 lwz       r2, 0x50(r30)
+0001a96c lwz       r0, 0x44(r30)
+0001a970 stw       r0, 0xc4(r2)
+0001a974 lwz       r0, 0x4a0(r30)
+0001a978 stw       r0, 0x40(r30)
+0001a97c lwz       r3, 0x40(r30)
+0001a980 li        r4, 0x44
+0001a984 bl        0x1aa0c
+0001a988 lwz       r2, 0x44(r30)
+0001a98c lwz       r2, 0(r2)
+0001a990 addi      r2, r2, 0xd0
+0001a994 lwz       r0, 0(r2)
+0001a998 lwz       r3, 0x44(r30)
+0001a99c mr        r12, r0
+0001a9a0 mtctr     r12
+0001a9a4 bctrl     
+0001a9a8 mr        r0, r3
+0001a9ac lwz       r2, 0x40(r30)
+0001a9b0 stw       r0, 0(r2)
+0001a9b4 lwz       r2, 0x40(r30)
+0001a9b8 li        r0, 0x80
+0001a9bc stw       r0, 0x10(r2)
+0001a9c0 lwz       r2, 0x40(r30)
+0001a9c4 li        r0, 0x20
+0001a9c8 stw       r0, 0x18(r2)
+0001a9cc lwz       r2, 0x40(r30)
+0001a9d0 lwz       r0, 0x18(r2)
+0001a9d4 lwz       r2, 0x40(r30)
+0001a9d8 stw       r0, 0x14(r2)
+0001a9dc lwz       r2, 0x40(r30)
+0001a9e0 li        r0, 0x20
+0001a9e4 stw       r0, 0x1c(r2)
+0001a9e8 li        r0, 0
+0001a9ec stw       r0, 0x468(r30)
+0001a9f0 lwz       r0, 0x468(r30)
+0001a9f4 mr        r3, r0
+0001a9f8 lwz       r1, 0(r1)
+0001a9fc lwz       r0, 8(r1)
+0001aa00 mtlr      r0
+0001aa04 lmw       r30, -8(r1)
+0001aa08 blr       
+0001aa0c lis       r12, 0
+0001aa10 ori       r12, r12, 0
+0001aa14 mtctr     r12
+0001aa18 bctr      
+0001aa1c lis       r12, 0
+0001aa20 ori       r12, r12, 0
+0001aa24 mtctr     r12
+0001aa28 bctr      
+0001aa2c lis       r12, 0
+0001aa30 ori       r12, r12, 0x6968
+0001aa34 mtctr     r12
+0001aa38 bctr      
+0001aa3c lis       r12, 0
+0001aa40 ori       r12, r12, 0
+0001aa44 mtctr     r12
+0001aa48 bctr      
+0001aa4c lis       r12, 0
+0001aa50 ori       r12, r12, 0
+0001aa54 mtctr     r12
+0001aa58 bctr      

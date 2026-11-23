@@ -11,6 +11,7 @@ class XenosController;
 class XenosQuadClient : public IOUserClient {
   OSDeclareDefaultStructors(XenosQuadClient);
   friend class XenosController;
+  friend class XenosDisplaySurfaceClient;
 
 public:
   bool initWithTask(task_t task, void *securityToken, UInt32 type, OSDictionary *properties);
@@ -28,6 +29,8 @@ private:
   IOReturn status(void *ticket, void *state, void *fence, void *checked, void *mismatches, void *);
   IOReturn upload(void *rgb, void *ticket, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadGeometry(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
+  IOReturn uploadCapture(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
+  IOReturn readCapture(void *input, void *output, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadRotated(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadBatch(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
   IOReturn uploadBlendedBatch(void *input, void *ticket, void *inputSize, void *outputSize, void *, void *);
@@ -56,8 +59,11 @@ private:
   IOReturn readStatus(void *ticket, UInt32 *result);
 
   // The controller's command gate serializes updates and status reads.
+  UInt32 _ownerPID;
   UInt32 _ticket;
   UInt32 _result[kXenosQuadUploadResultWords];
+  UInt32 *_quadCapturePixels;
+  bool _captureQuad;
   IOBufferMemoryDescriptor *_surface;
   IOBufferMemoryDescriptor *_surfacePixels;
   IOBufferMemoryDescriptor *_drawableView;

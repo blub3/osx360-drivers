@@ -1,0 +1,189 @@
+_CGXDisplayDeviceSupportsTransitionEffects [906a4a88..906a4af4]:
+906a4a88 mflr      r0
+906a4a8c bdnzl     0x906a4a90
+906a4a90 stmw      r30, -8(r1)
+906a4a94 stw       r0, 8(r1)
+906a4a98 mflr      r31
+906a4a9c stwu      r1, -0x60(r1)
+906a4aa0 mr        r30, r3
+906a4aa4 bl        0x90374694 <_CGXCoreGraphicsConfiguration>
+906a4aa8 addis     r4, r31, 0xfcf
+906a4aac addi      r4, r4, -0x5db4
+906a4ab0 bl        0x9037d05c <_CGXGetCFDictIntValueForKey>
+906a4ab4 or.       r9, r3, r3
+906a4ab8 bne       0x906a4ac0
+906a4abc li        r9, 0x20
+906a4ac0 lwz       r2, 8(r30)
+906a4ac4 addi      r3, r1, 0x40
+906a4ac8 lwz       r0, 0x1c(r2)
+906a4acc stw       r0, 0x40(r1)
+906a4ad0 lwz       r0, 0x68(r1)
+906a4ad4 lwbrx     r3, 0, r3
+906a4ad8 addi      r1, r1, 0x60
+906a4adc subfc     r3, r9, r3
+906a4ae0 li        r3, 0
+906a4ae4 adde      r3, r3, r3
+906a4ae8 mtlr      r0
+906a4aec lmw       r30, -8(r1)
+906a4af0 blr       
+__CGXNewTransition [906a0d70..906a0e60]:
+906a0d70 stmw      r26, -0x18(r1)
+906a0d74 or.       r30, r6, r6
+906a0d78 mflr      r0
+906a0d7c bdnzl     0x906a0d80
+906a0d80 stw       r0, 8(r1)
+906a0d84 li        r0, 0
+906a0d88 stwu      r1, -0x80(r1)
+906a0d8c mflr      r31
+906a0d90 mr        r26, r10
+906a0d94 stw       r0, 0(r10)
+906a0d98 stfs      f1, 0x40(r1)
+906a0d9c mr        r28, r4
+906a0da0 stfs      f2, 0x44(r1)
+906a0da4 mr        r27, r5
+906a0da8 stfs      f3, 0x48(r1)
+906a0dac mr        r29, r3
+906a0db0 beq       0x906a0dd0
+906a0db4 addis     r5, r31, 6
+906a0db8 mr        r4, r30
+906a0dbc addi      r5, r5, 0x1644
+906a0dc0 li        r6, 1
+906a0dc4 bl        0x903ba204 <_CGXCheckWindowOwnership>
+906a0dc8 or.       r3, r3, r3
+906a0dcc bne       0x906a0e4c
+906a0dd0 mr        r3, r29
+906a0dd4 mr        r4, r28
+906a0dd8 mr        r5, r27
+906a0ddc mr        r6, r30
+906a0de0 li        r7, 0
+906a0de4 addi      r8, r1, 0x40
+906a0de8 addi      r9, r1, 0x50
+906a0dec bl        0x906a0274 <_CGXNewTransition>
+906a0df0 or.       r3, r3, r3
+906a0df4 bne       0x906a0e4c
+906a0df8 lwz       r0, 0x50(r1)
+906a0dfc cmpwi     cr7, r0, 0
+906a0e00 beq       cr7, 0x906a0e4c
+906a0e04 mr        r3, r0
+906a0e08 bl        0x906a0848 <_CGXMarkTransitionStart>
+906a0e0c or.       r3, r3, r3
+906a0e10 bne       0x906a0e4c
+906a0e14 bl        0x90379cc8 <_CGXCurrentRealTime>
+906a0e18 addis     r2, r31, 7
+906a0e1c lfd       f0, -0x1048(r2)
+906a0e20 addis     r3, r31, 0xfcd
+906a0e24 lwz       r4, 0x50(r1)
+906a0e28 li        r7, 0
+906a0e2c fadd      f1, f1, f0
+906a0e30 lwz       r3, 0x3398(r3)
+906a0e34 lwz       r8, 0x10(r4)
+906a0e38 bl        0x90379cf4 <_CGXScheduleCallbackOnThreadAndSession>
+906a0e3c lwz       r2, 0x50(r1)
+906a0e40 li        r3, 0
+906a0e44 lwz       r0, 4(r2)
+906a0e48 stw       r0, 0(r26)
+906a0e4c lwz       r0, 0x88(r1)
+906a0e50 addi      r1, r1, 0x80
+906a0e54 lmw       r26, -0x18(r1)
+906a0e58 mtlr      r0
+906a0e5c blr       
+__CGSNewTransition [90678940..90678acc]:
+90678940 mflr      r0
+90678944 bdnzl     0x90678948
+90678948 stmw      r27, -0x14(r1)
+9067894c mflr      r31
+90678950 addis     r2, r31, 0xfd0
+90678954 stw       r0, 8(r1)
+90678958 lwz       r28, -0x41c4(r2)
+9067895c li        r0, 0x1513
+90678960 stwu      r1, -0xa0(r1)
+90678964 mr        r27, r10
+90678968 addi      r2, r1, 0x58
+9067896c addi      r29, r1, 0x40
+90678970 lswi      r11, r28, 8
+90678974 stswi     r11, r2, 8
+90678978 stw       r4, 0x60(r1)
+9067897c stw       r5, 0x64(r1)
+90678980 stw       r6, 0x68(r1)
+90678984 stfs      f1, 0x6c(r1)
+90678988 stfs      f2, 0x70(r1)
+9067898c stfs      f3, 0x74(r1)
+90678990 stw       r0, 0x40(r1)
+90678994 stw       r3, 0x48(r1)
+90678998 bl        0x906d7a20
+9067899c mr        r2, r3
+906789a0 mr        r7, r3
+906789a4 li        r0, 0x7322
+906789a8 mr        r3, r29
+906789ac li        r4, 3
+906789b0 li        r5, 0x38
+906789b4 li        r6, 0x30
+906789b8 li        r8, 0
+906789bc li        r9, 0
+906789c0 stw       r0, 0x54(r1)
+906789c4 stw       r2, 0x4c(r1)
+906789c8 bl        0x906d72a0
+906789cc or.       r30, r3, r3
+906789d0 beq       0x90678a30
+906789d4 lis       r0, 0x1000
+906789d8 ori       r0, r0, 0x4002
+906789dc cmpw      cr7, r30, r0
+906789e0 beq       cr7, 0x90678a14
+906789e4 bgt       cr7, 0x906789f4
+906789e8 lis       r0, 0x1000
+906789ec ori       r0, r0, 9
+906789f0 b         0x90678a0c
+906789f4 lis       r0, 0x1000
+906789f8 ori       r0, r0, 0x4006
+906789fc cmpw      cr7, r30, r0
+90678a00 beq       cr7, 0x90678a14
+90678a04 lis       r0, 0x1000
+90678a08 ori       r0, r0, 0x4009
+90678a0c cmpw      cr7, r30, r0
+90678a10 bne       cr7, 0x90678a20
+90678a14 lwz       r3, 0xc(r29)
+90678a18 bl        0x906d7a00
+90678a1c b         0x90678a28
+90678a20 lwz       r3, 0xc(r29)
+90678a24 bl        0x906d79e0
+90678a28 mr        r3, r30
+90678a2c b         0x90678ab8
+90678a30 lwz       r0, 0x54(r1)
+90678a34 cmpwi     cr7, r0, 0x7386
+90678a38 beq       cr7, 0x90678a50
+90678a3c cmpwi     cr7, r0, 0x47
+90678a40 li        r3, -0x134
+90678a44 beq       cr7, 0x90678ab8
+90678a48 li        r3, -0x12d
+90678a4c b         0x90678ab8
+90678a50 lwz       r0, 0x60(r1)
+90678a54 lbz       r9, 4(r28)
+90678a58 cmpwi     cr7, r0, 0
+90678a5c lbz       r2, 0x5c(r1)
+90678a60 beq       cr7, 0x90678a80
+90678a64 cmpw      cr7, r2, r9
+90678a68 beq       cr7, 0x90678a78
+90678a6c addi      r2, r1, 0x60
+90678a70 lwbrx     r2, r2, r30
+90678a74 stw       r2, 0x60(r1)
+90678a78 lwz       r3, 0x60(r1)
+90678a7c b         0x90678aa4
+90678a80 cmpw      cr7, r2, r9
+90678a84 beq       cr7, 0x90678aa0
+90678a88 addi      r2, r1, 0x60
+90678a8c lwbrx     r2, r2, r0
+90678a90 stw       r2, 0x60(r1)
+90678a94 addi      r2, r1, 0x64
+90678a98 lwbrx     r2, r2, r0
+90678a9c stw       r2, 0x64(r1)
+90678aa0 li        r3, 0
+90678aa4 cmpwi     cr7, r3, 0
+90678aa8 bne       cr7, 0x90678ab8
+90678aac lwz       r0, 0x24(r29)
+90678ab0 li        r3, 0
+90678ab4 stw       r0, 0(r27)
+90678ab8 lwz       r0, 0xa8(r1)
+90678abc addi      r1, r1, 0xa0
+90678ac0 lmw       r27, -0x14(r1)
+90678ac4 mtlr      r0
+90678ac8 blr       

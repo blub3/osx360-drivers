@@ -50,6 +50,7 @@ class XenosQuadClient;
 
 class XenosController : public IOService {
   friend class XenosQuadClient;
+  friend class XenosDisplaySurfaceClient;
   OSDeclareDefaultStructors(XenosController);
   XenonDeclareLogFunctions("xenosctrl");
   typedef IOService super;
@@ -57,6 +58,9 @@ class XenosController : public IOService {
 public:
   // IOService overrides.
   bool start(IOService *provider);
+  using IOService::callPlatformFunction;
+  IOReturn callPlatformFunction(const OSSymbol *function, bool wait, void *task,
+                                void *framebuffer, void *p3, void *p4);
 
 private:
   // MMIO and framebuffer.
@@ -85,6 +89,9 @@ private:
   IOBufferMemoryDescriptor   *_quadScratch;
   UInt32                     _quadTicket;
   UInt32                     _nextQuadTicket;
+  UInt32                     _gpuCompletionSequence;
+  XenosWindowServerStartupTrace _windowServerStartupTrace;
+  XenosQuadClient             *_framebufferProbe;
   enum { kSurfaceQueueCapacity = 4, kSurfaceQueueHistory = 16 };
   struct SurfaceQueueEntry {
     XenosQuadClient *client;
@@ -214,10 +221,14 @@ private:
 
   // Internal functions.
   void handleTimer(IOTimerEventSource *sender);
+  static IOReturn queueFramebufferProbe(OSObject *, void *, void *, void *, void *);
+  void stepFramebufferProbe();
   void runMarkerTest();
   void drawResolveRectangle();
   static IOReturn queueQuad(OSObject *owner, void *client, void *rgb, void *output, void *texture);
   static IOReturn queueQuadGeometry(OSObject *owner, void *client, void *input, void *output, void *);
+  static IOReturn queueQuadCapture(OSObject *owner, void *client, void *input, void *output, void *);
+  static IOReturn readQuadCapture(OSObject *owner, void *client, void *input, void *output, void *);
   static IOReturn queueQuadRotated(OSObject *owner, void *client, void *input, void *output, void *);
   static IOReturn queueQuadBatch(OSObject *owner, void *client, void *input, void *output, void *);
   static IOReturn queueQuadBlendedBatch(OSObject *owner, void *client, void *input, void *output, void *);

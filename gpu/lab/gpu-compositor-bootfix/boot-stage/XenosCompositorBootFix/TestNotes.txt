@@ -1,0 +1,25 @@
+Xenos compositor boot fix
+
+The gpucompbootfix profile is staged as
+kboot-gpu-compositor-bootfix.conf. It uses CMPFIX.ELF and XWCF.MKE.
+Those names fit FAT 8.3. The compact configuration puts the new
+profile first and retains all 47 earlier boot entries. The active
+kboot.conf is still gpucompositor.
+
+The OpenBIOS image uses the working gpucompositor firmware with
+the mkext path changed. The new archive has the working archive's
+exact length and payload offsets. Only the two GLD selection plists
+and the archive checksum differ. Tiger unpacked all nine kexts and
+matched their executable bytes to the working archive. Both graphics
+kexts passed Tiger's offline linker.
+
+The photo from the failed boot shows corrupted video after XeLL.
+That attempt left no Tiger boot or WindowServer record. These
+observations narrow the affected interval to the loader handoff
+or early startup. They do not establish the first failing component.
+
+After a separate cold boot, first confirm OSX360BOOT, WindowServer
+and SSH are available and IOGLBundleName is GLDriverXenosCompositorRetry.
+Run XenosCompositorRetryTest/RunXenosTransitionProbe.sh only after
+confirming a stable Tiger desktop. Use the existing repaint baseline
+to query Quartz Extreme. The installed retry GLD is reused.

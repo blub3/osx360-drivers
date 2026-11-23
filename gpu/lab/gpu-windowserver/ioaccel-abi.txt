@@ -1,0 +1,199 @@
+_IOAccelFindAccelerator [90afcadc..90afcc78]:
+90afcadc mflr      r0
+90afcae0 stmw      r26, -0x18(r1)
+90afcae4 bdnzl     0x90afcae8
+90afcae8 mr        r29, r3
+90afcaec mr        r28, r4
+90afcaf0 li        r3, 0
+90afcaf4 mflr      r31
+90afcaf8 mr        r27, r5
+90afcafc stw       r0, 8(r1)
+90afcb00 li        r0, 0
+90afcb04 stwu      r1, -0x70(r1)
+90afcb08 stw       r0, 0(r4)
+90afcb0c stw       r0, 0(r5)
+90afcb10 addi      r4, r1, 0x38
+90afcb14 stw       r0, 0x3c(r1)
+90afcb18 bl        0x90aed774 <_IOMasterPort>
+90afcb1c addis     r2, r31, 0xfff
+90afcb20 mr        r3, r29
+90afcb24 lwz       r2, -0x1cd4(r2)
+90afcb28 addi      r4, r1, 0x3c
+90afcb2c li        r6, 0
+90afcb30 lwz       r5, 0(r2)
+90afcb34 bl        0x90aee318 <_IORegistryEntryCreateCFProperties>
+90afcb38 or.       r29, r3, r3
+90afcb3c bne       0x90afcc48
+90afcb40 lwz       r3, 0x3c(r1)
+90afcb44 addis     r4, r31, 0xfff
+90afcb48 addi      r4, r4, -0x1110
+90afcb4c bl        0x90b4a900
+90afcb50 or.       r30, r3, r3
+90afcb54 beq       0x90afcc40
+90afcb58 li        r4, 0
+90afcb5c bl        0x90b4abe0
+90afcb60 or.       r4, r3, r3
+90afcb64 beq       0x90afcb70
+90afcb68 li        r26, 0
+90afcb6c b         0x90afcbbc
+90afcb70 mr        r3, r30
+90afcb74 bl        0x90b4ad60
+90afcb78 addi      r29, r3, 1
+90afcb7c mr        r3, r29
+90afcb80 bl        0x90b4a580
+90afcb84 or.       r26, r3, r3
+90afcb88 beq       0x90afcc40
+90afcb8c mr        r4, r26
+90afcb90 mr        r3, r30
+90afcb94 mr        r5, r29
+90afcb98 li        r6, 0
+90afcb9c bl        0x90b4ace0
+90afcba0 mr        r4, r26
+90afcba4 cmpwi     cr7, r3, 0
+90afcba8 bne       cr7, 0x90afcbbc
+90afcbac lis       r29, -0x2000
+90afcbb0 li        r30, 0
+90afcbb4 ori       r29, r29, 0x2bc
+90afcbb8 b         0x90afcc34
+90afcbbc lwz       r3, 0x38(r1)
+90afcbc0 bl        0x90aef748 <_IORegistryEntryFromPath>
+90afcbc4 or.       r30, r3, r3
+90afcbc8 bne       0x90afcbd8
+90afcbcc lis       r29, -0x2000
+90afcbd0 ori       r29, r29, 0x2bc
+90afcbd4 b         0x90afcc2c
+90afcbd8 addis     r4, r31, 5
+90afcbdc addi      r4, r4, 0xe7c
+90afcbe0 bl        0x90aed8d4 <_IOObjectConformsTo>
+90afcbe4 cmpwi     cr7, r3, 0
+90afcbe8 bne       cr7, 0x90afcc04
+90afcbec mr        r3, r30
+90afcbf0 lis       r29, -0x2000
+90afcbf4 bl        0x90aed81c <_IOObjectRelease>
+90afcbf8 ori       r29, r29, 0x2bc
+90afcbfc li        r30, 0
+90afcc00 b         0x90afcc2c
+90afcc04 lwz       r3, 0x3c(r1)
+90afcc08 addis     r4, r31, 0xfff
+90afcc0c li        r29, 0
+90afcc10 addi      r4, r4, -0x1100
+90afcc14 bl        0x90b4a900
+90afcc18 cmpwi     cr7, r3, 0
+90afcc1c beq       cr7, 0x90afcc2c
+90afcc20 mr        r5, r27
+90afcc24 li        r4, 3
+90afcc28 bl        0x90b4a600
+90afcc2c cmpwi     cr7, r26, 0
+90afcc30 beq       cr7, 0x90afcc4c
+90afcc34 mr        r3, r26
+90afcc38 bl        0x90b4a780
+90afcc3c b         0x90afcc4c
+90afcc40 lis       r29, -0x2000
+90afcc44 ori       r29, r29, 0x2bc
+90afcc48 li        r30, 0
+90afcc4c lwz       r3, 0x3c(r1)
+90afcc50 cmpwi     cr7, r3, 0
+90afcc54 beq       cr7, 0x90afcc5c
+90afcc58 bl        0x90b4a9a0
+90afcc5c stw       r30, 0(r28)
+90afcc60 addi      r1, r1, 0x70
+90afcc64 mr        r3, r29
+90afcc68 lwz       r0, 8(r1)
+90afcc6c lmw       r26, -0x18(r1)
+90afcc70 mtlr      r0
+90afcc74 blr       
+_IOAccelCreateSurface [90afcd8c..90afce38]:
+90afcd8c mflr      r0
+90afcd90 bdnzl     0x90afcd94
+90afcd94 stmw      r27, -0x14(r1)
+90afcd98 mr        r29, r4
+90afcd9c mr        r27, r6
+90afcda0 mr        r28, r5
+90afcda4 mflr      r31
+90afcda8 li        r5, 0
+90afcdac stw       r0, 8(r1)
+90afcdb0 li        r0, 0
+90afcdb4 stwu      r1, -0x70(r1)
+90afcdb8 addis     r2, r31, 0xfff
+90afcdbc stw       r0, 0(r6)
+90afcdc0 lwz       r2, -0x1f64(r2)
+90afcdc4 addi      r6, r1, 0x38
+90afcdc8 stw       r0, 0x38(r1)
+90afcdcc stw       r0, 0x3c(r1)
+90afcdd0 lwz       r4, 0(r2)
+90afcdd4 bl        0x90aedf44 <_IOServiceOpen>
+90afcdd8 or.       r30, r3, r3
+90afcddc bne       0x90afce20
+90afcde0 lwz       r3, 0x38(r1)
+90afcde4 li        r4, 7
+90afcde8 addi      r5, r1, 0x40
+90afcdec li        r6, 2
+90afcdf0 li        r7, 0
+90afcdf4 addi      r8, r1, 0x3c
+90afcdf8 stw       r29, 0x40(r1)
+90afcdfc stw       r28, 0x44(r1)
+90afce00 bl        0x90af3390 <_io_connect_method_scalarI_scalarO>
+90afce04 or.       r30, r3, r3
+90afce08 beq       0x90afce18
+90afce0c lwz       r3, 0x38(r1)
+90afce10 bl        0x90aeeb98 <_IOServiceClose>
+90afce14 b         0x90afce20
+90afce18 lwz       r0, 0x38(r1)
+90afce1c stw       r0, 0(r27)
+90afce20 addi      r1, r1, 0x70
+90afce24 mr        r3, r30
+90afce28 lwz       r0, 8(r1)
+90afce2c lmw       r27, -0x14(r1)
+90afce30 mtlr      r0
+90afce34 blr       
+_IOAccelSetSurfaceFramebufferShape [90afce88..90afcecc]:
+90afce88 mflr      r0
+90afce8c mr        r7, r4
+90afce90 stw       r0, 8(r1)
+90afce94 stwu      r1, -0x60(r1)
+90afce98 lwz       r8, 0(r4)
+90afce9c li        r4, 9
+90afcea0 stw       r5, 0x38(r1)
+90afcea4 addi      r5, r1, 0x38
+90afcea8 stw       r6, 0x3c(r1)
+90afceac li        r6, 2
+90afceb0 slwi      r8, r8, 3
+90afceb4 addi      r8, r8, 0xc
+90afceb8 bl        0x90af0d0c <_io_connect_method_scalarI_structureI>
+90afcebc addi      r1, r1, 0x60
+90afcec0 lwz       r0, 8(r1)
+90afcec4 mtlr      r0
+90afcec8 blr       
+_IOAccelWriteLockSurface [90afd034..90afd06c]:
+90afd034 mflr      r0
+90afd038 mr        r7, r4
+90afd03c li        r6, 0
+90afd040 li        r4, 0xe
+90afd044 stw       r0, 8(r1)
+90afd048 stwu      r1, -0x50(r1)
+90afd04c stw       r5, 0x70(r1)
+90afd050 addi      r8, r1, 0x70
+90afd054 li        r5, 0
+90afd058 bl        0x90af35e8 <_io_connect_method_scalarI_structureO>
+90afd05c addi      r1, r1, 0x50
+90afd060 lwz       r0, 8(r1)
+90afd064 mtlr      r0
+90afd068 blr       
+_IOAccelFlushSurfaceOnFramebuffers [90afd1e4..90afd228]:
+90afd1e4 mflr      r0
+90afd1e8 li        r6, 2
+90afd1ec li        r7, 0
+90afd1f0 stw       r0, 8(r1)
+90afd1f4 li        r0, 0
+90afd1f8 stwu      r1, -0x60(r1)
+90afd1fc stw       r5, 0x3c(r1)
+90afd200 addi      r8, r1, 0x38
+90afd204 addi      r5, r1, 0x3c
+90afd208 stw       r4, 0x40(r1)
+90afd20c li        r4, 0xa
+90afd210 stw       r0, 0x38(r1)
+90afd214 bl        0x90af3390 <_io_connect_method_scalarI_scalarO>
+90afd218 addi      r1, r1, 0x60
+90afd21c lwz       r0, 8(r1)
+90afd220 mtlr      r0
+90afd224 blr       

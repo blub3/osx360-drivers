@@ -1,0 +1,113 @@
+_gliGetVersion [000013f4..000015b4]:
+000013f4 mflr      r0
+000013f8 bdnzl     0x13fc
+000013fc stmw      r26, -0x18(r1)
+00001400 stw       r0, 8(r1)
+00001404 mflr      r31
+00001408 stwu      r1, -0xb0(r1)
+0000140c mr        r30, r3
+00001410 mr        r27, r4
+00001414 mr        r26, r5
+00001418 bl        0x15b4 <_glepPluginConnectAll>
+0000141c li        r0, 0xc
+00001420 stw       r0, 0x70(r1)
+00001424 bl        0x108d38
+00001428 li        r4, 1
+0000142c addi      r5, r1, 0x40
+00001430 addi      r6, r1, 0x70
+00001434 mr        r29, r3
+00001438 bl        0x108d18
+0000143c addis     r2, r31, 0x11
+00001440 lwz       r2, 0xc38(r2)
+00001444 mr        r28, r3
+00001448 mr        r4, r29
+0000144c lwz       r3, 0(r2)
+00001450 bl        0x108cf8
+00001454 cmpwi     cr7, r28, 0
+00001458 li        r3, 0
+0000145c bne       cr7, 0x15a0
+00001460 lwz       r0, 0x4c(r1)
+00001464 cmpwi     cr7, r0, 0x12
+00001468 bne       cr7, 0x1554
+0000146c li        r0, 6
+00001470 li        r2, 0xd
+00001474 stw       r0, 0x78(r1)
+00001478 addi      r3, r1, 0x78
+0000147c li        r0, 4
+00001480 li        r4, 2
+00001484 addi      r5, r1, 0x80
+00001488 addi      r6, r1, 0x84
+0000148c li        r7, 0
+00001490 li        r8, 0
+00001494 stw       r0, 0x84(r1)
+00001498 stw       r2, 0x7c(r1)
+0000149c bl        0x108cd8
+000014a0 lwz       r0, 0x80(r1)
+000014a4 addis     r9, r31, 0x11
+000014a8 cmpwi     cr7, r0, 0
+000014ac beq       cr7, 0x14c0
+000014b0 addi      r2, r9, 0xa30
+000014b4 lwz       r0, 0(r2)
+000014b8 ori       r0, r0, 0x30
+000014bc stw       r0, 0(r2)
+000014c0 addis     r2, r31, 0x11
+000014c4 lwz       r2, 0x2a10(r2)
+000014c8 lwz       r0, 0(r2)
+000014cc andi.     r2, r0, 0x10
+000014d0 beq       0x14e4
+000014d4 addi      r2, r9, 0xa30
+000014d8 lwz       r0, 0(r2)
+000014dc ori       r0, r0, 0x40
+000014e0 stw       r0, 0(r2)
+000014e4 lwz       r0, 0x50(r1)
+000014e8 cmpwi     cr7, r0, 8
+000014ec bgt       cr7, 0x1504
+000014f0 cmpwi     cr7, r0, 3
+000014f4 bge       cr7, 0x1524
+000014f8 cmpwi     cr7, r0, 0
+000014fc blt       cr7, 0x1544
+00001500 b         0x1534
+00001504 cmpwi     cr7, r0, 0xb
+00001508 ble       cr7, 0x1514
+0000150c cmpwi     cr7, r0, 0x64
+00001510 bne       cr7, 0x1544
+00001514 addi      r2, r9, 0xa30
+00001518 lwz       r0, 0(r2)
+0000151c ori       r0, r0, 8
+00001520 stw       r0, 0(r2)
+00001524 addi      r2, r9, 0xa30
+00001528 lwz       r0, 0(r2)
+0000152c ori       r0, r0, 1
+00001530 stw       r0, 0(r2)
+00001534 addi      r2, r9, 0xa30
+00001538 lwz       r0, 0(r2)
+0000153c ori       r0, r0, 2
+00001540 b         0x1550
+00001544 addi      r2, r9, 0xa30
+00001548 lwz       r0, 0(r2)
+0000154c ori       r0, r0, 0xb
+00001550 stw       r0, 0(r2)
+00001554 bl        0x1cc8 <_glePreInitGlobals>
+00001558 bl        0x1d9c <_glePreInitTOC>
+0000155c bl        0x2030 <_glePreInitNormalize>
+00001560 bl        0x2034 <_glePreInitProjectionTransformFunc>
+00001564 bl        0x2078 <_glePreInitModelviewTransformFunc>
+00001568 bl        0x20bc <_glePreInitNormalTransformFunc>
+0000156c bl        0x2100 <_glePreInitVertexSubmitFunc>
+00001570 bl        0x2124 <_glepGetPlugins>
+00001574 cmpwi     cr7, r3, 0
+00001578 li        r3, 0
+0000157c beq       cr7, 0x15a0
+00001580 li        r0, 2
+00001584 li        r2, 3
+00001588 stw       r0, 0(r30)
+0000158c lis       r0, 2
+00001590 stw       r2, 0(r27)
+00001594 stw       r0, 0(r26)
+00001598 bl        0x2140 <_gleOptimizeDisplayListCreateHashTable>
+0000159c li        r3, 1
+000015a0 lwz       r0, 0xb8(r1)
+000015a4 addi      r1, r1, 0xb0
+000015a8 lmw       r26, -0x18(r1)
+000015ac mtlr      r0
+000015b0 blr       

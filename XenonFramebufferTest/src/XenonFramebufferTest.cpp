@@ -4,6 +4,11 @@
 #include <libkern/OSAtomic.h>
 #include "NativeHDMI.h"
 #include "XenosRegs.hpp"
+#include "XenosWindowServerFramebufferProbe.h"
+#include <kern/task.h>
+
+extern "C" int proc_selfpid(void);
+extern "C" void proc_selfname(char *, int);
 
 namespace {
 const IODisplayModeID kBootMode = 100;
@@ -90,6 +95,8 @@ public:
     bool start(IOService *provider);
     void free();
     bool isConsoleDevice();
+    using IOFramebuffer::newUserClient;
+    IOReturn newUserClient(task_t task, void *securityID, UInt32 type, IOUserClient **handler);
     IODeviceMemory *getApertureRange(IOPixelAperture aperture);
     const char *getPixelFormats();
     IOItemCount getDisplayModeCount();
@@ -177,6 +184,43 @@ void XenonFramebufferTest::free()
     if (framebuffer)
         framebuffer->release();
     IOFramebuffer::free();
+}
+
+IOReturn XenonFramebufferTest::newUserClient(task_t task, void *securityID, UInt32 type,
+                                             IOUserClient **handler)
+{
+    const IOReturn result = IOFramebuffer::newUserClient(task, securityID, type, handler);
+    if (result != kIOReturnSuccess || type != kIOFBServerConnectType ||
+        !handler || !*handler || !task || task != current_task())
+        return result;
+
+    char process[32] = {0};
+    proc_selfname(process, sizeof(process));
+    const int pid = proc_selfpid();
+    if (pid <= 0 || strcmp(process, "WindowServer"))
+        return result;
+    setProperty(XENOS_WS_FRAMEBUFFER_PID, static_cast<UInt32>(pid), 32);
+
+    IOService *pci = getProvider();
+    OSIterator *clients = pci ? pci->getClientIterator() : NULL;
+    const OSSymbol *function = OSSymbol::withCStringNoCopy(XENOS_WS_FRAMEBUFFER_FUNCTION);
+    IOReturn queued = kIOReturnNotReady;
+    if (clients && function) {
+        while (OSObject *object = clients->getNextObject()) {
+            IOService *service = OSDynamicCast(IOService, object);
+            if (service && service->getProperty(XENOS_WS_FRAMEBUFFER_ARMED)) {
+                queued = service->callPlatformFunction(function, false, task, this, NULL, NULL);
+                break;
+            }
+        }
+    }
+    if (clients)
+        clients->release();
+    if (function)
+        function->release();
+    IOLog("XenonFramebufferTest: WindowServer framebuffer open pid=%d diagnostic status=%08lx\n",
+          pid, static_cast<unsigned long>(queued));
+    return result;
 }
 
 bool XenonFramebufferTest::isConsoleDevice()

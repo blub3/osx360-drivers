@@ -1,0 +1,196 @@
+_CGXGLCompositorSetTileSize [90381acc..90381bc8]:
+90381acc or.       r3, r3, r3
+90381ad0 mflr      r0
+90381ad4 bdnzl     0x90381ad8
+90381ad8 stw       r31, -4(r1)
+90381adc stw       r0, 8(r1)
+90381ae0 mflr      r31
+90381ae4 stwu      r1, -0x50(r1)
+90381ae8 beq       0x90381af4
+90381aec cmpwi     cr7, r4, 0
+90381af0 bne       cr7, 0x90381b44
+90381af4 addis     r2, r31, 0xfff
+90381af8 li        r0, 0
+90381afc addi      r2, r2, 0x2554
+90381b00 li        r4, 0
+90381b04 stw       r0, 0(r2)
+90381b08 addis     r2, r31, 0xfff
+90381b0c stw       r0, 0x2550(r2)
+90381b10 li        r3, 7
+90381b14 bl        0x9037f4f0 <_CGXSetServerOperationState>
+90381b18 li        r3, 0
+90381b1c bl        0x9037d1cc <_CGXNextDisplayDevice>
+90381b20 or.       r3, r3, r3
+90381b24 beq       0x90381bb4
+90381b28 lwz       r2, 8(r3)
+90381b2c li        r0, 0
+90381b30 stb       r0, 0xd3(r2)
+90381b34 bl        0x9037d1cc <_CGXNextDisplayDevice>
+90381b38 or.       r3, r3, r3
+90381b3c bne       0x90381b28
+90381b40 b         0x90381bb4
+90381b44 bge       0x90381b4c
+90381b48 li        r3, 0x80
+90381b4c bge       cr7, 0x90381b54
+90381b50 li        r4, 0x80
+90381b54 cmpwi     cr7, r3, 0x1f
+90381b58 bgt       cr7, 0x90381b64
+90381b5c li        r3, 0x20
+90381b60 b         0x90381b7c
+90381b64 cmpwi     cr7, r3, 0x800
+90381b68 ble       cr7, 0x90381b74
+90381b6c li        r3, 0x800
+90381b70 b         0x90381b7c
+90381b74 addi      r0, r3, 0xf
+90381b78 rlwinm    r3, r0, 0, 0, 0x1b
+90381b7c cmpwi     cr7, r4, 0x1f
+90381b80 bgt       cr7, 0x90381b8c
+90381b84 li        r4, 0x20
+90381b88 b         0x90381ba4
+90381b8c cmpwi     cr7, r4, 0x800
+90381b90 ble       cr7, 0x90381b9c
+90381b94 li        r4, 0x800
+90381b98 b         0x90381ba4
+90381b9c addi      r0, r4, 0xf
+90381ba0 rlwinm    r4, r0, 0, 0, 0x1b
+90381ba4 addis     r2, r31, 0xfff
+90381ba8 stw       r3, 0x2550(r2)
+90381bac addis     r2, r31, 0xfff
+90381bb0 stw       r4, 0x2554(r2)
+90381bb4 lwz       r0, 0x58(r1)
+90381bb8 addi      r1, r1, 0x50
+90381bbc lwz       r31, -4(r1)
+90381bc0 mtlr      r0
+90381bc4 blr       
+_CGXPreferenceForKey [9037befc..9037bfb8]:
+9037befc stmw      r27, -0x14(r1)
+9037bf00 or.       r29, r3, r3
+9037bf04 mflr      r0
+9037bf08 bdnzl     0x9037bf0c
+9037bf0c stw       r0, 8(r1)
+9037bf10 mflr      r31
+9037bf14 stwu      r1, -0x60(r1)
+9037bf18 bne       0x9037bf38
+9037bf1c addis     r3, r31, 0x38
+9037bf20 addis     r4, r31, 0x38
+9037bf24 addi      r3, r3, -0x49b4
+9037bf28 addi      r4, r4, -0x49a0
+9037bf2c bl        0x90376294 <_CGSLogMessage>
+9037bf30 li        r3, 0
+9037bf34 b         0x9037bfa4
+9037bf38 addis     r28, r31, 0xfff
+9037bf3c lwz       r30, 0x7e70(r28)
+9037bf40 lwz       r2, 0(r30)
+9037bf44 lwz       r2, 0x78(r2)
+9037bf48 lwz       r0, 0(r2)
+9037bf4c cmpwi     cr7, r0, 0
+9037bf50 bne       cr7, 0x9037bf58
+9037bf54 bl        0x9037bfb8 <_initServerPreferences>
+9037bf58 lwz       r2, 0(r30)
+9037bf5c lwz       r2, 0x78(r2)
+9037bf60 lwz       r3, 4(r2)
+9037bf64 cmpwi     cr7, r3, 0
+9037bf68 beq       cr7, 0x9037bf7c
+9037bf6c mr        r4, r29
+9037bf70 bl        0x906d5340
+9037bf74 or.       r3, r3, r3
+9037bf78 bne       0x9037bfa4
+9037bf7c lwz       r2, 0x7e70(r28)
+9037bf80 mr        r4, r29
+9037bf84 lwz       r0, 0x68(r1)
+9037bf88 addi      r1, r1, 0x60
+9037bf8c lwz       r2, 0(r2)
+9037bf90 lmw       r27, -0x14(r1)
+9037bf94 mtlr      r0
+9037bf98 lwz       r2, 0x78(r2)
+9037bf9c lwz       r3, 0(r2)
+9037bfa0 b         0x906d5340
+9037bfa4 lwz       r0, 0x68(r1)
+9037bfa8 addi      r1, r1, 0x60
+9037bfac lmw       r27, -0x14(r1)
+9037bfb0 mtlr      r0
+9037bfb4 blr       
+_CGXSystemPreferenceForKey [903957c4..90395854]:
+903957c4 stmw      r28, -0x10(r1)
+903957c8 or.       r30, r3, r3
+903957cc mflr      r0
+903957d0 bdnzl     0x903957d4
+903957d4 stw       r0, 8(r1)
+903957d8 mflr      r31
+903957dc stwu      r1, -0x50(r1)
+903957e0 beq       0x90395828
+903957e4 addis     r2, r31, 0xffe
+903957e8 lwz       r29, -0x1a58(r2)
+903957ec lwz       r2, 0(r29)
+903957f0 lwz       r2, 0x78(r2)
+903957f4 lwz       r0, 0(r2)
+903957f8 cmpwi     cr7, r0, 0
+903957fc bne       cr7, 0x90395804
+90395800 bl        0x9037bfb8 <_initServerPreferences>
+90395804 lwz       r2, 0(r29)
+90395808 mr        r4, r30
+9039580c lwz       r0, 0x58(r1)
+90395810 addi      r1, r1, 0x50
+90395814 lwz       r2, 0x78(r2)
+90395818 lmw       r28, -0x10(r1)
+9039581c mtlr      r0
+90395820 lwz       r3, 0(r2)
+90395824 b         0x906d5340
+90395828 addis     r3, r31, 0x36
+9039582c addis     r4, r31, 0x36
+90395830 addi      r3, r3, 0x1d84
+90395834 addi      r4, r4, 0x1dac
+90395838 bl        0x90376294 <_CGSLogMessage>
+9039583c lwz       r0, 0x58(r1)
+90395840 addi      r1, r1, 0x50
+90395844 li        r3, 0
+90395848 mtlr      r0
+9039584c lmw       r28, -0x10(r1)
+90395850 blr       
+_CGXInitializeConfiguration [90375fb4..9037606c]:
+90375fb4 mflr      r0
+90375fb8 bdnzl     0x90375fbc
+90375fbc stmw      r28, -0x10(r1)
+90375fc0 mflr      r31
+90375fc4 addis     r2, r31, 0x1001
+90375fc8 stw       r0, 8(r1)
+90375fcc addi      r2, r2, 0x5584
+90375fd0 stwu      r1, -0x60(r1)
+90375fd4 cmpwi     cr7, r2, 0
+90375fd8 bne       cr7, 0x90376054
+90375fdc bl        0x90374ca4 <_initKeys>
+90375fe0 bl        0x9037bfb8 <_initServerPreferences>
+90375fe4 bl        0x9037997c <_CGXServerRunningInSafeMode>
+90375fe8 or.       r28, r3, r3
+90375fec bne       0x90376050
+90375ff0 addis     r3, r31, 0x1001
+90375ff4 addi      r3, r3, 0x5594
+90375ff8 bl        0x9037befc <_CGXPreferenceForKey>
+90375ffc or.       r30, r3, r3
+90376000 beq       0x90376050
+90376004 bl        0x906d5760
+90376008 mr        r29, r3
+9037600c bl        0x906d56e0
+90376010 cmpw      cr7, r29, r3
+90376014 bne       cr7, 0x90376050
+90376018 mr        r3, r30
+9037601c li        r4, 9
+90376020 addi      r5, r1, 0x40
+90376024 bl        0x906d56c0
+90376028 lis       r0, -0x22
+9037602c lwz       r2, 0x40(r1)
+90376030 ori       r0, r0, 0xbfff
+90376034 and.      r9, r2, r0
+90376038 beq       0x90376040
+9037603c stw       r28, 0x40(r1)
+90376040 addis     r2, r31, 0x1000
+90376044 lwz       r0, 0x40(r1)
+90376048 lwz       r2, -0x18c4(r2)
+9037604c stw       r0, 0(r2)
+90376050 bl        0x90374c80 <_CGSInitializeOperatingFlags>
+90376054 lwz       r0, 0x68(r1)
+90376058 addi      r1, r1, 0x60
+9037605c li        r3, 0
+90376060 lmw       r28, -0x10(r1)
+90376064 mtlr      r0
+90376068 blr       

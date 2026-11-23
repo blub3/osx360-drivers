@@ -1,0 +1,22 @@
+Xenos WindowServer diagnostic
+
+Use this test with the gpuxenosws boot profile and XenonCoreGraphics
+0.0.5d39. The profile is staged as kboot-gpu-windowserver.conf.
+
+Run the commands from this directory on Tiger over SSH.
+
+    /bin/sh RunXenosWindowServer.sh --association
+    /bin/sh RunXenosWindowServer.sh --control
+    /bin/sh RunXenosWindowServer.sh --require-native
+
+The association check uses Tiger's IOAccelFindAccelerator on the active
+Xbox framebuffer. The client control draws on the Xenos GPU, verifies
+1,024 readback pixels, and checks the origin PID in the kext's fence record.
+
+The native check repaints and moves two ordinary overlapping windows.
+It requires Quartz Extreme, the Xenos accelerator and GL driver, and
+two new, completed Xenos fences attributed to the actual WindowServer PID.
+
+The 0.0.5d39 build publishes the accelerator association with zero
+capability bits. WindowServer still needs its native Xenos GLD and display
+surface implementation. Expect the native check to report BLOCKED.

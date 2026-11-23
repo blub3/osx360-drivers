@@ -1,0 +1,133 @@
+906a05a4 [906a05a4..906a07b4]:
+906a05a4 stw       r0, 0x58(r1)
+906a05a8 addi      r0, r1, 0xcc
+906a05ac lwbrx     r0, 0, r0
+906a05b0 stw       r0, 0x5c(r1)
+906a05b4 lswi      r5, r9, 0x10
+906a05b8 stswi     r5, r30, 0x10
+906a05bc lswi      r5, r30, 0x10
+906a05c0 stswi     r5, r21, 0x10
+906a05c4 stw       r24, 0x44(r25)
+906a05c8 lswi      r5, r21, 0x10
+906a05cc stswi     r5, r29, 0x10
+906a05d0 lwz       r3, 0x14(r28)
+906a05d4 cmpwi     cr7, r3, 0
+906a05d8 beq       cr7, 0x906a060c
+906a05dc bl        0x9038d408 <__CGXWindowByID>
+906a05e0 or.       r3, r3, r3
+906a05e4 beq       0x906a060c
+906a05e8 lwz       r3, 0x10(r3)
+906a05ec mr        r4, r30
+906a05f0 bl        0x9038a530 <_CGSGetRegionBounds>
+906a05f4 lwz       r0, 0x6c(r1)
+906a05f8 mr        r3, r29
+906a05fc stw       r0, 0x38(r1)
+906a0600 lswi      r8, r30, 0xc
+906a0604 lswi      r4, r29, 0x10
+906a0608 bl        0x903cd1a8 <_CGRectIntersection>
+906a060c add       r29, r27, r28
+906a0610 addi      r30, r29, 0x4c
+906a0614 lswi      r3, r30, 0x10
+906a0618 bl        0x903cd138 <_CGRectIsEmpty>
+906a061c or.       r3, r3, r3
+906a0620 beq       0x906a0630
+906a0624 li        r0, 0
+906a0628 stw       r0, 0x44(r29)
+906a062c b         0x906a069c
+906a0630 addi      r2, r29, 0x6c
+906a0634 addi      r9, r29, 0xa2
+906a0638 lswi      r5, r30, 0x10
+906a063c stswi     r5, r2, 0x10
+906a0640 li        r2, 1
+906a0644 stb       r2, 0xac(r29)
+906a0648 stb       r2, 0xad(r29)
+906a064c stb       r3, 0xc(r9)
+906a0650 lwz       r0, 8(r28)
+906a0654 rlwinm    r0, r0, 0, 0x17, 0x18
+906a0658 cmpwi     cr7, r0, 0x80
+906a065c bne       cr7, 0x906a0664
+906a0660 stb       r2, 0xc(r9)
+906a0664 li        r8, 3
+906a0668 slwi      r0, r23, 7
+906a066c mtctr     r8
+906a0670 add       r9, r0, r28
+906a0674 addi      r2, r29, 0xaf
+906a0678 li        r10, 0
+906a067c lis       r11, 0x3f80
+906a0680 li        r0, 0x1908
+906a0684 stb       r10, 0(r2)
+906a0688 addi      r2, r2, 1
+906a068c stw       r11, 0xa0(r9)
+906a0690 stw       r0, 0xb4(r9)
+906a0694 addi      r9, r9, 4
+906a0698 bdnz      0x906a0684
+906a069c lwz       r0, 0x44(r25)
+906a06a0 mr        r29, r19
+906a06a4 cmpwi     cr7, r0, 0
+906a06a8 beq       cr7, 0x906a07ac
+906a06ac mulli     r0, r0, 0x1c
+906a06b0 addis     r2, r31, 0xfcf
+906a06b4 addi      r2, r2, -0x16c4
+906a06b8 lwzx      r12, r2, r0
+906a06bc cmpwi     cr7, r12, 0
+906a06c0 beq       cr7, 0x906a06d4
+906a06c4 mr        r3, r28
+906a06c8 mr        r4, r23
+906a06cc mtctr     r12
+906a06d0 bctrl     
+906a06d4 addis     r2, r31, 9
+906a06d8 li        r27, 0
+906a06dc lfs       f31, -0x1340(r2)
+906a06e0 add       r30, r29, r28
+906a06e4 add       r2, r30, r27
+906a06e8 lbz       r0, 0xac(r2)
+906a06ec cmpwi     cr7, r0, 0
+906a06f0 beq       cr7, 0x906a070c
+906a06f4 lfs       f1, 0(r20)
+906a06f8 addis     r8, r31, 7
+906a06fc lfd       f2, -0x550(r8)
+906a0700 bl        0x906d63c0
+906a0704 fadd      f31, f31, f1
+906a0708 frsp      f31, f31
+906a070c addi      r27, r27, 1
+906a0710 cmpwi     cr7, r27, 2
+906a0714 ble       cr7, 0x906a06e0
+906a0718 lwz       r2, 8(r26)
+906a071c addis     r8, r31, 7
+906a0720 lfs       f13, 0x58(r30)
+906a0724 addis     r9, r31, 7
+906a0728 lwz       r0, 0x1c(r2)
+906a072c lis       r2, 0x4330
+906a0730 lfs       f11, 0x54(r30)
+906a0734 stw       r0, 0xd0(r1)
+906a0738 addi      r0, r1, 0xd0
+906a073c lwbrx     r0, 0, r0
+906a0740 srwi      r0, r0, 3
+906a0744 stw       r0, 0xb4(r1)
+906a0748 xoris     r0, r22, 0x8000
+906a074c stw       r2, 0xb0(r1)
+906a0750 fmuls     f11, f11, f13
+906a0754 lfd       f12, 0xb0(r1)
+906a0758 addis     r2, r31, 9
+906a075c lfd       f0, -0x768(r8)
+906a0760 stw       r0, 0xb4(r1)
+906a0764 fsub      f12, f12, f0
+906a0768 lfd       f13, -0x758(r9)
+906a076c lfd       f0, 0xb0(r1)
+906a0770 frsp      f12, f12
+906a0774 fsub      f0, f0, f13
+906a0778 lfs       f13, -0x12d8(r2)
+906a077c fmuls     f11, f11, f12
+906a0780 frsp      f0, f0
+906a0784 fmuls     f11, f11, f31
+906a0788 fmuls     f0, f0, f13
+906a078c fcmpu     cr7, f11, f0
+906a0790 cror      cr7eq, cr7gt, cr7eq
+906a0794 beq       cr7, 0x906a07ac
+906a0798 addi      r23, r23, 1
+906a079c addi      r25, r25, 0x80
+906a07a0 addi      r21, r21, 0x80
+906a07a4 addi      r19, r19, 0x80
+906a07a8 addi      r20, r20, 0x84
+906a07ac mr        r3, r26
+906a07b0 bl        0x903828b4 <_CGXNextActiveDisplayDevice>

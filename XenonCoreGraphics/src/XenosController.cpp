@@ -1,3 +1,9 @@
+#include <kern/task.h>
+#include "XenosWindowServerFramebufferProbe.h"
+#include "XenosDisplaySurfaceProtocol.h"
+
+extern "C" void proc_selfname(char *, int);
+
 //
 //  XenosController.cpp
 //  Xbox 360 graphics controller
@@ -319,6 +325,9 @@ bool XenosController::start(IOService *provider) {
   _quadGeometryMode = 0;
   _quadLayerCount = 0;
   _quadTicket = _nextQuadTicket = _quadTexture = _quadWait = _quadCooldown = 0;
+  _gpuCompletionSequence = 0;
+  bzero(&_windowServerStartupTrace, sizeof(_windowServerStartupTrace));
+  _framebufferProbe = NULL;
   _surfaceQueueCount = _surfaceActiveTicket = _surfaceCompletion = 0;
   bzero(_surfaceRecords, sizeof(_surfaceRecords));
   _surfaceSerial = _surfaceCount = _surfaceColor = _drawableReaders = 0;
@@ -332,6 +341,7 @@ bool XenosController::start(IOService *provider) {
   if (_quadGate) {
     setProperty("IOUserClientClass", "XenosQuadClient");
     setProperty("XenosUserQuadResult", "Idle");
+    setProperty(XENOS_WS_FRAMEBUFFER_ARMED, true);
   }
   _timerEventSource->setTimeoutMS(1000);
   registerService();
@@ -348,6 +358,79 @@ static inline uint32_t DRAW(pc_di_primtype prim_type,
 			((index_size >> 1) << 13) |
 			(vis_cull_mode     << 9) |
 			(1                 << 14);
+}
+
+IOReturn XenosController::callPlatformFunction(const OSSymbol *function, bool wait, void *task,
+                                               void *framebuffer, void *p3, void *p4) {
+  if (!function || !function->isEqualTo(XENOS_WS_FRAMEBUFFER_FUNCTION))
+    return IOService::callPlatformFunction(function, wait, task, framebuffer, p3, p4);
+
+  IOService *source = static_cast<IOService *>(framebuffer);
+  if (!source || source->getParentEntry(gIOServicePlane) != getProvider() ||
+      !source->metaCast("XenonFramebufferTest") || !task || current_task() != task)
+    return kIOReturnBadArgument;
+  char process[32] = {0};
+  proc_selfname(process, sizeof(process));
+  if (strcmp(process, "WindowServer"))
+    return kIOReturnNotPrivileged;
+  if (!_quadGate || isInactive())
+    return kIOReturnNotReady;
+
+  XenosQuadClient *client = new XenosQuadClient;
+  if (!client)
+    return kIOReturnNoMemory;
+  IOReturn result = kIOReturnNotReady;
+  if (client->initWithTask(static_cast<task_t>(task), NULL, 0, NULL) && client->_ownerPID)
+    result = _quadGate->runAction(&XenosController::queueFramebufferProbe, client);
+  client->release();
+  return result;
+}
+
+IOReturn XenosController::queueFramebufferProbe(OSObject *owner, void *arg, void *, void *, void *) {
+  XenosController *self = static_cast<XenosController *>(owner);
+  XenosQuadClient *client = static_cast<XenosQuadClient *>(arg);
+  if (self->_framebufferProbe)
+    return kIOReturnBusy;
+  const XenosWindowServerStartupTrace &previous = self->_windowServerStartupTrace;
+  if (previous.count && previous.fences[0].completion.ownerPID == client->_ownerPID)
+    return kIOReturnSuccess;
+
+  // This object keeps the diagnostic surface alive. The regular framebuffer
+  // user client is returned to WindowServer by IOFramebuffer.
+  UInt32 handle = 0;
+  void *side = reinterpret_cast<void *>(kXenosSurfaceSide);
+  const IOReturn status = createClientSurface(owner, client, side, side, &handle);
+  if (status != kIOReturnSuccess)
+    return status;
+  bzero(&self->_windowServerStartupTrace, sizeof(self->_windowServerStartupTrace));
+  self->removeProperty(XENOS_WS_STARTUP_TRACE_KEY);
+  client->retain();
+  self->_framebufferProbe = client;
+  self->setProperty(XENOS_WS_FRAMEBUFFER_QUEUED_PID, client->_ownerPID, 32);
+  IOLog("XenosWindowServerFramebuffer: queued two offscreen clears from framebuffer open pid=%lu\n",
+        static_cast<unsigned long>(client->_ownerPID));
+  return kIOReturnSuccess;
+}
+
+void XenosController::stepFramebufferProbe() {
+  XenosQuadClient *client = _framebufferProbe;
+  if (!client || quadQueueReady(client) != kIOReturnSuccess)
+    return;
+  const UInt32 completed = _windowServerStartupTrace.count;
+  if (completed < kXenosWSStartupClears &&
+      (!completed || _windowServerStartupTrace.fences[completed - 1].completion.state == kXenosQuadPassed)) {
+    const UInt32 color = !completed ? kXenosDiagnosticSurfaceFirst : kXenosDiagnosticSurfaceSecond;
+    UInt32 ticket = 0;
+    const IOReturn status = queueSurfaceClear(this, client, reinterpret_cast<void *>(client->_surfaceHandle),
+                                              reinterpret_cast<void *>(color), &ticket);
+    if (status == kIOReturnSuccess)
+      return;
+    IOLog("XenosWindowServerFramebuffer: could not submit clear status=%08lx\n",
+          static_cast<unsigned long>(status));
+  }
+  dropSurface(client);
+  _framebufferProbe = NULL;
+  client->release();
 }
 
 //
@@ -378,6 +461,7 @@ void XenosController::handleTimer(IOTimerEventSource *sender) {
 
   if (_quadCooldown)
     --_quadCooldown;
+  stepFramebufferProbe();
   if (!stepQuad()) {
     sender->setTimeoutMS(15);
     return;
@@ -483,6 +567,39 @@ IOReturn XenosController::queueQuadGeometry(OSObject *owner, void *clientArg, vo
   const XenosQuadGeometryUpload *upload = static_cast<const XenosQuadGeometryUpload *>(input);
   return self->enqueueQuad(static_cast<XenosQuadClient *>(clientArg), upload->rgb, 0,
                            &upload->geometry, kXenosQuadUploadGeometry, static_cast<UInt32 *>(output));
+}
+
+IOReturn XenosController::queueQuadCapture(OSObject *owner, void *clientArg, void *input,
+                                             void *output, void *unused) {
+  XenosQuadClient *client = static_cast<XenosQuadClient *>(clientArg);
+  if (!client->_quadCapturePixels) {
+    client->_quadCapturePixels = static_cast<UInt32 *>(
+      IOMalloc(kXenosQuadReadbackPixels * sizeof(UInt32)));
+    if (!client->_quadCapturePixels)
+      return kIOReturnNoMemory;
+  }
+  const IOReturn result = queueQuadGeometry(owner, client, input, output, unused);
+  if (result == kIOReturnSuccess)
+    client->_captureQuad = true;
+  return result;
+}
+
+IOReturn XenosController::readQuadCapture(OSObject *owner, void *clientArg, void *input,
+                                            void *output, void *) {
+  XenosQuadClient *client = static_cast<XenosQuadClient *>(clientArg);
+  const XenosQuadReadRequest &request = *static_cast<const XenosQuadReadRequest *>(input);
+  if (static_cast<XenosController *>(owner)->isInactive() || client->isInactive())
+    return kIOReturnNotReady;
+  if (!client->_captureQuad || !request.ticket || request.ticket != client->_ticket ||
+      request.firstRow > kXenosQuadTargetSide - kXenosSurfaceReadRows ||
+      request.firstRow % kXenosSurfaceReadRows)
+    return kIOReturnBadArgument;
+  if (client->_result[1] != request.ticket ||
+      (client->_result[0] != kXenosQuadPassed && client->_result[0] != kXenosQuadPixelsFailed))
+    return kIOReturnNotReady;
+  memcpy(output, client->_quadCapturePixels + request.firstRow * kXenosQuadTargetSide,
+         sizeof(XenosSurfaceReadback));
+  return kIOReturnSuccess;
 }
 
 IOReturn XenosController::queueQuadRotated(OSObject *owner, void *clientArg, void *input,
@@ -716,6 +833,7 @@ void XenosController::startQuad(XenosQuadClient *client, UInt32 texture, bool up
   _quadAnisoControl = _quadAnisoDark = _quadAnisoLight = _quadAnisoDarkMax = 0;
   _quadAnisoLightMin = 255;
   _quadWait = 0;
+  client->_captureQuad = false;
   client->_ticket = _quadTicket;
   bzero(client->_result, sizeof(client->_result));
   *output = _quadTicket;
@@ -923,6 +1041,8 @@ bool XenosController::stepQuad() {
           translucent = blending && alpha > 0 && alpha < 255;
         }
         const UInt32 observed = pixels[resolveTileWord(x, y)];
+        if (_quadClient->_captureQuad)
+          _quadClient->_quadCapturePixels[y * kClearSide + x] = observed;
         const UInt32 delta = translucent ? quadMaxChannelDelta(observed, expected) : 0;
         const bool matched = translucent ? delta <= kXenosQuadBlendTolerance : observed == expected;
         if (delta > _quadMaxBlendDelta)
@@ -1218,6 +1338,23 @@ void XenosController::finishQuad(UInt32 state, UInt32 fence, UInt32 checked,
   client->_result[2] = checked;
   client->_result[3] = mismatches;
   client->_result[4] = hash;
+  if (++_gpuCompletionSequence == 0)
+    ++_gpuCompletionSequence;
+  XenosGPUCompletion completion = {
+      _gpuCompletionSequence, client->_ownerPID, _quadTicket, fence, state, checked, mismatches
+  };
+  setProperty(XENOS_GPU_COMPLETION_KEY, &completion, sizeof(completion));
+  if (client == _framebufferProbe && _quadGeometryMode == kXenosSurfaceClear) {
+    XenosWindowServerStartupTrace &trace = _windowServerStartupTrace;
+    if (trace.count < kXenosWSStartupClears) {
+      XenosWindowServerStartupFence &entry = trace.fences[trace.count++];
+      entry.completion = completion;
+      entry.hash = hash;
+      setProperty(XENOS_WS_STARTUP_TRACE_KEY, &trace, sizeof(trace));
+      IOLog("XenosWindowServerFramebuffer: fence pid=%lu ticket=%lu fence=%lu state=%lu pixels=%lu mismatches=%lu hash=%08lx\n",
+            static_cast<unsigned long>(completion.ownerPID), _quadTicket, fence, state, checked, mismatches, hash);
+    }
+  }
   _quadClient = NULL;
   _quadCooldown = kQuadCooldownTicks;
   if (state != kXenosQuadPassed) {

@@ -1,0 +1,22 @@
+Xenos native GLD diagnostic for Tiger
+
+Run through SSH on the current 0.0.5d40 boot
+    /bin/sh RunXenosNativeGLD.sh --private
+
+The test uses Tiger's stock CGL and GLEngine with a temporary resource
+directory. CGL discovers renderer 0x0002e900 on the Xbox display. A
+one-shot gldGetRendererInfo callback runs a textured quad on Xenos and
+checks all 1,024 pixels. The probe independently verifies a fresh GPU
+completion record with matching ticket, fence, and submitting PID.
+The stock renderer list is checked before, during, and after the run.
+
+The gpunativegld candidate boot profile uses XenonCoreGraphics 0.0.5d41
+and publishes IOGLBundleName = GLDriverXenosNative. To test the system's
+default lookup, use this candidate profile and install the staged bundle
+at /System/Library/Extensions/GLDriverXenosNative.bundle on Tiger as
+root:wheel. Then use /bin/sh RunXenosNativeGLD.sh --native over SSH.
+The native mode starts with the default resource paths.
+
+The renderer is enumeration-only and advertises no acceleration to the
+desktop. Normal renderer queries do not submit GPU work. The diagnostic
+does not offer a pixel format or a drawable to applications.

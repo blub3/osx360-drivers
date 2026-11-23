@@ -1,0 +1,384 @@
+__CGXGLDisplayContextForDisplayDevice [903a8970..903a8ac4]:
+903a8970 stmw      r28, -0x10(r1)
+903a8974 or.       r29, r3, r3
+903a8978 mflr      r0
+903a897c bdnzl     0x903a8980
+903a8980 stw       r0, 8(r1)
+903a8984 mflr      r31
+903a8988 stwu      r1, -0x60(r1)
+903a898c li        r3, 0
+903a8990 beq       0x903a8ab0
+903a8994 addis     r2, r31, 0xffd
+903a8998 lwz       r2, -0x4958(r2)
+903a899c cmpwi     cr7, r2, 0
+903a89a0 beq       cr7, 0x903a8aa0
+903a89a4 addis     r2, r31, 0xffd
+903a89a8 lwz       r2, -0x4954(r2)
+903a89ac cmpwi     cr7, r2, 0
+903a89b0 beq       cr7, 0x903a8aa0
+903a89b4 addis     r28, r31, 0xffe
+903a89b8 lwz       r0, 0x7c94(r28)
+903a89bc cmpwi     cr7, r0, 0
+903a89c0 bne       cr7, 0x903a89d0
+903a89c4 bl        0x903a8ac4 <_CGXGLDisplayContextInitialize>
+903a89c8 cmpwi     cr7, r3, 0
+903a89cc beq       cr7, 0x903a8aa0
+903a89d0 lwz       r10, 0x2c(r29)
+903a89d4 andis.    r0, r10, 0x1000
+903a89d8 bne       0x903a8aa0
+903a89dc lwz       r11, 8(r29)
+903a89e0 addis     r2, r31, 0xffd
+903a89e4 lwz       r2, -0x495c(r2)
+903a89e8 addi      r0, r1, 0x40
+903a89ec lwz       r9, 0x1c(r11)
+903a89f0 stw       r9, 0x40(r1)
+903a89f4 lwbrx     r0, 0, r0
+903a89f8 cmplw     cr7, r2, r0
+903a89fc bgt       cr7, 0x903a8aa0
+903a8a00 lbz       r0, 0xcf(r11)
+903a8a04 cmpwi     cr7, r0, 0
+903a8a08 bne       cr7, 0x903a8aa0
+903a8a0c andis.    r0, r10, 0x200
+903a8a10 beq       0x903a8aa0
+903a8a14 addis     r8, r31, 0xffe
+903a8a18 li        r9, 0
+903a8a1c lwz       r0, 0x7c74(r8)
+903a8a20 lwz       r2, 0xb8(r11)
+903a8a24 cmplw     cr7, r9, r0
+903a8a28 addi      r0, r1, 0x44
+903a8a2c stw       r2, 0x44(r1)
+903a8a30 lwbrx     r10, 0, r0
+903a8a34 bge       cr7, 0x903a8aa0
+903a8a38 li        r30, 0
+903a8a3c lwz       r2, 0x7c94(r28)
+903a8a40 lwzx      r0, r30, r2
+903a8a44 add       r2, r30, r2
+903a8a48 cmpw      cr7, r0, r10
+903a8a4c bne       cr7, 0x903a8a8c
+903a8a50 lwz       r0, 8(r2)
+903a8a54 cmpwi     cr7, r0, 0
+903a8a58 beq       cr7, 0x903a8a80
+903a8a5c lbz       r0, 0xd3(r11)
+903a8a60 cmpwi     cr7, r0, 0
+903a8a64 bne       cr7, 0x903a8a80
+903a8a68 li        r3, 7
+903a8a6c li        r4, 1
+903a8a70 bl        0x9037f4f0 <_CGXSetServerOperationState>
+903a8a74 lwz       r2, 8(r29)
+903a8a78 li        r0, 1
+903a8a7c stb       r0, 0xd3(r2)
+903a8a80 lwz       r0, 0x7c94(r28)
+903a8a84 add       r3, r0, r30
+903a8a88 b         0x903a8ab0
+903a8a8c lwz       r0, 0x7c74(r8)
+903a8a90 addi      r9, r9, 1
+903a8a94 addi      r30, r30, 0x1c
+903a8a98 cmplw     cr7, r9, r0
+903a8a9c blt       cr7, 0x903a8a3c
+903a8aa0 lwz       r2, 8(r29)
+903a8aa4 li        r0, 0
+903a8aa8 li        r3, 0
+903a8aac stb       r0, 0xd3(r2)
+903a8ab0 lwz       r0, 0x68(r1)
+903a8ab4 addi      r1, r1, 0x60
+903a8ab8 lmw       r28, -0x10(r1)
+903a8abc mtlr      r0
+903a8ac0 blr       
+_CGXGLAccelForDisplayDevice [903a88f8..903a8970]:
+903a88f8 mfcr      r2
+903a88fc cmpwi     cr4, r4, 0
+903a8900 mflr      r0
+903a8904 stmw      r30, -8(r1)
+903a8908 stw       r2, 4(r1)
+903a890c mr        r30, r4
+903a8910 stw       r0, 8(r1)
+903a8914 mr        r2, r3
+903a8918 stwu      r1, -0x50(r1)
+903a891c beq       cr4, 0x903a8928
+903a8920 li        r0, 0
+903a8924 stw       r0, 0(r4)
+903a8928 cmpwi     cr7, r2, 0
+903a892c beq       cr7, 0x903a893c
+903a8930 bl        0x903a8970 <__CGXGLDisplayContextForDisplayDevice>
+903a8934 or.       r3, r3, r3
+903a8938 bne       0x903a8944
+903a893c li        r3, 0x3e8
+903a8940 b         0x903a8954
+903a8944 beq       cr4, 0x903a8950
+903a8948 lwz       r0, 8(r3)
+903a894c stw       r0, 0(r30)
+903a8950 li        r3, 0
+903a8954 lwz       r0, 0x58(r1)
+903a8958 addi      r1, r1, 0x50
+903a895c lwz       r11, 4(r1)
+903a8960 lmw       r30, -8(r1)
+903a8964 mtlr      r0
+903a8968 mtocrf    8, r11
+903a896c blr       
+_CGXGLDisplayContextCapabilities [903aa770..903aa8f0]:
+903aa770 mflr      r0
+903aa774 bdnzl     0x903aa778
+903aa778 stmw      r27, -0x14(r1)
+903aa77c mflr      r31
+903aa780 stw       r0, 8(r1)
+903aa784 addis     r29, r31, 0xffe
+903aa788 stwu      r1, -0x70(r1)
+903aa78c li        r0, 0
+903aa790 lwz       r29, 0x5e6c(r29)
+903aa794 addi      r3, r1, 0x40
+903aa798 stw       r0, 0x40(r1)
+903aa79c bl        0x903aa8f0 <_isDisplayContextEnabledInPrefs>
+903aa7a0 lwz       r12, 0x1d8(r29)
+903aa7a4 addis     r30, r31, 0x35
+903aa7a8 mr        r27, r3
+903aa7ac li        r4, 0x1f03
+903aa7b0 lwz       r3, 0(r29)
+903aa7b4 addi      r30, r30, 0x6dd8
+903aa7b8 mtctr     r12
+903aa7bc bctrl     
+903aa7c0 or.       r29, r3, r3
+903aa7c4 beq       0x903aa830
+903aa7c8 cmpwi     cr7, r30, 0
+903aa7cc beq       cr7, 0x903aa830
+903aa7d0 mr        r3, r30
+903aa7d4 bl        0x906d5680
+903aa7d8 or.       r28, r3, r3
+903aa7dc beq       0x903aa830
+903aa7e0 mr        r3, r29
+903aa7e4 mr        r4, r30
+903aa7e8 bl        0x906d82c0
+903aa7ec or.       r3, r3, r3
+903aa7f0 beq       0x903aa830
+903aa7f4 cmpw      cr7, r3, r29
+903aa7f8 add       r2, r3, r28
+903aa7fc beq       cr7, 0x903aa810
+903aa800 lbz       r0, -1(r3)
+903aa804 extsb     r0, r0
+903aa808 cmpwi     cr7, r0, 0x20
+903aa80c bne       cr7, 0x903aa828
+903aa810 lbzx      r0, r3, r28
+903aa814 extsb     r0, r0
+903aa818 cmpwi     cr7, r0, 0x20
+903aa81c beq       cr7, 0x903aa834
+903aa820 cmpwi     cr7, r0, 0
+903aa824 beq       cr7, 0x903aa834
+903aa828 mr        r29, r2
+903aa82c b         0x903aa7e0
+903aa830 li        r3, 0
+903aa834 cmpwi     cr7, r3, 0
+903aa838 beq       cr7, 0x903aa848
+903aa83c li        r0, 1
+903aa840 addis     r2, r31, 0xffe
+903aa844 stw       r0, 0x5ea8(r2)
+903aa848 li        r3, 0xf
+903aa84c bl        0x9037999c <_CGXGPUCapability>
+903aa850 cmpwi     cr7, r3, 0
+903aa854 beq       cr7, 0x903aa864
+903aa858 li        r3, 0xf
+903aa85c li        r4, 1
+903aa860 bl        0x9037f4f0 <_CGXSetServerOperationState>
+903aa864 li        r3, 0xd
+903aa868 bl        0x9037999c <_CGXGPUCapability>
+903aa86c cmpwi     cr7, r3, 0
+903aa870 beq       cr7, 0x903aa880
+903aa874 li        r3, 0xd
+903aa878 li        r4, 1
+903aa87c bl        0x9037f4f0 <_CGXSetServerOperationState>
+903aa880 cmpwi     cr7, r27, 0
+903aa884 beq       cr7, 0x903aa8a0
+903aa888 lwz       r0, 0x40(r1)
+903aa88c cmpwi     cr7, r0, 0
+903aa890 beq       cr7, 0x903aa8dc
+903aa894 li        r4, 1
+903aa898 li        r3, 0xe
+903aa89c b         0x903aa8d8
+903aa8a0 bl        0x90696600 <_isVendorExcluded>
+903aa8a4 cmpwi     cr7, r3, 0
+903aa8a8 bne       cr7, 0x903aa8dc
+903aa8ac bl        0x9069657c <_isDisplayContextEnabledInConfig>
+903aa8b0 cmpwi     cr7, r3, 0
+903aa8b4 beq       cr7, 0x903aa8dc
+903aa8b8 bl        0x90696810 <_isDisplayContextCapable>
+903aa8bc cmpwi     cr7, r3, 0
+903aa8c0 beq       cr7, 0x903aa8dc
+903aa8c4 bl        0x903aa978 <_allDisplaysQ2dXCapable>
+903aa8c8 cmpwi     cr7, r3, 0
+903aa8cc beq       cr7, 0x903aa8dc
+903aa8d0 li        r3, 0xe
+903aa8d4 li        r4, 0
+903aa8d8 bl        0x9037f4f0 <_CGXSetServerOperationState>
+903aa8dc lwz       r0, 0x78(r1)
+903aa8e0 addi      r1, r1, 0x70
+903aa8e4 lmw       r27, -0x14(r1)
+903aa8e8 mtlr      r0
+903aa8ec blr       
+_CGXCoreGraphicsConfiguration [90374694..90374938]:
+90374694 mflr      r0
+90374698 bdnzl     0x9037469c
+9037469c stmw      r24, -0x20(r1)
+903746a0 mflr      r31
+903746a4 addis     r25, r31, 0x1002
+903746a8 stw       r0, 8(r1)
+903746ac addi      r27, r25, -0x42e0
+903746b0 stwu      r1, -0x70(r1)
+903746b4 lwz       r3, 0(r27)
+903746b8 cmpwi     cr7, r3, 0
+903746bc bne       cr7, 0x90374924
+903746c0 addis     r3, r31, 0x1001
+903746c4 addi      r3, r3, 0x6ec4
+903746c8 bl        0x906d6240
+903746cc cmpwi     cr7, r3, 0
+903746d0 beq       cr7, 0x903747a8
+903746d4 bl        0x906d76c0
+903746d8 or.       r29, r3, r3
+903746dc beq       0x9037479c
+903746e0 addis     r2, r31, 0x1000
+903746e4 addis     r5, r31, 0x1001
+903746e8 lwz       r2, 0xec(r2)
+903746ec addi      r5, r5, 0x6ee4
+903746f0 mr        r4, r29
+903746f4 li        r6, 0
+903746f8 lwz       r30, 0(r2)
+903746fc mr        r3, r30
+90374700 bl        0x906d6340
+90374704 mr        r28, r3
+90374708 mr        r3, r29
+9037470c bl        0x906d5320
+90374710 mr        r3, r30
+90374714 mr        r4, r28
+90374718 addi      r5, r1, 0x40
+9037471c li        r6, 0
+90374720 li        r7, 0
+90374724 addi      r8, r1, 0x44
+90374728 bl        0x906d6700
+9037472c cmpwi     cr7, r3, 0
+90374730 beq       cr7, 0x90374780
+90374734 lwz       r4, 0x40(r1)
+90374738 mr        r3, r30
+9037473c li        r5, 0
+90374740 addi      r6, r1, 0x48
+90374744 bl        0x906d5d80
+90374748 cmpwi     cr7, r3, 0
+9037474c stw       r3, 0(r27)
+90374750 bne       cr7, 0x90374774
+90374754 lwz       r3, 0x48(r1)
+90374758 bl        0x9065ea3c <_cString>
+9037475c mr        r4, r3
+90374760 addis     r3, r31, 0x38
+90374764 addi      r3, r3, 0x3114
+90374768 bl        0x90376294 <_CGSLogMessage>
+9037476c lwz       r3, 0x48(r1)
+90374770 bl        0x906d5320
+90374774 lwz       r3, 0x40(r1)
+90374778 bl        0x906d5320
+9037477c b         0x90374790
+90374780 addis     r3, r31, 0x38
+90374784 lwz       r4, 0x44(r1)
+90374788 addi      r3, r3, 0x3140
+9037478c bl        0x90376294 <_CGSLogMessage>
+90374790 mr        r3, r28
+90374794 bl        0x906d5320
+90374798 b         0x903747b4
+9037479c addis     r3, r31, 0x38
+903747a0 addi      r3, r3, 0x3164
+903747a4 b         0x903747b0
+903747a8 addis     r3, r31, 0x38
+903747ac addi      r3, r3, 0x317c
+903747b0 bl        0x90376294 <_CGSLogMessage>
+903747b4 addi      r24, r25, -0x42e0
+903747b8 lwz       r0, 0(r24)
+903747bc cmpwi     cr7, r0, 0
+903747c0 bne       cr7, 0x90374920
+903747c4 addis     r2, r31, 0x1000
+903747c8 addis     r30, r31, 0x1000
+903747cc lwz       r2, 0xec(r2)
+903747d0 addis     r29, r31, 0x1000
+903747d4 lwz       r5, -0x10(r29)
+903747d8 li        r4, 0
+903747dc lwz       r27, 0(r2)
+903747e0 lwz       r6, -0x14(r30)
+903747e4 mr        r3, r27
+903747e8 bl        0x906d55a0
+903747ec or.       r26, r3, r3
+903747f0 beq       0x90374920
+903747f4 lwz       r5, -0x10(r29)
+903747f8 mr        r3, r27
+903747fc lwz       r6, -0x14(r30)
+90374800 li        r4, 0
+90374804 bl        0x906d55a0
+90374808 or.       r28, r3, r3
+9037480c beq       0x903748f4
+90374810 addis     r4, r31, 0x1001
+90374814 li        r5, 0x100
+90374818 addi      r4, r4, 0x6ef4
+9037481c addis     r29, r31, 0x1000
+90374820 bl        0x90404c30 <_CGXAddCFDictKeyAndIntValue>
+90374824 addis     r4, r31, 0x1001
+90374828 mr        r3, r28
+9037482c addi      r4, r4, 0x6f04
+90374830 li        r5, 0x100
+90374834 bl        0x90404c30 <_CGXAddCFDictKeyAndIntValue>
+90374838 addis     r4, r31, 0x1001
+9037483c mr        r3, r28
+90374840 addi      r4, r4, 0x6f14
+90374844 li        r5, 0x20
+90374848 bl        0x90404c30 <_CGXAddCFDictKeyAndIntValue>
+9037484c addis     r4, r31, 0x1001
+90374850 mr        r3, r28
+90374854 addi      r4, r4, 0x6f24
+90374858 li        r5, 0x10
+9037485c bl        0x90404c30 <_CGXAddCFDictKeyAndIntValue>
+90374860 lwz       r6, -0xc(r29)
+90374864 addis     r2, r31, 0x1001
+90374868 addi      r4, r1, 0x4c
+9037486c addi      r2, r2, 0x6f34
+90374870 li        r5, 1
+90374874 mr        r3, r27
+90374878 stw       r2, 0x4c(r1)
+9037487c bl        0x906d68e0
+90374880 addis     r4, r31, 0x1001
+90374884 mr        r30, r3
+90374888 addi      r4, r4, 0x6f44
+9037488c mr        r5, r30
+90374890 mr        r3, r28
+90374894 bl        0x906d5560
+90374898 mr        r3, r30
+9037489c bl        0x906d5320
+903748a0 lwz       r6, -0xc(r29)
+903748a4 addis     r2, r31, 0x1001
+903748a8 addi      r4, r1, 0x4c
+903748ac addi      r2, r2, 0x6f54
+903748b0 li        r5, 1
+903748b4 mr        r3, r27
+903748b8 stw       r2, 0x4c(r1)
+903748bc bl        0x906d68e0
+903748c0 addis     r4, r31, 0x1001
+903748c4 mr        r30, r3
+903748c8 addi      r4, r4, 0x6f64
+903748cc mr        r3, r28
+903748d0 mr        r5, r30
+903748d4 bl        0x906d5560
+903748d8 addis     r2, r31, 0x1000
+903748dc lwz       r2, 0x28(r2)
+903748e0 addis     r4, r31, 0x1001
+903748e4 addi      r4, r4, 0x6f74
+903748e8 mr        r3, r28
+903748ec lwz       r5, 0(r2)
+903748f0 bl        0x906d5560
+903748f4 addis     r4, r31, 0x1001
+903748f8 mr        r5, r28
+903748fc addi      r4, r4, 0x6f84
+90374900 mr        r3, r26
+90374904 bl        0x906d5560
+90374908 mr        r4, r26
+9037490c mr        r3, r27
+90374910 bl        0x906d76a0
+90374914 stw       r3, 0(r24)
+90374918 mr        r3, r26
+9037491c bl        0x906d5320
+90374920 lwz       r3, -0x42e0(r25)
+90374924 lwz       r0, 0x78(r1)
+90374928 addi      r1, r1, 0x70
+9037492c lmw       r24, -0x20(r1)
+90374930 mtlr      r0
+90374934 blr       

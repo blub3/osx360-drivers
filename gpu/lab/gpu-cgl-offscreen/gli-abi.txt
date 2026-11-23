@@ -1,0 +1,1116 @@
+_gliGetVersion [000013f4..000015b4]:
+000013f4 mflr      r0
+000013f8 bdnzl     0x13fc
+000013fc stmw      r26, -0x18(r1)
+00001400 stw       r0, 8(r1)
+00001404 mflr      r31
+00001408 stwu      r1, -0xb0(r1)
+0000140c mr        r30, r3
+00001410 mr        r27, r4
+00001414 mr        r26, r5
+00001418 bl        0x15b4 <_glepPluginConnectAll>
+0000141c li        r0, 0xc
+00001420 stw       r0, 0x70(r1)
+00001424 bl        0x108d38
+00001428 li        r4, 1
+0000142c addi      r5, r1, 0x40
+00001430 addi      r6, r1, 0x70
+00001434 mr        r29, r3
+00001438 bl        0x108d18
+0000143c addis     r2, r31, 0x11
+00001440 lwz       r2, 0xc38(r2)
+00001444 mr        r28, r3
+00001448 mr        r4, r29
+0000144c lwz       r3, 0(r2)
+00001450 bl        0x108cf8
+00001454 cmpwi     cr7, r28, 0
+00001458 li        r3, 0
+0000145c bne       cr7, 0x15a0
+00001460 lwz       r0, 0x4c(r1)
+00001464 cmpwi     cr7, r0, 0x12
+00001468 bne       cr7, 0x1554
+0000146c li        r0, 6
+00001470 li        r2, 0xd
+00001474 stw       r0, 0x78(r1)
+00001478 addi      r3, r1, 0x78
+0000147c li        r0, 4
+00001480 li        r4, 2
+00001484 addi      r5, r1, 0x80
+00001488 addi      r6, r1, 0x84
+0000148c li        r7, 0
+00001490 li        r8, 0
+00001494 stw       r0, 0x84(r1)
+00001498 stw       r2, 0x7c(r1)
+0000149c bl        0x108cd8
+000014a0 lwz       r0, 0x80(r1)
+000014a4 addis     r9, r31, 0x11
+000014a8 cmpwi     cr7, r0, 0
+000014ac beq       cr7, 0x14c0
+000014b0 addi      r2, r9, 0xa30
+000014b4 lwz       r0, 0(r2)
+000014b8 ori       r0, r0, 0x30
+000014bc stw       r0, 0(r2)
+000014c0 addis     r2, r31, 0x11
+000014c4 lwz       r2, 0x2a10(r2)
+000014c8 lwz       r0, 0(r2)
+000014cc andi.     r2, r0, 0x10
+000014d0 beq       0x14e4
+000014d4 addi      r2, r9, 0xa30
+000014d8 lwz       r0, 0(r2)
+000014dc ori       r0, r0, 0x40
+000014e0 stw       r0, 0(r2)
+000014e4 lwz       r0, 0x50(r1)
+000014e8 cmpwi     cr7, r0, 8
+000014ec bgt       cr7, 0x1504
+000014f0 cmpwi     cr7, r0, 3
+000014f4 bge       cr7, 0x1524
+000014f8 cmpwi     cr7, r0, 0
+000014fc blt       cr7, 0x1544
+00001500 b         0x1534
+00001504 cmpwi     cr7, r0, 0xb
+00001508 ble       cr7, 0x1514
+0000150c cmpwi     cr7, r0, 0x64
+00001510 bne       cr7, 0x1544
+00001514 addi      r2, r9, 0xa30
+00001518 lwz       r0, 0(r2)
+0000151c ori       r0, r0, 8
+00001520 stw       r0, 0(r2)
+00001524 addi      r2, r9, 0xa30
+00001528 lwz       r0, 0(r2)
+0000152c ori       r0, r0, 1
+00001530 stw       r0, 0(r2)
+00001534 addi      r2, r9, 0xa30
+00001538 lwz       r0, 0(r2)
+0000153c ori       r0, r0, 2
+00001540 b         0x1550
+00001544 addi      r2, r9, 0xa30
+00001548 lwz       r0, 0(r2)
+0000154c ori       r0, r0, 0xb
+00001550 stw       r0, 0(r2)
+00001554 bl        0x1cc8 <_glePreInitGlobals>
+00001558 bl        0x1d9c <_glePreInitTOC>
+0000155c bl        0x2030 <_glePreInitNormalize>
+00001560 bl        0x2034 <_glePreInitProjectionTransformFunc>
+00001564 bl        0x2078 <_glePreInitModelviewTransformFunc>
+00001568 bl        0x20bc <_glePreInitNormalTransformFunc>
+0000156c bl        0x2100 <_glePreInitVertexSubmitFunc>
+00001570 bl        0x2124 <_glepGetPlugins>
+00001574 cmpwi     cr7, r3, 0
+00001578 li        r3, 0
+0000157c beq       cr7, 0x15a0
+00001580 li        r0, 2
+00001584 li        r2, 3
+00001588 stw       r0, 0(r30)
+0000158c lis       r0, 2
+00001590 stw       r2, 0(r27)
+00001594 stw       r0, 0(r26)
+00001598 bl        0x2140 <_gleOptimizeDisplayListCreateHashTable>
+0000159c li        r3, 1
+000015a0 lwz       r0, 0xb8(r1)
+000015a4 addi      r1, r1, 0xb0
+000015a8 lmw       r26, -0x18(r1)
+000015ac mtlr      r0
+000015b0 blr       
+_gliCreateContext [00002d18..00003170]:
+00002d18 stmw      r18, -0x38(r1)
+00002d1c mfcr      r2
+00002d20 or.       r18, r3, r3
+00002d24 mflr      r0
+00002d28 bdnzl     0x2d2c
+00002d2c stw       r0, 8(r1)
+00002d30 stw       r2, 4(r1)
+00002d34 mflr      r31
+00002d38 stwu      r1, -0x80(r1)
+00002d3c mr        r20, r4
+00002d40 mr        r19, r5
+00002d44 mr        r25, r6
+00002d48 mr        r24, r7
+00002d4c li        r28, 0xff
+00002d50 li        r11, 0
+00002d54 li        r22, 0
+00002d58 li        r3, 0x271e
+00002d5c beq       0x3154
+00002d60 or.       r30, r4, r4
+00002d64 stw       r22, 0(r18)
+00002d68 li        r29, 0
+00002d6c beq       0x2f40
+00002d70 lis       r9, 2
+00002d74 lwz       r2, 4(r30)
+00002d78 li        r3, 0x2712
+00002d7c rlwinm    r0, r2, 0, 8, 0xf
+00002d80 cmpw      cr7, r0, r9
+00002d84 bne       cr7, 0x3154
+00002d88 lwz       r0, 8(r30)
+00002d8c andi.     r10, r0, 0x40
+00002d90 bne       0x2d98
+00002d94 li        r11, 1
+00002d98 rlwinm    r0, r2, 0, 0x10, 0x17
+00002d9c cmpwi     cr7, r0, 0x400
+00002da0 beq       cr7, 0x2dac
+00002da4 cmpwi     cr7, r0, 0x500
+00002da8 bne       cr7, 0x2db0
+00002dac mr        r28, r29
+00002db0 lwz       r30, 0(r30)
+00002db4 addi      r29, r29, 1
+00002db8 cmpwi     cr7, r30, 0
+00002dbc bne       cr7, 0x2d74
+00002dc0 cmpwi     cr7, r29, 0
+00002dc4 beq       cr7, 0x2f40
+00002dc8 cmpwi     cr7, r11, 0
+00002dcc li        r0, 0
+00002dd0 beq       cr7, 0x2de0
+00002dd4 andi.     r2, r8, 1
+00002dd8 beq       0x2de0
+00002ddc li        r0, 1
+00002de0 cmpwi     cr7, r0, 0
+00002de4 beq       cr7, 0x2dfc
+00002de8 cmpwi     cr7, r28, 0xff
+00002dec bne       cr7, 0x2e00
+00002df0 mr        r28, r29
+00002df4 addi      r29, r29, 1
+00002df8 b         0x2e00
+00002dfc li        r28, 0xff
+00002e00 cmpwi     cr7, r29, 8
+00002e04 li        r3, 0x2712
+00002e08 bgt       cr7, 0x3154
+00002e0c cmpwi     cr4, r19, 0
+00002e10 beq       cr4, 0x2e40
+00002e14 lwz       r0, 0x467c(r19)
+00002e18 lis       r2, 0x3463
+00002e1c ori       r2, r2, 0xa223
+00002e20 cmpw      cr7, r0, r2
+00002e24 bne       cr7, 0x2e38
+00002e28 addis     r2, r19, 1
+00002e2c lbz       r0, -0x7a5c(r2)
+00002e30 cmpw      cr7, r0, r29
+00002e34 beq       cr7, 0x2e40
+00002e38 li        r3, 0x2719
+00002e3c b         0x3154
+00002e40 mulli     r3, r29, 0x2e0
+00002e44 addis     r3, r3, 1
+00002e48 addi      r3, r3, -0x7a50
+00002e4c bl        0x3170 <_gleDCBAlloc>
+00002e50 or.       r26, r3, r3
+00002e54 li        r3, 0x2720
+00002e58 beq       0x3154
+00002e5c li        r27, 0
+00002e60 addis     r21, r26, 1
+00002e64 cmpw      cr7, r27, r29
+00002e68 li        r9, 0
+00002e6c li        r0, 2
+00002e70 li        r2, 4
+00002e74 sth       r0, 0x360(r26)
+00002e78 mr        r30, r20
+00002e7c sth       r2, 0x362(r26)
+00002e80 mcrf      cr6, cr7
+00002e84 stb       r9, -0x7a5a(r21)
+00002e88 stb       r28, -0x7a5b(r21)
+00002e8c stw       r25, 0x4680(r26)
+00002e90 stw       r24, 0x4684(r26)
+00002e94 stw       r9, 0x5148(r26)
+00002e98 stb       r29, -0x7a5c(r21)
+00002e9c bge       cr7, 0x2f34
+00002ea0 addi      r25, r21, -0x7a54
+00002ea4 li        r23, 0
+00002ea8 mr        r3, r25
+00002eac li        r4, 0
+00002eb0 li        r5, 0x2e0
+00002eb4 mr        r24, r23
+00002eb8 bl        0x108298
+00002ebc cmpwi     cr7, r30, 0
+00002ec0 beq       cr7, 0x2ed4
+00002ec4 lwz       r0, 4(r30)
+00002ec8 rlwinm    r3, r0, 0, 0x10, 0x17
+00002ecc rlwinm    r28, r0, 0, 0x10, 7
+00002ed0 b         0x2ef4
+00002ed4 li        r3, 0x400
+00002ed8 li        r28, 0x400
+00002edc bl        0x2cd0 <_glepGetPlugin>
+00002ee0 mr        r30, r20
+00002ee4 or.       r3, r3, r3
+00002ee8 bne       0x2f00
+00002eec li        r3, 0x500
+00002ef0 li        r28, 0x500
+00002ef4 bl        0x2cd0 <_glepGetPlugin>
+00002ef8 or.       r3, r3, r3
+00002efc beq       0x2f30
+00002f00 addi      r27, r27, 1
+00002f04 add       r2, r24, r26
+00002f08 cmpw      cr6, r27, r29
+00002f0c addis     r2, r2, 1
+00002f10 addi      r2, r2, -0x7790
+00002f14 addi      r23, r23, 0x2e0
+00002f18 stw       r3, 0x14(r2)
+00002f1c addi      r25, r25, 0x2e0
+00002f20 stw       r28, 0x18(r2)
+00002f24 lwz       r30, 0(r30)
+00002f28 blt       cr6, 0x2ea8
+00002f2c b         0x2f34
+00002f30 cmpw      cr6, r27, r29
+00002f34 beq       cr6, 0x2f48
+00002f38 mr        r3, r26
+00002f3c bl        0x2fcb8 <_gleDCBFree>
+00002f40 li        r3, 0x2712
+00002f44 b         0x3154
+00002f48 beq       cr4, 0x2f58
+00002f4c mr        r3, r19
+00002f50 bl        0x223d4 <_gleShareSharedState>
+00002f54 b         0x2f60
+00002f58 mr        r3, r26
+00002f5c bl        0x31b4 <_gleCreateSharedState>
+00002f60 stw       r3, 0x5148(r26)
+00002f64 lwz       r9, 0x5148(r26)
+00002f68 cmpwi     cr7, r9, 0
+00002f6c bne       cr7, 0x2f80
+00002f70 mr        r3, r26
+00002f74 bl        0x2fcb8 <_gleDCBFree>
+00002f78 li        r3, 0x2720
+00002f7c b         0x3154
+00002f80 li        r27, 0
+00002f84 mr        r30, r20
+00002f88 cmpw      cr7, r27, r29
+00002f8c addi      r28, r26, 0x360
+00002f90 blt       cr7, 0x2f9c
+00002f94 b         0x3024
+00002f98 lwz       r9, 0x5148(r26)
+00002f9c cmpwi     cr7, r30, 0
+00002fa0 bne       cr7, 0x2fa8
+00002fa4 mr        r30, r20
+00002fa8 mulli     r0, r27, 0x2e0
+00002fac slwi      r2, r27, 2
+00002fb0 add       r2, r2, r9
+00002fb4 addis     r2, r2, 1
+00002fb8 add       r9, r0, r26
+00002fbc lwz       r5, -0x7fac(r2)
+00002fc0 addis     r9, r9, 1
+00002fc4 addi      r3, r9, -0x7a54
+00002fc8 lwz       r11, -0x777c(r9)
+00002fcc beq       cr4, 0x2fe0
+00002fd0 add       r2, r0, r19
+00002fd4 addis     r2, r2, 1
+00002fd8 lwz       r6, -0x7a54(r2)
+00002fdc b         0x2fe4
+00002fe0 li        r6, 0
+00002fe4 add       r7, r26, r0
+00002fe8 lwz       r12, 0x12c(r11)
+00002fec addis     r7, r7, 1
+00002ff0 mr        r4, r30
+00002ff4 addi      r9, r7, -0x7920
+00002ff8 mr        r8, r28
+00002ffc addi      r7, r7, -0x7a50
+00003000 mtctr     r12
+00003004 bctrl     
+00003008 or.       r22, r3, r3
+0000300c bne       0x302c
+00003010 addi      r27, r27, 1
+00003014 lwz       r30, 0(r30)
+00003018 cmpw      cr7, r27, r29
+0000301c blt       cr7, 0x2f98
+00003020 b         0x3028
+00003024 cmpwi     r22, 0
+00003028 beq       0x3070
+0000302c mr        r3, r26
+00003030 bl        0x309d4 <_gleReleaseSharedState>
+00003034 cmpwi     cr7, r27, 0
+00003038 mr        r29, r3
+0000303c blt       cr7, 0x3108
+00003040 mulli     r2, r27, 0x2e0
+00003044 add       r2, r2, r26
+00003048 addis     r30, r2, 1
+0000304c lwz       r2, -0x777c(r30)
+00003050 lwz       r3, -0x7a54(r30)
+00003054 addi      r30, r30, -0x2e0
+00003058 lwz       r12, 0x130(r2)
+0000305c mtctr     r12
+00003060 bctrl     
+00003064 addic.    r27, r27, -1
+00003068 bge       0x304c
+0000306c b         0x3108
+00003070 lwz       r0, -0x7a54(r21)
+00003074 addi      r2, r21, -0x7a50
+00003078 stw       r2, 0x468c(r26)
+0000307c addis     r30, r31, 0x11
+00003080 stw       r0, 0x4688(r26)
+00003084 addi      r30, r30, 0x124c
+00003088 lwz       r4, -0x777c(r21)
+0000308c addi      r3, r26, 0x4754
+00003090 stb       r22, -0x7a58(r21)
+00003094 li        r5, 0xf4
+00003098 addi      r4, r4, 0x114
+0000309c bl        0x107d98
+000030a0 lwz       r0, 0(r30)
+000030a4 cmpwi     cr7, r0, 0
+000030a8 bne       cr7, 0x30b0
+000030ac bl        0x33d8 <_gleCreateEnableHashTable>
+000030b0 mr        r3, r26
+000030b4 bl        0x3c80 <_gleInitializeContext>
+000030b8 or.       r22, r3, r3
+000030bc beq       0x3128
+000030c0 mr        r3, r26
+000030c4 li        r27, 0
+000030c8 bl        0x309d4 <_gleReleaseSharedState>
+000030cc lbz       r0, -0x7a5c(r21)
+000030d0 mr        r29, r3
+000030d4 cmpw      cr7, r27, r0
+000030d8 bge       cr7, 0x3108
+000030dc addis     r30, r26, 1
+000030e0 lwz       r2, -0x777c(r30)
+000030e4 addi      r27, r27, 1
+000030e8 lwz       r3, -0x7a54(r30)
+000030ec addi      r30, r30, 0x2e0
+000030f0 lwz       r12, 0x130(r2)
+000030f4 mtctr     r12
+000030f8 bctrl     
+000030fc lbz       r0, -0x7a5c(r21)
+00003100 cmpw      cr7, r27, r0
+00003104 blt       cr7, 0x30e0
+00003108 cmpwi     cr7, r29, 0
+0000310c beq       cr7, 0x3118
+00003110 mr        r3, r26
+00003114 bl        0x30b84 <_gleDestroySharedState>
+00003118 mr        r3, r26
+0000311c bl        0x2fcb8 <_gleDCBFree>
+00003120 mr        r3, r22
+00003124 b         0x3154
+00003128 mr        r3, r26
+0000312c bl        0x9ed8 <_gliSetCurrentPluginDispatchTable>
+00003130 mr        r3, r26
+00003134 bl        0x9ff8 <_gliInitDispatchTable>
+00003138 mr        r3, r26
+0000313c bl        0xbf80 <_gliExecDispatchTable>
+00003140 lwz       r0, 0(r30)
+00003144 li        r3, 0
+00003148 stw       r0, -0x7a60(r21)
+0000314c stw       r26, 0(r30)
+00003150 stw       r26, 0(r18)
+00003154 lwz       r0, 0x88(r1)
+00003158 addi      r1, r1, 0x80
+0000315c lwz       r11, 4(r1)
+00003160 lmw       r18, -0x38(r1)
+00003164 mtlr      r0
+00003168 mtocrf    8, r11
+0000316c blr       
+_gliChoosePixelFormat [000029a4..00002aa8]:
+000029a4 stmw      r26, -0x18(r1)
+000029a8 or.       r27, r3, r3
+000029ac mflr      r0
+000029b0 mr        r26, r4
+000029b4 stw       r0, 8(r1)
+000029b8 li        r3, 0x271e
+000029bc stwu      r1, -0x70(r1)
+000029c0 beq       0x2a94
+000029c4 cmpwi     cr7, r4, 0
+000029c8 li        r0, 0
+000029cc stw       r0, 0(r27)
+000029d0 beq       cr7, 0x2a94
+000029d4 bl        0x2124 <_glepGetPlugins>
+000029d8 or.       r30, r3, r3
+000029dc li        r3, 0x271f
+000029e0 beq       0x2a94
+000029e4 mr        r28, r27
+000029e8 lwz       r12, 0x118(r30)
+000029ec addi      r3, r1, 0x40
+000029f0 mr        r4, r26
+000029f4 mtctr     r12
+000029f8 bctrl     
+000029fc lwz       r0, 0x40(r1)
+00002a00 mr        r29, r3
+00002a04 cmpwi     cr7, r0, 0
+00002a08 beq       cr7, 0x2a58
+00002a0c stw       r0, 0(r28)
+00002a10 lwz       r2, 0x40(r1)
+00002a14 lwz       r0, 4(r2)
+00002a18 oris      r0, r0, 2
+00002a1c stw       r0, 4(r2)
+00002a20 lwz       r2, 0x40(r1)
+00002a24 lwz       r0, 0(r2)
+00002a28 cmpwi     cr7, r0, 0
+00002a2c beq       cr7, 0x2a54
+00002a30 lwz       r2, 0(r2)
+00002a34 stw       r2, 0x40(r1)
+00002a38 lwz       r0, 4(r2)
+00002a3c oris      r0, r0, 2
+00002a40 stw       r0, 4(r2)
+00002a44 lwz       r2, 0x40(r1)
+00002a48 lwz       r0, 0(r2)
+00002a4c cmpwi     cr7, r0, 0
+00002a50 bne       cr7, 0x2a30
+00002a54 mr        r28, r2
+00002a58 lwz       r30, 0(r30)
+00002a5c cmpwi     cr7, r30, 0
+00002a60 beq       cr7, 0x2a70
+00002a64 cmpwi     cr7, r29, 0
+00002a68 beq       cr7, 0x29e8
+00002a6c b         0x2a78
+00002a70 cmpwi     cr7, r29, 0
+00002a74 beq       cr7, 0x2a90
+00002a78 lwz       r3, 0(r27)
+00002a7c cmpwi     cr7, r3, 0
+00002a80 beq       cr7, 0x2a90
+00002a84 bl        0x2c00 <_gliDestroyPixelFormat>
+00002a88 li        r0, 0
+00002a8c stw       r0, 0(r27)
+00002a90 mr        r3, r29
+00002a94 lwz       r0, 0x78(r1)
+00002a98 addi      r1, r1, 0x70
+00002a9c lmw       r26, -0x18(r1)
+00002aa0 mtlr      r0
+00002aa4 blr       
+_gliAttachDrawable [00107ad8..00107ae0]:
+00107ad8 li        r7, 0
+00107adc b         0x1250c <_gliAttachDrawableWithOptions>
+_gliAttachDrawableWithOptions [0001250c..0001279c]:
+0001250c mfcr      r2
+00012510 mflr      r0
+00012514 stmw      r22, -0x28(r1)
+00012518 stw       r0, 8(r1)
+0001251c stw       r2, 4(r1)
+00012520 addis     r30, r3, 1
+00012524 stwu      r1, -0x70(r1)
+00012528 cmpwi     cr7, r3, 0
+0001252c lbz       r0, -0x7a58(r30)
+00012530 mr        r29, r3
+00012534 lbz       r2, -0x7a5a(r30)
+00012538 mr        r27, r6
+0001253c mr        r22, r7
+00012540 mr        r24, r4
+00012544 xor       r0, r0, r2
+00012548 mr        r25, r5
+0001254c neg       r0, r0
+00012550 li        r23, 0
+00012554 srwi      r26, r0, 0x1f
+00012558 beq       cr7, 0x12570
+0001255c lwz       r0, 0x467c(r3)
+00012560 lis       r2, 0x3463
+00012564 ori       r2, r2, 0xa223
+00012568 cmpw      cr7, r0, r2
+0001256c beq       cr7, 0x12578
+00012570 li        r3, 0x2714
+00012574 b         0x12780
+00012578 cmpwi     cr4, r4, 0
+0001257c cmpwi     cr3, r5, 0
+00012580 li        r3, 0x2715
+00012584 creqv     cr7eq, cr3eq, cr4eq
+00012588 bne       cr7, 0x12780
+0001258c cmpwi     cr7, r6, 0
+00012590 blt       cr7, 0x125a0
+00012594 lbz       r0, -0x7a5c(r30)
+00012598 cmpw      cr7, r6, r0
+0001259c blt       cr7, 0x125a8
+000125a0 li        r3, 0x2718
+000125a4 b         0x12780
+000125a8 mulli     r2, r6, 0x2e0
+000125ac stb       r6, -0x7a5a(r30)
+000125b0 stb       r23, -0x7a59(r30)
+000125b4 mr        r6, r7
+000125b8 add       r2, r2, r29
+000125bc addis     r2, r2, 1
+000125c0 lwz       r9, -0x777c(r2)
+000125c4 lwz       r3, -0x7a54(r2)
+000125c8 lwz       r12, 0x138(r9)
+000125cc mtctr     r12
+000125d0 bctrl     
+000125d4 cmplwi    cr7, r3, 4
+000125d8 mr        r28, r3
+000125dc bgt       cr7, 0x12600
+000125e0 lbz       r0, -0x7a58(r30)
+000125e4 cmpw      cr7, r27, r0
+000125e8 beq       cr7, 0x12600
+000125ec mr        r4, r27
+000125f0 mr        r3, r29
+000125f4 bl        0x1078b0 <_gliSwitchPlugin>
+000125f8 li        r23, 1
+000125fc li        r28, 2
+00012600 cmpwi     cr7, r28, 2
+00012604 beq       cr7, 0x1262c
+00012608 cmplwi    cr7, r28, 2
+0001260c blt       cr7, 0x12638
+00012610 cmpwi     cr7, r28, 4
+00012614 beq       cr7, 0x12638
+00012618 cmplwi    cr7, r28, 4
+0001261c blt       cr7, 0x12634
+00012620 cmpwi     cr7, r28, 0x2720
+00012624 beq       cr7, 0x1264c
+00012628 b         0x126c8
+0001262c mr        r3, r29
+00012630 bl        0x127a4 <_gliUpdatePluginConfig>
+00012634 li        r23, 1
+00012638 cmpwi     cr7, r26, 0
+0001263c beq       cr7, 0x126b8
+00012640 mr        r3, r29
+00012644 bl        0x1079fc <_gliDetachRevert>
+00012648 b         0x126b8
+0001264c beq       cr4, 0x126c0
+00012650 lbz       r27, -0x7a5b(r30)
+00012654 cmpwi     cr7, r27, 0xff
+00012658 beq       cr7, 0x126c0
+0001265c mulli     r2, r27, 0x2e0
+00012660 li        r0, 1
+00012664 stb       r0, -0x7a59(r30)
+00012668 mr        r6, r22
+0001266c mr        r4, r24
+00012670 mr        r5, r25
+00012674 add       r2, r2, r29
+00012678 addis     r2, r2, 1
+0001267c lwz       r9, -0x777c(r2)
+00012680 lwz       r3, -0x7a54(r2)
+00012684 lwz       r12, 0x138(r9)
+00012688 mtctr     r12
+0001268c bctrl     
+00012690 cmplwi    cr7, r3, 4
+00012694 mr        r28, r3
+00012698 bgt       cr7, 0x126d8
+0001269c lbz       r0, -0x7a58(r30)
+000126a0 cmpw      cr7, r27, r0
+000126a4 beq       cr7, 0x126b8
+000126a8 mr        r4, r27
+000126ac mr        r3, r29
+000126b0 bl        0x1078b0 <_gliSwitchPlugin>
+000126b4 li        r23, 1
+000126b8 li        r28, 0
+000126bc b         0x126e0
+000126c0 li        r28, 0x2720
+000126c4 b         0x12744
+000126c8 cmpwi     cr7, r26, 0
+000126cc beq       cr7, 0x126d8
+000126d0 mr        r3, r29
+000126d4 bl        0x1079fc <_gliDetachRevert>
+000126d8 cmpwi     cr7, r28, 0
+000126dc bne       cr7, 0x12744
+000126e0 lbz       r0, 0x4690(r29)
+000126e4 li        r2, 0
+000126e8 cmpwi     cr7, r0, 0
+000126ec beq       cr7, 0x126f4
+000126f0 bne       cr3, 0x126f8
+000126f4 li        r2, 1
+000126f8 cmpwi     cr7, r23, 0
+000126fc stw       r25, 0x4848(r29)
+00012700 stw       r24, 0x484c(r29)
+00012704 bne       cr7, 0x12714
+00012708 lbz       r0, 0x4692(r29)
+0001270c cmpw      cr7, r0, r2
+00012710 beq       cr7, 0x1277c
+00012714 lwz       r0, 0x4e1c(r29)
+00012718 stb       r2, 0x4692(r29)
+0001271c cmpwi     cr7, r0, 0x1c00
+00012720 li        r0, 0
+00012724 bne       cr7, 0x12734
+00012728 cmpwi     cr7, r2, 0
+0001272c bne       cr7, 0x12734
+00012730 li        r0, 1
+00012734 stb       r0, 0x4691(r29)
+00012738 li        r0, -1
+0001273c stw       r0, 0x757c(r29)
+00012740 b         0x12774
+00012744 lbz       r0, 0x4692(r29)
+00012748 li        r2, 0
+0001274c stw       r2, 0x4848(r29)
+00012750 cmpwi     cr7, r0, 0
+00012754 stw       r2, 0x484c(r29)
+00012758 beq       cr7, 0x12768
+0001275c lbz       r0, 0x4691(r29)
+00012760 cmpwi     cr7, r0, 0
+00012764 beq       cr7, 0x1277c
+00012768 li        r0, 1
+0001276c stb       r2, 0x4691(r29)
+00012770 stb       r0, 0x4692(r29)
+00012774 mr        r3, r29
+00012778 bl        0x9ed8 <_gliSetCurrentPluginDispatchTable>
+0001277c mr        r3, r28
+00012780 lwz       r0, 0x78(r1)
+00012784 addi      r1, r1, 0x70
+00012788 lwz       r11, 4(r1)
+0001278c lmw       r22, -0x28(r1)
+00012790 mtlr      r0
+00012794 mtcrf     0x18, r11
+00012798 blr       
+_gliGetInteger [00002238..000029a4]:
+00002238 cmpwi     cr7, r4, 0xe0
+0000223c mflr      r0
+00002240 stmw      r28, -0x10(r1)
+00002244 stw       r0, 8(r1)
+00002248 mr        r30, r3
+0000224c stwu      r1, -0x50(r1)
+00002250 mr        r29, r5
+00002254 li        r28, 0
+00002258 bne       cr7, 0x2274
+0000225c cmpwi     cr7, r5, 0
+00002260 beq       cr7, 0x2274
+00002264 li        r0, 0xaa8
+00002268 li        r3, 0
+0000226c stw       r0, 0(r5)
+00002270 b         0x2990
+00002274 cmpwi     cr7, r30, 0
+00002278 beq       cr7, 0x2290
+0000227c lwz       r0, 0x467c(r30)
+00002280 lis       r2, 0x3463
+00002284 ori       r2, r2, 0xa223
+00002288 cmpw      cr7, r0, r2
+0000228c beq       cr7, 0x2298
+00002290 li        r3, 0x2714
+00002294 b         0x2990
+00002298 cmpwi     cr7, r29, 0
+0000229c li        r3, 0x271e
+000022a0 beq       cr7, 0x2990
+000022a4 cmpwi     cr7, r4, 0x184
+000022a8 beq       cr7, 0x2568
+000022ac cmplwi    cr7, r4, 0x184
+000022b0 bgt       cr7, 0x23d8
+000022b4 cmpwi     cr7, r4, 0x164
+000022b8 beq       cr7, 0x2510
+000022bc cmplwi    cr7, r4, 0x164
+000022c0 bgt       cr7, 0x2344
+000022c4 cmpwi     cr7, r4, 0x135
+000022c8 beq       cr7, 0x261c
+000022cc cmplwi    cr7, r4, 0x135
+000022d0 bgt       cr7, 0x230c
+000022d4 cmpwi     cr7, r4, 0xe5
+000022d8 beq       cr7, 0x25fc
+000022dc cmplwi    cr7, r4, 0xe5
+000022e0 bgt       cr7, 0x22f8
+000022e4 cmpwi     cr7, r4, 0xdd
+000022e8 beq       cr7, 0x24f0
+000022ec cmpwi     cr7, r4, 0xe4
+000022f0 beq       cr7, 0x25f4
+000022f4 b         0x2974
+000022f8 cmpwi     cr7, r4, 0x126
+000022fc beq       cr7, 0x2598
+00002300 cmpwi     cr7, r4, 0x133
+00002304 beq       cr7, 0x2604
+00002308 b         0x2974
+0000230c cmpwi     cr7, r4, 0x15e
+00002310 beq       cr7, 0x24f8
+00002314 cmplwi    cr7, r4, 0x15e
+00002318 bgt       cr7, 0x2330
+0000231c cmpwi     cr7, r4, 0x136
+00002320 beq       cr7, 0x2914
+00002324 cmpwi     cr7, r4, 0x137
+00002328 beq       cr7, 0x2928
+0000232c b         0x2974
+00002330 cmpwi     cr7, r4, 0x160
+00002334 beq       cr7, 0x2500
+00002338 cmpwi     cr7, r4, 0x162
+0000233c beq       cr7, 0x2508
+00002340 b         0x2974
+00002344 cmpwi     cr7, r4, 0x174
+00002348 beq       cr7, 0x2580
+0000234c cmplwi    cr7, r4, 0x174
+00002350 bgt       cr7, 0x238c
+00002354 cmpwi     cr7, r4, 0x16a
+00002358 beq       cr7, 0x2558
+0000235c cmplwi    cr7, r4, 0x16a
+00002360 bgt       cr7, 0x2378
+00002364 cmpwi     cr7, r4, 0x166
+00002368 beq       cr7, 0x2518
+0000236c cmpwi     cr7, r4, 0x168
+00002370 beq       cr7, 0x2520
+00002374 b         0x2974
+00002378 cmpwi     cr7, r4, 0x16c
+0000237c beq       cr7, 0x2560
+00002380 cmpwi     cr7, r4, 0x172
+00002384 beq       cr7, 0x2578
+00002388 b         0x2974
+0000238c cmpwi     cr7, r4, 0x17c
+00002390 beq       cr7, 0x2528
+00002394 cmplwi    cr7, r4, 0x17c
+00002398 bgt       cr7, 0x23b0
+0000239c cmpwi     cr7, r4, 0x176
+000023a0 beq       cr7, 0x2588
+000023a4 cmpwi     cr7, r4, 0x178
+000023a8 beq       cr7, 0x2590
+000023ac b         0x2974
+000023b0 cmpwi     cr7, r4, 0x180
+000023b4 beq       cr7, 0x2538
+000023b8 cmplwi    cr7, r4, 0x180
+000023bc bgt       cr7, 0x23cc
+000023c0 cmpwi     cr7, r4, 0x17e
+000023c4 beq       cr7, 0x2530
+000023c8 b         0x2974
+000023cc cmpwi     cr7, r4, 0x182
+000023d0 beq       cr7, 0x2540
+000023d4 b         0x2974
+000023d8 cmpwi     cr7, r4, 0x643
+000023dc beq       cr7, 0x2694
+000023e0 cmplwi    cr7, r4, 0x643
+000023e4 bgt       cr7, 0x2468
+000023e8 cmpwi     cr7, r4, 0x3e2
+000023ec beq       cr7, 0x25d8
+000023f0 cmplwi    cr7, r4, 0x3e2
+000023f4 bgt       cr7, 0x2430
+000023f8 cmpwi     cr7, r4, 0x18a
+000023fc beq       cr7, 0x2550
+00002400 cmplwi    cr7, r4, 0x18a
+00002404 bgt       cr7, 0x241c
+00002408 cmpwi     cr7, r4, 0x186
+0000240c beq       cr7, 0x2570
+00002410 cmpwi     cr7, r4, 0x188
+00002414 beq       cr7, 0x2548
+00002418 b         0x2974
+0000241c cmpwi     cr7, r4, 0x3e0
+00002420 beq       cr7, 0x25ec
+00002424 cmpwi     cr7, r4, 0x3e1
+00002428 beq       cr7, 0x25e4
+0000242c b         0x2974
+00002430 cmpwi     cr7, r4, 0x640
+00002434 beq       cr7, 0x264c
+00002438 cmplwi    cr7, r4, 0x640
+0000243c bgt       cr7, 0x2454
+00002440 cmpwi     cr7, r4, 0x3e4
+00002444 beq       cr7, 0x25d0
+00002448 cmpwi     cr7, r4, 0x4d3
+0000244c beq       cr7, 0x2640
+00002450 b         0x2974
+00002454 cmpwi     cr7, r4, 0x641
+00002458 beq       cr7, 0x2664
+0000245c cmpwi     cr7, r4, 0x642
+00002460 beq       cr7, 0x267c
+00002464 b         0x2974
+00002468 cmpwi     cr7, r4, 0x649
+0000246c beq       cr7, 0x2718
+00002470 cmplwi    cr7, r4, 0x649
+00002474 bgt       cr7, 0x24b0
+00002478 cmpwi     cr7, r4, 0x646
+0000247c beq       cr7, 0x26dc
+00002480 cmplwi    cr7, r4, 0x646
+00002484 bgt       cr7, 0x249c
+00002488 cmpwi     cr7, r4, 0x644
+0000248c beq       cr7, 0x26ac
+00002490 cmpwi     cr7, r4, 0x645
+00002494 beq       cr7, 0x26c4
+00002498 b         0x2974
+0000249c cmpwi     cr7, r4, 0x647
+000024a0 beq       cr7, 0x26f0
+000024a4 cmpwi     cr7, r4, 0x648
+000024a8 beq       cr7, 0x2704
+000024ac b         0x2974
+000024b0 cmpwi     cr7, r4, 0x6a6
+000024b4 beq       cr7, 0x2884
+000024b8 cmplwi    cr7, r4, 0x6a6
+000024bc bgt       cr7, 0x24d4
+000024c0 cmpwi     cr7, r4, 0x6a4
+000024c4 beq       cr7, 0x2734
+000024c8 cmpwi     cr7, r4, 0x6a5
+000024cc beq       cr7, 0x2814
+000024d0 b         0x2974
+000024d4 cmpwi     cr7, r4, 0x6a8
+000024d8 beq       cr7, 0x2614
+000024dc cmplwi    cr7, r4, 0x6a8
+000024e0 blt       cr7, 0x260c
+000024e4 cmpwi     cr7, r4, 0x6a9
+000024e8 beq       cr7, 0x27a4
+000024ec b         0x2974
+000024f0 lbz       r0, 0x4690(r30)
+000024f4 b         0x296c
+000024f8 lha       r0, 0x508c(r30)
+000024fc b         0x296c
+00002500 lha       r0, 0x508e(r30)
+00002504 b         0x296c
+00002508 lha       r0, 0x5098(r30)
+0000250c b         0x296c
+00002510 lha       r0, 0x509a(r30)
+00002514 b         0x296c
+00002518 lha       r0, 0x50a4(r30)
+0000251c b         0x296c
+00002520 lha       r0, 0x50a6(r30)
+00002524 b         0x296c
+00002528 lha       r0, 0x48a4(r30)
+0000252c b         0x296c
+00002530 lha       r0, 0x48a6(r30)
+00002534 b         0x296c
+00002538 lha       r0, 0x48ac(r30)
+0000253c b         0x296c
+00002540 lha       r0, 0x48ae(r30)
+00002544 b         0x296c
+00002548 lha       r0, 0x48c4(r30)
+0000254c b         0x296c
+00002550 lha       r0, 0x48c6(r30)
+00002554 b         0x296c
+00002558 lha       r0, 0x48b4(r30)
+0000255c b         0x296c
+00002560 lha       r0, 0x48b6(r30)
+00002564 b         0x296c
+00002568 lha       r0, 0x48bc(r30)
+0000256c b         0x296c
+00002570 lha       r0, 0x48be(r30)
+00002574 b         0x296c
+00002578 lha       r0, 0x49bc(r30)
+0000257c b         0x296c
+00002580 lha       r0, 0x49be(r30)
+00002584 b         0x296c
+00002588 lha       r0, 0x49c0(r30)
+0000258c b         0x296c
+00002590 lha       r0, 0x49c2(r30)
+00002594 b         0x296c
+00002598 lwz       r4, 0(r29)
+0000259c mr        r3, r30
+000025a0 li        r28, 0x271a
+000025a4 bl        0x17ea8 <_gleLookUpNonProxyTexture>
+000025a8 or.       r3, r3, r3
+000025ac beq       0x298c
+000025b0 addis     r2, r30, 1
+000025b4 mr        r5, r29
+000025b8 lbz       r0, -0x7a58(r2)
+000025bc li        r4, 0x126
+000025c0 slwi      r0, r0, 2
+000025c4 lwzx      r2, r3, r0
+000025c8 stw       r2, 0(r29)
+000025cc b         0x2978
+000025d0 lbz       r0, 0x53e7(r30)
+000025d4 b         0x25dc
+000025d8 lbz       r0, 0x7584(r30)
+000025dc li        r3, 0
+000025e0 b         0x2638
+000025e4 lbz       r0, 0x7586(r30)
+000025e8 b         0x25dc
+000025ec lbz       r0, 0x7587(r30)
+000025f0 b         0x25dc
+000025f4 lwz       r0, 0x7590(r30)
+000025f8 b         0x25dc
+000025fc lbz       r0, 0x4693(r30)
+00002600 b         0x25dc
+00002604 lbz       r0, 0x5410(r30)
+00002608 b         0x25dc
+0000260c lwz       r0, 0x7594(r30)
+00002610 b         0x25dc
+00002614 lwz       r0, 0x7598(r30)
+00002618 b         0x25dc
+0000261c addis     r2, r30, 1
+00002620 li        r3, 0
+00002624 lbz       r9, -0x7a58(r2)
+00002628 mulli     r9, r9, 0x2e0
+0000262c add       r9, r9, r30
+00002630 addis     r9, r9, 1
+00002634 lwz       r0, -0x7778(r9)
+00002638 stw       r0, 0(r29)
+0000263c b         0x2990
+00002640 lha       r0, 0x4a10(r30)
+00002644 nor       r0, r0, r0
+00002648 b         0x2968
+0000264c lwz       r4, 0x5148(r30)
+00002650 mr        r3, r30
+00002654 mr        r6, r29
+00002658 li        r5, 2
+0000265c addi      r4, r4, 0x2008
+00002660 b         0x272c
+00002664 lwz       r4, 0x5148(r30)
+00002668 mr        r3, r30
+0000266c mr        r6, r29
+00002670 li        r5, 3
+00002674 addi      r4, r4, 0x300c
+00002678 b         0x272c
+0000267c lwz       r4, 0x5148(r30)
+00002680 mr        r3, r30
+00002684 mr        r6, r29
+00002688 li        r5, 4
+0000268c addi      r4, r4, 0x4010
+00002690 b         0x272c
+00002694 lwz       r4, 0x5148(r30)
+00002698 mr        r3, r30
+0000269c mr        r6, r29
+000026a0 li        r5, 6
+000026a4 addi      r4, r4, 0x6018
+000026a8 b         0x272c
+000026ac lwz       r4, 0x5148(r30)
+000026b0 mr        r3, r30
+000026b4 mr        r6, r29
+000026b8 li        r5, 5
+000026bc addi      r4, r4, 0x5014
+000026c0 b         0x272c
+000026c4 lwz       r4, 0x5148(r30)
+000026c8 mr        r3, r30
+000026cc mr        r6, r29
+000026d0 li        r5, 7
+000026d4 addi      r4, r4, 0x701c
+000026d8 b         0x272c
+000026dc mr        r3, r30
+000026e0 mr        r6, r29
+000026e4 addi      r4, r30, 0x6440
+000026e8 li        r5, -0xb
+000026ec b         0x272c
+000026f0 mr        r3, r30
+000026f4 mr        r6, r29
+000026f8 addi      r4, r30, 0x543c
+000026fc li        r5, -0xc
+00002700 b         0x272c
+00002704 mr        r3, r30
+00002708 lwz       r4, 0x5148(r30)
+0000270c mr        r6, r29
+00002710 li        r5, 0
+00002714 b         0x272c
+00002718 lwz       r4, 0x5148(r30)
+0000271c mr        r3, r30
+00002720 mr        r6, r29
+00002724 li        r5, 1
+00002728 addi      r4, r4, 0x1004
+0000272c bl        0xd2364 <_gleGetHashMachineObjectNameTargetPairs>
+00002730 b         0x298c
+00002734 lwz       r3, 0x5148(r30)
+00002738 addis     r2, r3, 1
+0000273c lbz       r0, -0x7fdc(r2)
+00002740 cmpwi     cr7, r0, 0
+00002744 beq       cr7, 0x2754
+00002748 addi      r3, r2, -0x7fd8
+0000274c bl        0x107dd8
+00002750 lwz       r3, 0x5148(r30)
+00002754 lwz       r4, 0(r29)
+00002758 addi      r3, r3, 0x6018
+0000275c bl        0x17bdc <_gleLookupHashObject>
+00002760 or.       r3, r3, r3
+00002764 beq       0x28f4
+00002768 lwz       r2, 0x10(r3)
+0000276c li        r0, 0
+00002770 ori       r0, r0, 0x8b40
+00002774 cmpw      cr7, r2, r0
+00002778 bne       cr7, 0x2788
+0000277c lwz       r3, 0x40(r3)
+00002780 bl        0x108cb8
+00002784 b         0x28f0
+00002788 li        r0, 0
+0000278c ori       r0, r0, 0x8b48
+00002790 cmpw      cr7, r2, r0
+00002794 bne       cr7, 0x28f4
+00002798 lwz       r3, 0x30(r3)
+0000279c bl        0x108c98
+000027a0 b         0x28f0
+000027a4 lwz       r3, 0x5148(r30)
+000027a8 addis     r2, r3, 1
+000027ac lbz       r0, -0x7fdc(r2)
+000027b0 cmpwi     cr7, r0, 0
+000027b4 beq       cr7, 0x27c4
+000027b8 addi      r3, r2, -0x7fd8
+000027bc bl        0x107dd8
+000027c0 lwz       r3, 0x5148(r30)
+000027c4 lwz       r4, 0(r29)
+000027c8 addi      r3, r3, 0x6018
+000027cc bl        0x17bdc <_gleLookupHashObject>
+000027d0 or.       r3, r3, r3
+000027d4 beq       0x28f4
+000027d8 lwz       r2, 0x10(r3)
+000027dc li        r0, 0
+000027e0 ori       r0, r0, 0x8b40
+000027e4 cmpw      cr7, r2, r0
+000027e8 bne       cr7, 0x27f8
+000027ec lwz       r3, 0x40(r3)
+000027f0 bl        0x108c78
+000027f4 b         0x28f0
+000027f8 li        r0, 0
+000027fc ori       r0, r0, 0x8b48
+00002800 cmpw      cr7, r2, r0
+00002804 bne       cr7, 0x28f4
+00002808 lwz       r3, 0x30(r3)
+0000280c bl        0x108c58
+00002810 b         0x28f0
+00002814 lwz       r3, 0x5148(r30)
+00002818 addis     r2, r3, 1
+0000281c lbz       r0, -0x7fdc(r2)
+00002820 cmpwi     cr7, r0, 0
+00002824 beq       cr7, 0x2834
+00002828 addi      r3, r2, -0x7fd8
+0000282c bl        0x107dd8
+00002830 lwz       r3, 0x5148(r30)
+00002834 lwz       r4, 0(r29)
+00002838 addi      r3, r3, 0x6018
+0000283c bl        0x17bdc <_gleLookupHashObject>
+00002840 or.       r3, r3, r3
+00002844 beq       0x28f4
+00002848 lwz       r2, 0x10(r3)
+0000284c li        r0, 0
+00002850 ori       r0, r0, 0x8b40
+00002854 cmpw      cr7, r2, r0
+00002858 bne       cr7, 0x2868
+0000285c lwz       r3, 0x40(r3)
+00002860 bl        0x108c38
+00002864 b         0x28f0
+00002868 li        r0, 0
+0000286c ori       r0, r0, 0x8b48
+00002870 cmpw      cr7, r2, r0
+00002874 bne       cr7, 0x28f4
+00002878 lwz       r3, 0x30(r3)
+0000287c bl        0x108c18
+00002880 b         0x28f0
+00002884 lwz       r3, 0x5148(r30)
+00002888 addis     r2, r3, 1
+0000288c lbz       r0, -0x7fdc(r2)
+00002890 cmpwi     cr7, r0, 0
+00002894 beq       cr7, 0x28a4
+00002898 addi      r3, r2, -0x7fd8
+0000289c bl        0x107dd8
+000028a0 lwz       r3, 0x5148(r30)
+000028a4 lwz       r4, 0(r29)
+000028a8 addi      r3, r3, 0x6018
+000028ac bl        0x17bdc <_gleLookupHashObject>
+000028b0 or.       r3, r3, r3
+000028b4 beq       0x28f4
+000028b8 lwz       r2, 0x10(r3)
+000028bc li        r0, 0
+000028c0 ori       r0, r0, 0x8b40
+000028c4 cmpw      cr7, r2, r0
+000028c8 bne       cr7, 0x28d8
+000028cc lwz       r3, 0x40(r3)
+000028d0 bl        0x108bf8
+000028d4 b         0x28f0
+000028d8 li        r0, 0
+000028dc ori       r0, r0, 0x8b48
+000028e0 cmpw      cr7, r2, r0
+000028e4 bne       cr7, 0x28f4
+000028e8 lwz       r3, 0x30(r3)
+000028ec bl        0x108bd8
+000028f0 stw       r3, 0(r29)
+000028f4 lwz       r2, 0x5148(r30)
+000028f8 addis     r2, r2, 1
+000028fc lbz       r0, -0x7fdc(r2)
+00002900 cmpwi     cr7, r0, 0
+00002904 beq       cr7, 0x298c
+00002908 addi      r3, r2, -0x7fd8
+0000290c bl        0x107db8
+00002910 b         0x298c
+00002914 lbz       r0, 0x7580(r30)
+00002918 xori      r0, r0, 1
+0000291c subfic    r2, r0, 0
+00002920 adde      r0, r2, r0
+00002924 b         0x296c
+00002928 addis     r9, r30, 1
+0000292c lbz       r2, -0x7a5a(r9)
+00002930 mulli     r2, r2, 0x2e0
+00002934 add       r2, r2, r30
+00002938 addis     r2, r2, 1
+0000293c lwz       r9, -0x777c(r2)
+00002940 lwz       r0, 0x104(r9)
+00002944 rlwinm    r0, r0, 0, 0x10, 0x17
+00002948 cmpwi     cr7, r0, 0x200
+0000294c beq       cr7, 0x2958
+00002950 cmpwi     cr7, r0, 0x400
+00002954 bne       cr7, 0x2960
+00002958 li        r0, 0
+0000295c b         0x296c
+00002960 lbz       r0, 0x7581(r30)
+00002964 neg       r0, r0
+00002968 srwi      r0, r0, 0x1f
+0000296c stw       r0, 0(r29)
+00002970 b         0x298c
+00002974 mr        r5, r29
+00002978 lwz       r12, 0x477c(r30)
+0000297c lwz       r3, 0x4688(r30)
+00002980 mtctr     r12
+00002984 bctrl     
+00002988 mr        r28, r3
+0000298c mr        r3, r28
+00002990 lwz       r0, 0x58(r1)
+00002994 addi      r1, r1, 0x50
+00002998 lmw       r28, -0x10(r1)
+0000299c mtlr      r0
+000029a0 blr       
+_gliDestroyRendererInfo [00002bcc..00002c00]:
+00002bcc cmpwi     cr7, r3, 0
+00002bd0 mflr      r0
+00002bd4 stw       r0, 8(r1)
+00002bd8 li        r0, 0x271e
+00002bdc stwu      r1, -0x50(r1)
+00002be0 beq       cr7, 0x2bec
+00002be4 bl        0x107e58
+00002be8 li        r0, 0
+00002bec mr        r3, r0
+00002bf0 lwz       r0, 0x58(r1)
+00002bf4 addi      r1, r1, 0x50
+00002bf8 mtlr      r0
+00002bfc blr       

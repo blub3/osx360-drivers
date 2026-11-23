@@ -31,6 +31,8 @@ enum {
   kXenosDrawableImport = 22,
   kXenosSurfaceEnqueue = 23,
   kXenosSurfaceQueueStatus = 24,
+  kXenosQuadCapture = 25,
+  kXenosQuadReadCaptured = 26,
   kXenosDrawableReaderType = 1,
   kXenosDrawableMemoryType = 1,
   kXenosDrawableTokenWords = 4,
@@ -70,6 +72,24 @@ enum {
   kXenosSurfaceQueueFailed = 5,
 };
 
+#define XENOS_GPU_COMPLETION_KEY "XenosGPUCompletion"
+
+// A single registry value keeps the caller, ticket and actual scratch fence together.
+typedef struct {
+  uint32_t sequence, ownerPID, ticket, fence, state, pixels, mismatches;
+} XenosGPUCompletion;
+
+#define XENOS_WS_STARTUP_TRACE_KEY "XenosWindowServerFramebufferTrace"
+enum { kXenosWSStartupClears = 2 };
+typedef struct {
+  XenosGPUCompletion completion;
+  unsigned int hash;
+} XenosWindowServerStartupFence;
+typedef struct {
+  unsigned int count;
+  XenosWindowServerStartupFence fences[kXenosWSStartupClears];
+} XenosWindowServerStartupTrace;
+
 typedef struct {
   uint32_t handle, state, fence, completion, ownerClosed;
   uint32_t liveSurfaces, pending, activeTicket;
@@ -86,6 +106,11 @@ typedef struct {
   uint32_t ticket;
   uint32_t firstRow;
 } XenosSurfaceReadRequest;
+
+typedef struct {
+  uint32_t ticket;
+  uint32_t firstRow;
+} XenosQuadReadRequest;
 
 typedef struct {
   uint32_t argb[kXenosSurfaceReadPixels];

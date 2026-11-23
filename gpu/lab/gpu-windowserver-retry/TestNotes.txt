@@ -1,0 +1,22 @@
+Xenos WindowServer diagnostic retry
+
+The gpuxenoswsretry profile is staged as kboot-gpu-windowserver-retry.conf.
+It carries XenonCoreGraphics 0.0.5d40 and declares the Tiger BSD KPI that
+exports proc_selfpid. It uses the same accelerator probe and fence record
+as the first diagnostic.
+
+After booting the retry, use these commands from this directory over SSH.
+
+    /bin/sh RunXenosWindowServer.sh --association
+    /bin/sh RunXenosWindowServer.sh --control
+    /bin/sh RunXenosWindowServer.sh --require-native
+
+The association check uses Tiger's IOAccelFindAccelerator on the active
+Xbox framebuffer. The client control draws on the Xenos GPU, verifies
+1,024 readback pixels, and checks the origin PID in the fence record.
+The native check requires Quartz Extreme and fresh GPU fences owned by
+the WindowServer process.
+
+The diagnostic publishes a test accelerator association with zero
+capability bits. WindowServer still needs the native Xenos GLD and display
+surface implementation. Expect the native check to report BLOCKED.

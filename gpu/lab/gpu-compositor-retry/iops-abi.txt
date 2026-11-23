@@ -1,0 +1,252 @@
+_IOPSAllocateBlitEngine [90afdf28..90afe178]:
+90afdf28 mflr      r0
+90afdf2c stmw      r20, -0x30(r1)
+90afdf30 li        r30, 0
+90afdf34 mr        r21, r3
+90afdf38 mr        r20, r4
+90afdf3c li        r3, 1
+90afdf40 li        r4, 0x7c
+90afdf44 mr        r22, r5
+90afdf48 stw       r0, 8(r1)
+90afdf4c stwu      r1, -0xb0(r1)
+90afdf50 stw       r30, 0x68(r1)
+90afdf54 bl        0x90b4ad40
+90afdf58 or.       r23, r3, r3
+90afdf5c bne       0x90afdf6c
+90afdf60 lis       r30, -0x2000
+90afdf64 ori       r30, r30, 0x2bd
+90afdf68 b         0x90afe160
+90afdf6c li        r28, 0xa
+90afdf70 li        r27, 0x27
+90afdf74 li        r26, 0x89
+90afdf78 li        r25, 0x90
+90afdf7c li        r24, 0x4e
+90afdf80 li        r4, 0xac
+90afdf84 li        r5, 0xcf
+90afdf88 li        r6, 0
+90afdf8c li        r7, 0
+90afdf90 li        r8, 0
+90afdf94 li        r9, 0
+90afdf98 li        r10, 0
+90afdf9c li        r3, 0
+90afdfa0 stw       r30, 0x38(r1)
+90afdfa4 stw       r30, 0x3c(r1)
+90afdfa8 stw       r30, 0x40(r1)
+90afdfac stw       r30, 0x44(r1)
+90afdfb0 stw       r28, 0x48(r1)
+90afdfb4 stw       r27, 0x4c(r1)
+90afdfb8 stw       r26, 0x50(r1)
+90afdfbc stw       r25, 0x54(r1)
+90afdfc0 stw       r24, 0x58(r1)
+90afdfc4 bl        0x90b4b9c0
+90afdfc8 li        r6, 0xe9
+90afdfcc mr        r29, r3
+90afdfd0 li        r7, 0x4a
+90afdfd4 li        r8, 0
+90afdfd8 li        r9, 0
+90afdfdc li        r10, 0
+90afdfe0 li        r4, 0x67
+90afdfe4 li        r5, 0x66
+90afdfe8 li        r3, 0
+90afdfec stw       r30, 0x44(r1)
+90afdff0 stw       r30, 0x38(r1)
+90afdff4 stw       r30, 0x3c(r1)
+90afdff8 stw       r30, 0x40(r1)
+90afdffc stw       r28, 0x48(r1)
+90afe000 stw       r27, 0x4c(r1)
+90afe004 stw       r26, 0x50(r1)
+90afe008 stw       r25, 0x54(r1)
+90afe00c stw       r24, 0x58(r1)
+90afe010 bl        0x90b4b9c0
+90afe014 mr        r4, r29
+90afe018 mr        r5, r3
+90afe01c mr        r7, r22
+90afe020 mr        r3, r21
+90afe024 addi      r6, r1, 0x68
+90afe028 bl        0x90af00e8 <_IOCreatePlugInInterfaceForService>
+90afe02c or.       r30, r3, r3
+90afe030 bne       0x90afe140
+90afe034 lwz       r0, 0x68(r1)
+90afe038 stw       r0, 0(r23)
+90afe03c mr        r30, r0
+90afe040 lwz       r2, 0(r30)
+90afe044 lwz       r0, 0x50(r2)
+90afe048 cmpwi     cr7, r0, 0
+90afe04c beq       cr7, 0x90afe074
+90afe050 mr        r3, r30
+90afe054 li        r4, 0
+90afe058 li        r5, 0
+90afe05c mr        r12, r0
+90afe060 mtctr     r0
+90afe064 bctrl     
+90afe068 or.       r30, r3, r3
+90afe06c bne       0x90afe140
+90afe070 lwz       r30, 0x68(r1)
+90afe074 lwz       r2, 0(r30)
+90afe078 mr        r3, r30
+90afe07c li        r4, -1
+90afe080 li        r5, 1
+90afe084 li        r6, 0
+90afe088 addi      r7, r23, 4
+90afe08c lwz       r0, 0x54(r2)
+90afe090 mr        r12, r0
+90afe094 mtctr     r0
+90afe098 bctrl     
+90afe09c or.       r30, r3, r3
+90afe0a0 bne       0x90afe140
+90afe0a4 lwz       r3, 0x68(r1)
+90afe0a8 li        r4, -1
+90afe0ac li        r5, 0
+90afe0b0 li        r6, 0x6000
+90afe0b4 addi      r7, r23, 8
+90afe0b8 lwz       r2, 0(r3)
+90afe0bc lwz       r0, 0x54(r2)
+90afe0c0 mr        r12, r0
+90afe0c4 mtctr     r0
+90afe0c8 bctrl     
+90afe0cc or.       r30, r3, r3
+90afe0d0 bne       0x90afe140
+90afe0d4 lwz       r3, 0x68(r1)
+90afe0d8 li        r4, -1
+90afe0dc li        r5, 4
+90afe0e0 li        r6, 0x1000
+90afe0e4 addi      r7, r23, 0x78
+90afe0e8 lwz       r2, 0(r3)
+90afe0ec lwz       r0, 0x54(r2)
+90afe0f0 mr        r12, r0
+90afe0f4 mtctr     r0
+90afe0f8 bctrl     
+90afe0fc cmpwi     cr7, r3, 0
+90afe100 beq       cr7, 0x90afe108
+90afe104 stw       r30, 0x78(r23)
+90afe108 lwz       r3, 0x68(r1)
+90afe10c li        r4, -1
+90afe110 li        r5, 1
+90afe114 li        r6, 0x2000
+90afe118 addi      r7, r23, 0xc
+90afe11c lwz       r2, 0(r3)
+90afe120 lwz       r0, 0x54(r2)
+90afe124 mr        r12, r0
+90afe128 mtctr     r0
+90afe12c bctrl     
+90afe130 cmpwi     cr7, r3, 0
+90afe134 beq       cr7, 0x90afe15c
+90afe138 stw       r30, 0xc(r23)
+90afe13c b         0x90afe15c
+90afe140 lwz       r3, 0x68(r1)
+90afe144 cmpwi     cr7, r3, 0
+90afe148 beq       cr7, 0x90afe150
+90afe14c bl        0x90af057c <_IODestroyPlugInInterface>
+90afe150 mr        r3, r23
+90afe154 li        r23, 0
+90afe158 bl        0x90b4a780
+90afe15c stw       r23, 0(r20)
+90afe160 addi      r1, r1, 0xb0
+90afe164 mr        r3, r30
+90afe168 lwz       r0, 8(r1)
+90afe16c lmw       r20, -0x30(r1)
+90afe170 mtlr      r0
+90afe174 blr       
+_IOPSBlitReset [90afe178..90afe200]:
+90afe178 mflr      r0
+90afe17c stmw      r29, -0xc(r1)
+90afe180 mr        r29, r3
+90afe184 stw       r0, 8(r1)
+90afe188 stwu      r1, -0x50(r1)
+90afe18c lwz       r30, 0(r3)
+90afe190 li        r3, 0
+90afe194 cmpwi     cr7, r30, 0
+90afe198 beq       cr7, 0x90afe1e4
+90afe19c lwz       r0, 0x74(r29)
+90afe1a0 cmpwi     cr7, r0, 0
+90afe1a4 beq       cr7, 0x90afe1c8
+90afe1a8 lwz       r2, 0(r30)
+90afe1ac mr        r3, r30
+90afe1b0 li        r4, 0
+90afe1b4 li        r5, 0
+90afe1b8 lwz       r0, 0x50(r2)
+90afe1bc mr        r12, r0
+90afe1c0 mtctr     r0
+90afe1c4 bctrl     
+90afe1c8 lwz       r2, 0(r30)
+90afe1cc mr        r3, r30
+90afe1d0 li        r4, 0
+90afe1d4 lwz       r0, 0x20(r2)
+90afe1d8 mr        r12, r0
+90afe1dc mtctr     r0
+90afe1e0 bctrl     
+90afe1e4 li        r0, 0
+90afe1e8 addi      r1, r1, 0x50
+90afe1ec stw       r0, 0x74(r29)
+90afe1f0 lwz       r0, 8(r1)
+90afe1f4 lmw       r29, -0xc(r1)
+90afe1f8 mtlr      r0
+90afe1fc blr       
+_IOPSBlitIdle [90afe240..90afe258]:
+90afe240 lwz       r3, 0(r3)
+90afe244 li        r4, 1
+90afe248 lwz       r2, 0(r3)
+90afe24c lwz       r12, 0x58(r2)
+90afe250 mtctr     r12
+90afe254 bctr      
+_IOPSBlitFill [90afe2bc..90afe3a0]:
+90afe2bc mflr      r0
+90afe2c0 stmw      r23, -0x24(r1)
+90afe2c4 mr        r29, r3
+90afe2c8 mr        r24, r4
+90afe2cc mr        r23, r5
+90afe2d0 mr        r27, r6
+90afe2d4 mr        r26, r7
+90afe2d8 mr        r25, r8
+90afe2dc stw       r0, 8(r1)
+90afe2e0 stwu      r1, -0xe0(r1)
+90afe2e4 lwz       r0, 0x74(r3)
+90afe2e8 lwz       r30, 0(r3)
+90afe2ec cmpwi     cr7, r0, 0
+90afe2f0 beq       cr7, 0x90afe324
+90afe2f4 lwz       r2, 0(r30)
+90afe2f8 mr        r3, r30
+90afe2fc li        r4, 0
+90afe300 li        r5, 0
+90afe304 lwz       r0, 0x50(r2)
+90afe308 mr        r12, r0
+90afe30c mtctr     r0
+90afe310 bctrl     
+90afe314 li        r0, 0
+90afe318 or.       r28, r3, r3
+90afe31c stw       r0, 0x74(r29)
+90afe320 bne       0x90afe388
+90afe324 lwz       r0, 8(r29)
+90afe328 li        r2, 1
+90afe32c mr        r8, r25
+90afe330 stw       r2, 0x90(r1)
+90afe334 mr        r3, r30
+90afe338 li        r4, 0
+90afe33c stw       r24, 0x94(r1)
+90afe340 li        r5, 0
+90afe344 li        r6, 0x6001
+90afe348 stw       r23, 0x98(r1)
+90afe34c addi      r7, r1, 0x38
+90afe350 mr        r12, r0
+90afe354 stw       r27, 0x9c(r1)
+90afe358 mtctr     r0
+90afe35c stw       r26, 0xa0(r1)
+90afe360 bctrl     
+90afe364 or.       r28, r3, r3
+90afe368 bne       0x90afe388
+90afe36c lwz       r2, 0(r30)
+90afe370 mr        r3, r30
+90afe374 li        r4, 0
+90afe378 lwz       r0, 0x2c(r2)
+90afe37c mr        r12, r0
+90afe380 mtctr     r0
+90afe384 bctrl     
+90afe388 addi      r1, r1, 0xe0
+90afe38c mr        r3, r28
+90afe390 lwz       r0, 8(r1)
+90afe394 lmw       r23, -0x24(r1)
+90afe398 mtlr      r0
+90afe39c blr       
+_IOPSBlitCopy [90afe574..90afe57c]:
+90afe574 li        r10, 1
+90afe578 b         0x90afe480 <_IOFBBlitVRAMCopy>
