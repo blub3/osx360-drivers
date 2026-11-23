@@ -60,4 +60,6 @@ Patcher cost in the first 2 minutes after power-on:
 Open points:
 
 - The counters do not show whether the 41 patched words are real instructions or data.
-- `ioreg -l` stops with "can't obtain properties" at the `options` (IODTNVRAM) entry. Not yet compared on the original profile.
+- `ioreg -l` stops with "can't obtain properties" at the `options` (IODTNVRAM) entry. The original `gpuwinoverlap` profile does the same, so this test did not cause it.
+
+Session end: `gpuwinoverlap` restored and cold booted. SSH, WindowServer, Finder and Dock run, and the counters are absent. All original `OSX360BOOT` files and Tiger GPU files match their session-start checksums. `XPMS.MKE`, `PMAPSTAT.ELF` and `kboot.conf.before-pmapstat.bak` remain on the USB as additions.
