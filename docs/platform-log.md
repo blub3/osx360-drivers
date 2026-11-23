@@ -6,9 +6,11 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
-1. Reduce scan cost without a page cache: pre-scan each page in one fast physical-read pass, and use the existing patch loop only on pages with a match.
-2. Measure dcbz trap cost in `CGSFillDRAM64`, the source of most patched words.
-3. Patch only Mach-O text ranges, so data words that look like dcbz are never changed.
+1. Measure dcbz trap cost in `CGSFillDRAM64`, the source of most patched words.
+2. Patch only Mach-O text ranges, so data words that look like dcbz are never changed.
+3. Measure real app launch times with and without the fast scan.
+
+The Xbox is on `pmapfast`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -22,6 +24,27 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-23: fast dcbz page pre-scan
+
+Branch `claude/pmap-patcher`, commit `68a141c`. Profile `pmapfast`: `PMAPFAST.ELF` (MD5 `013d06693230d7d62c91d245c62e1987`) + `XPMF.MKE` (MD5 `ade8d960f1474cc310620d2c9d9957e9`). XenonPlatform binary MD5 `459481437fec38789a366cdce9b52184`. All other kexts are byte-identical to `XWOV.MKE`.
+
+Pass criteria, set before the run: Tiger boots; SSH, WindowServer, Finder and Dock run; 0 mismatches on sampled clean pages; the same 41 words are patched; clean-page scan cost is under 80 µs; a 50 MiB Ethernet transfer keeps its checksum; audio is audible.
+
+**Result: pass.**
+
+| Measure | `pmaptrap` | `pmapfast` |
+| --- | --- | --- |
+| Pages scanned, about 2 minutes after power-on | 29,853 | 29,926 |
+| Scan time | 12.11 s | 0.30 s |
+| Average per page | 405 µs | 10 µs |
+| Terminal launch scan time | 0.38 s | 0.010 s |
+| TextEdit launch scan time | 0.30 s | 0.008 s |
+| Words patched | 41 | 41, same addresses and values |
+| Sampled clean pages rechecked | n/a | 1,871, 0 mismatches |
+| Ethernet up / down | 7.27 / 8.92 MiB/s | 7.84 / 9.17 MiB/s |
+
+The fast-scan time excludes the sampled rechecks, which exist only in statistics builds. Real app launch time was not measured.
 
 ## 2026-11-23: dcbz trap counter and word classification
 
