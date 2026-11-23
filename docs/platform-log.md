@@ -6,9 +6,9 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
-Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched. The owner needs to choose the next direction. Proposed order:
+Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32.
+1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Blocked on finding out whether the Xenon/PPE HID registers can make `dcbz` trap or clear 32 bytes. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5.
 2. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
 3. Measure real app launch times with and without the fast scan.
 4. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
@@ -52,6 +52,8 @@ Exposure test on the running `pmapfast` profile, with the G5 as reference:
 | `dcbz` generated in an already-mapped `rwx` page | Clears 32 bytes | **Clears 128 bytes** |
 
 Both Xbox failures also apply to the original patcher logic. Whether a rewritten file-backed page can reach the disk was not tested.
+
+No-execute probe: private pages mapped `rw-`, `r--`, `r-x` and `rwx` all executed on both the Xbox and the G5. The patcher only scans mappings entered with execute permission, so code run from a `rw-` or `r--` page is not patched either.
 
 ## 2026-11-23: dcbz trap cost
 
