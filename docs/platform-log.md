@@ -8,7 +8,7 @@ Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
 Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5. The Cell handbook documents no usable hardware control. The remaining candidate is the commpage icache-flush routine at `0xFFFF8520`, used by `sys_icache_invalidate` and `MakeDataExecutable`. It would not cover programs that run `icbi` directly. The owner needs to approve this approach.
+1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5. The Cell handbook documents no usable hardware control. The commpage hook at `0xFFFF8520` (commit `b1848dc`) failed to boot and must stay disabled. Diagnose it in stages: first install the stub and machine call without the entry branch, then enable the entry branch in a second boot.
 2. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
 3. Measure real app launch times with and without the fast scan.
 4. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
@@ -27,6 +27,18 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-23: commpage flush hook boot failure
+
+Branch `claude/pmap-patcher`, commit `b1848dc`. Profile `pmapflush`: `PMAPFLSH.ELF` (MD5 `c53fa6433bca45008c5c6f7d191f710e`) + `XPMC.MKE` (MD5 `8a556ce5f21bc77b7f59287a6be999ee`). XenonPlatform binary MD5 `4892fb515ac703006724ee5c7a794328`.
+
+**Result: fail.** Two cold boots ended with block corruption on the display and no ping or SSH. Tiger's `system.log`, `wtmp` and crash logs have no entry for either boot, and there is no `panic.log`. The hook installs before the logger starts, so the missing logs do not clear it.
+
+Recovery: `kboot.conf` was restored from `kboot.conf.before-pmapflush.bak` on this computer, then `pmapfast` cold booted with SSH, WindowServer, Finder and Dock running and 0 fast-scan mismatches.
+
+Checks on the running `pmapfast` system: `commPagePtr32` is `0x1A2DA000`, the expected flush words are present there, the stub area is zero, and machine-call slots 14 and 15 are empty. The archive uses 107 pages, the same as the working `XPMF.MKE`. The cause is not identified.
+
+The block pattern may be a general sign of an early hang, because `refreshFramebuffer` converts the console image into the tiled scanout. This is an inference and has not been tested.
 
 ## 2026-11-23: text-only patching survey
 
