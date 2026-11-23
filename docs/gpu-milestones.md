@@ -777,8 +777,8 @@ and report the next milestone and the remaining count.
    clipped regions had hash `b9d0a0d5`. GPU capture took 26 and 40 ms,
    and move-to-visible took 78 and 51 ms. The old XenosWinTile arm and
    lock files were absent before and after the checks. `gpuwinauto`
-   remains active, and all 175 boot inventory files matched after cold
-   boot, including the `gpuwintile` rollback, native HDMI, earlier boot
+   remained active at that checkpoint. All 175 boot inventory files
+   matched after cold boot, including the `gpuwintile` rollback, native HDMI, earlier boot
    profiles and the 720p backup. Quartz Extreme remained disabled, so
    milestones 7 and 8 are still open.
 
@@ -804,9 +804,23 @@ and report the next milestone and the remaining count.
    verified against the staged files with root:wheel ownership.
    `gpuwinoverlap` is selected on OSX360BOOT. All 504 protected files
    matched during activation. The exact working `gpuwinauto` menu
-   is saved as `kboot.conf.before-gpuwinoverlap.bak`. The two live
-   unarmed WindowServer moves await candidate cold boot verification.
+   is saved as `kboot.conf.before-gpuwinoverlap.bak`.
    [Rebuild and verification steps](../gpu/lab/gpu-window-unarmed/)
+
+   The `gpuwinoverlap` cold boot loaded XenonCoreGraphics 0.0.5d48
+   and XenonFramebufferTest 0.0.5d3, registered XenosWinOverlap and
+   passed both startup fences. Over SSH, WindowServer PID 75 completed
+   eight ordered, ticket-matched fences for each unarmed move, 3–10
+   and 11–18. Each move matched all 7,252 clipped GPU and framebuffer
+   pixels and all 6,912 independently sampled on-screen window pixels.
+   Both region hashes were `eeb35d15`. GPU capture and readback took
+   1,083 and 1,084 ms, with 1,102 ms from move request to visible result
+   in both runs. Neither run used the XenosWinTile arm or lock file.
+   `gpuwinoverlap` is active. All 180 boot inventory files matched after
+   cold boot, including the `gpuwinauto` rollback, native HDMI, earlier
+   tests and the 720p backup. The installed XenosWinAuto executable
+   retained its checksum. Quartz Extreme remained disabled, so
+   milestones 7 and 8 remain open.
 8. Desktop smoke test — exercise window movement, overlap, resize and
    720p/1080p switching with acceleration active.
 
