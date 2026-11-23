@@ -9,6 +9,7 @@
 #include "adreno_pm4.xml.h"
 #include "adreno_common.xml.h"
 #include "a2xx.xml.h"
+#include <libkern/libkern.h>
 
 static const float sTexCoords[] = {
   0.0f, 1.0f,
@@ -91,46 +92,187 @@ void XenosController::initME(void) {
   writeRing(0x00000000);
 }
 
-IOReturn XenosController::initHardware(void) {
-  IOPhysicalAddress ringBufferPhys;
-  IOByteCount       segLength;
+// The halt write and both reset edges must reach the device before its next phase.
+static const UInt32 kCpMeHalt = 1U << 28;
+static const UInt32 kCpMeRunControl = 0x0000ffff;
+static const UInt32 kCpRingControl = 0x0802000c;
+static const UInt32 kCpAllowReadPtrWrite = 1U << 31;
+static const UInt32 kStartupAttempts = 3;
+static const UInt32 kDrainPolls = 5000;
 
-  _ringBufferDesc = IOBufferMemoryDescriptor::withOptions(kIOMemoryPhysicallyContiguous, kXenosRingbufferLength * 4, kXenosRingbufferLength * 4);
-  if (_ringBufferDesc == NULL) {
-    return kIOReturnNoResources;
+void XenosController::haltCommandProcessor(void) {
+  writeReg32(kXenosRegCpMeControl, kCpMeHalt | kCpMeRunControl);
+  (void)readReg32(kXenosRegCpMeControl);
+  IODelay(2000);
+}
+
+bool XenosController::ringDrained(void) {
+  return readReg32(kXenosRegCpRbReadPtr) == _ringBufferWritePtr &&
+         readReg32(kXenosRegCpRbWritePtr) == _ringBufferWritePtr;
+}
+
+bool XenosController::waitForRingDrain(void) {
+  for (UInt32 i = 0; i < kDrainPolls; ++i) {
+    if (ringDrained())
+      return true;
+    IODelay(10);
   }
-  _ringBuffer = (volatile UInt8*) _ringBufferDesc->getBytesNoCopy();
-  ringBufferPhys = _ringBufferDesc->getPhysicalSegment(0, &segLength);
-  _ringBufferWritePtr = 0;
+  return false;
+}
 
-  XEDBGLOG("Ring buffer at 0x%X (%p)", ringBufferPhys, _ringBuffer);
-
-  // Configure firmware.
-  writeReg32(kXenosRegCpMeControl, (1 << 28));
-  loadFirmware();
-
-  writeReg32(kXenosRegCpIntAck, 0xFFFF);
-  writeReg32(kXenosRegCpDebug, 0);
-
-  // Reset command processor.
+const char *XenosController::startCommandProcessor(IOPhysicalAddress ringBufferPhys) {
+  haltCommandProcessor();
   writeReg32(kXenosRegRbbmSoftReset, 1);
+  (void)readReg32(kXenosRegRbbmSoftReset);
   IODelay(1000);
   writeReg32(kXenosRegRbbmSoftReset, 0);
+  (void)readReg32(kXenosRegRbbmSoftReset);
+  IODelay(1000);
 
-  // Setup ring buffer.
-  writeReg32(kXenosRegCpRbControl, readReg32(kXenosRegCpRbControl) | 0x80000000);
+  haltCommandProcessor();
+  if (!(readReg32(kXenosRegCpMeControl) & kCpMeHalt))
+    return "halt";
+
+  // Disable pointer writeback from the preceding boot and reset both MMIO pointers.
+  _ringBufferWritePtr = 0;
+  writeReg32(kXenosRegCpRbControl, kCpRingControl | kCpAllowReadPtrWrite);
+  writeReg32(kXenosRegCpRbReadPtrWrite, 0);
   writeReg32(kXenosRegCpRbWritePtr, 0);
-  writeReg32(kXenosRegCpRbControl, readReg32(kXenosRegCpRbControl) & ~0x80000000);
-
-  writeReg32(kXenosRegCpRbControl, 0xC | 0x8020000);
+  writeReg32(kXenosRegCpRbControl, kCpRingControl);
   writeReg32(kXenosRegCpRbBase, ringBufferPhys);
+  writeReg32(kXenosRegCpRbWritePtrDelay, 0x10);
+  writeReg32(kXenosRegScratchUMask, 0);
+  writeReg32(kXenosRegScratchAddr, 0);
+  writeReg32(kXenosRegCpIntControl, 0);
+  writeReg32(kXenosRegCpIntAck, 0xffff);
+  writeReg32(kXenosRegCpDebug, 0);
+  writeReg32(kXenosRegCpSnoopControl, 0x1a);
+  if (!ringDrained())
+    return "reset-pointers";
+  if (loadFirmware() != kIOReturnSuccess)
+    return "firmware";
 
-  writeReg32(kXenosRegCpMeControl, 0);
+  writeReg32(kXenosRegCpMeControl, kCpMeRunControl);
+  if (readReg32(kXenosRegCpMeControl) & kCpMeHalt)
+    return "start";
+  IODelay(1000);
 
   initME();
   syncRingBuffer();
+  if (!waitForRingDrain())
+    return "me-init";
+  if (!runMarkerTest("command-processor"))
+    return "command-processor-marker";
 
-  return kIOReturnSuccess;
+  initFramebuffer();
+  syncRingBuffer();
+  if (!waitForRingDrain())
+    return "framebuffer-init";
+  if (!runMarkerTest("framebuffer"))
+    return "framebuffer-marker";
+  return NULL;
+}
+
+static const IOByteCount kCommandRingBytes = kXenosRingbufferLength * sizeof(UInt32);
+static const IOPhysicalAddress kCommandRingLimit = 0x20000000 - 2 * kXenosFramebufferLength;
+
+static bool ringPagesContiguous(IOBufferMemoryDescriptor *buffer, IOByteCount start,
+                                IOPhysicalAddress physical) {
+  for (IOByteCount page = 0; page < kCommandRingBytes; page += PAGE_SIZE) {
+    IOByteCount length = 0;
+    if (buffer->getPhysicalSegment(start + page, &length) != physical + page || length < PAGE_SIZE)
+      return false;
+  }
+  return true;
+}
+
+IOPhysicalAddress XenosController::allocateCommandRing(void) {
+  for (UInt32 attempt = 0; attempt < 2; ++attempt) {
+    const bool alignedWindow = attempt != 0;
+    // Tiger aligns the virtual mapping. Allow room to align the physical base ourselves.
+    const IOByteCount capacity = alignedWindow ? 2 * kCommandRingBytes - PAGE_SIZE : kCommandRingBytes;
+    const IOByteCount alignment = alignedWindow ? PAGE_SIZE : kCommandRingBytes;
+    const char *layout = alignedWindow ? "aligned-window" : "direct";
+    IOBufferMemoryDescriptor *buffer = IOBufferMemoryDescriptor::withOptions(
+        kIOMemoryPhysicallyContiguous, capacity, alignment);
+    IOByteCount firstSegment = 0;
+    volatile UInt8 *bytes = buffer
+        ? static_cast<volatile UInt8 *>(buffer->getBytesNoCopy()) : NULL;
+    const IOPhysicalAddress base = bytes ? buffer->getPhysicalSegment(0, &firstSegment) : 0;
+    const IOByteCount offset = alignedWindow ? (-base & (kCommandRingBytes - 1)) : 0;
+    const IOPhysicalAddress physical = base + offset;
+    const char *failure = NULL;
+    if (!buffer)
+      failure = "allocation";
+    else if (!bytes)
+      failure = "virtual-address";
+    else if (!base)
+      failure = "physical-address";
+    else if (base & (alignment - 1))
+      failure = "physical-alignment";
+    else if (capacity - offset < kCommandRingBytes)
+      failure = "capacity";
+    else if (physical < base || physical > kCommandRingLimit - kCommandRingBytes)
+      failure = "gpu-address-range";
+
+    if (!alignedWindow) {
+      // Record the same first failing check as d46, even if the new per-page check can recover.
+      const char *original = failure;
+      if (base && !(base & (kCommandRingBytes - 1)) && firstSegment < kCommandRingBytes)
+        original = "first-segment-length";
+      setProperty("XenosRingBufferOriginalCheck", original ? original : "pass");
+      IOLog("XenosRingBuffer: original=%s physical=0x%08lx first_segment=%lu\n",
+            original ? original : "pass", base, firstSegment);
+    }
+    if (!failure && !ringPagesContiguous(buffer, offset, physical))
+      failure = "physical-contiguity";
+
+    if (!failure) {
+      _ringBufferDesc = buffer;
+      _ringBuffer = bytes + offset;
+      setProperty("XenosRingBufferLayout", layout);
+      setProperty("XenosRingBufferPhysical", physical, 32);
+      setProperty("XenosRingBufferOffset", offset, 32);
+      IOLog("XenosRingBuffer: PASS layout=%s physical=0x%08lx offset=%lu bytes=%lu\n",
+            layout, physical, offset, kCommandRingBytes);
+      return physical;
+    }
+    IOLog("XenosRingBuffer: FAIL layout=%s check=%s physical=0x%08lx first_segment=%lu "
+          "offset=%lu capacity=%lu\n", layout, failure, base, firstSegment, offset, capacity);
+    if (buffer)
+      buffer->release();
+    if (alignedWindow)
+      setProperty("XenosRingBufferFailure", failure);
+  }
+  return 0;
+}
+
+IOReturn XenosController::initHardware(void) {
+  const IOPhysicalAddress physical = allocateCommandRing();
+  if (!physical)
+    return kIOReturnNoResources;
+
+  bzero(const_cast<UInt8 *>(_ringBuffer), kCommandRingBytes);
+  syncData(_ringBuffer, kCommandRingBytes);
+  for (UInt32 attempt = 1; attempt <= kStartupAttempts; ++attempt) {
+    setProperty("XenosRingStartupAttempts", attempt, 32);
+    const char *failure = startCommandProcessor(physical);
+    if (!failure) {
+      _markerScratch->release();
+      _markerScratch = NULL;
+      IOLog("XenosRingStartup: PASS attempt=%lu rptr=0x%04lx wptr=0x%04lx\n",
+            attempt, readReg32(kXenosRegCpRbReadPtr), readReg32(kXenosRegCpRbWritePtr));
+      return kIOReturnSuccess;
+    }
+    IOLog("XenosRingStartup: FAIL attempt=%lu phase=%s rptr=0x%04lx wptr=0x%04lx "
+          "me=0x%08lx status=0x%08lx interrupt=0x%08lx\n",
+          attempt, failure, readReg32(kXenosRegCpRbReadPtr), readReg32(kXenosRegCpRbWritePtr),
+          readReg32(kXenosRegCpMeStatus), readReg32(kXenosRegRbbmStatus),
+          readReg32(kXenosRegCpIntStatus));
+  }
+  // Keep the ring and scratch backing wired if a device write could still be outstanding.
+  haltCommandProcessor();
+  return kIOReturnIOError;
 }
 
 void XenosController::initFramebuffer(void) {

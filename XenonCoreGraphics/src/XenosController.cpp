@@ -24,7 +24,6 @@ OSDefineMetaClassAndStructors(XenosController, super);
 // The refresh loop schedules its next callback every 15 ms.
 static const UInt32 kRefreshesPerRingSample = 320;
 
-static const UInt32 kMarkerSubmitAttempts = 16;
 static const UInt32 kMarkerPacketDwords = 3;
 static const UInt32 kMarkerPollLimit = 2000;
 static const UInt32 kMarkerPollDelayUs = 10;
@@ -281,15 +280,18 @@ bool XenosController::start(IOService *provider) {
     return false;
   }
 
-  initHardware();
-  XESYSLOG("hw init");
-  IOSleep(1000);
+  _quadGate = NULL;
+  _markerScratch = NULL;
+  status = initHardware();
+  setProperty("XenosRingStartupReady", status == kIOReturnSuccess);
+  if (status != kIOReturnSuccess) {
+    // The platform framebuffer is still running. Publish diagnostics without GPU clients.
+    IOLog("XenosRingStartup: software framebuffer retained status=0x%08lx\n",
+          static_cast<unsigned long>(status));
+    registerService();
+    return true;
+  }
 
-  XESYSLOG("hardware init?");
-  IOSleep(1000);
-  initFramebuffer();
-
-  XESYSLOG("fb init?");
   _timerWorkLoop = IOWorkLoop::workLoop();
   if (_timerWorkLoop == NULL) {
     XESYSLOG("Failed to initialize timer workloop");
@@ -317,8 +319,6 @@ bool XenosController::start(IOService *provider) {
 
   // Start the refresh timer.
   _refreshesUntilRingSample = 1;
-  _markerSubmitAttempts = kMarkerSubmitAttempts;
-  _markerScratch = NULL;
   _quadClient = NULL;
   _quadScratch = NULL;
   _quadUploaded = false;
@@ -446,23 +446,10 @@ void XenosController::handleTimer(IOTimerEventSource *sender) {
     _refreshesUntilRingSample = kRefreshesPerRingSample;
   }
 
-  if (_markerSubmitAttempts) {
-    // The work loop owns submissions. Wait for the previous batch to drain,
-    // and keep this packet contiguous in the ring.
-    if (_ringBufferWritePtr <= kXenosRingbufferLength - kMarkerPacketDwords &&
-        readReg32(kXenosRegCpRbReadPtr) == _ringBufferWritePtr &&
-        readReg32(kXenosRegCpRbWritePtr) == _ringBufferWritePtr) {
-      _markerSubmitAttempts = 0;
-      runMarkerTest();
-    } else if (--_markerSubmitAttempts == 0) {
-      IOLog("XenosMarker: SKIP no drained ring with space for one packet\n");
-    }
-  }
-
   if (_quadCooldown)
     --_quadCooldown;
   stepFramebufferProbe();
-  if (!stepQuad()) {
+  if (!stepQuad() || !ringDrained()) {
     sender->setTimeoutMS(15);
     return;
   }
@@ -501,23 +488,22 @@ static void prepareQuadReadback(UInt8 *address) {
     flushMarkerCacheLine(pixels + offset / sizeof(UInt32));
 }
 
-void XenosController::runMarkerTest() {
-  IOBufferMemoryDescriptor *scratch =
-      IOBufferMemoryDescriptor::withOptions(kIOMemoryPhysicallyContiguous, PAGE_SIZE, PAGE_SIZE);
-  if (!scratch) {
-    IOLog("XenosMarker: SKIP scratch allocation failed\n");
-    return;
-  }
+bool XenosController::runMarkerTest(const char *phase) {
+  if (_ringBufferWritePtr > kXenosRingbufferLength - kMarkerPacketDwords || !ringDrained())
+    return false;
+
+  if (!_markerScratch)
+    _markerScratch = IOBufferMemoryDescriptor::withOptions(kIOMemoryPhysicallyContiguous,
+                                                           PAGE_SIZE, PAGE_SIZE);
+  if (!_markerScratch)
+    return false;
 
   IOByteCount length = 0;
-  const IOPhysicalAddress physical = scratch->getPhysicalSegment(0, &length);
-  volatile UInt32 *slot = static_cast<volatile UInt32 *>(scratch->getBytesNoCopy());
+  const IOPhysicalAddress physical = _markerScratch->getPhysicalSegment(0, &length);
+  volatile UInt32 *slot = static_cast<volatile UInt32 *>(_markerScratch->getBytesNoCopy());
   if (!slot || !physical || length < PAGE_SIZE || (physical & (PAGE_SIZE - 1)) ||
-      physical > kDisplayMemoryStart - PAGE_SIZE) {
-    IOLog("XenosMarker: SKIP scratch page is outside usable GPU RAM\n");
-    scratch->release();
-    return;
-  }
+      physical > kDisplayMemoryStart - PAGE_SIZE)
+    return false;
 
   *slot = kMarkerInitial;
   flushMarkerCacheLine(slot);
@@ -539,17 +525,13 @@ void XenosController::runMarkerTest() {
     IODelay(kMarkerPollDelayUs);
   }
 
+  const bool passed = seen == kMarkerExpected && waitForRingDrain();
   IOLog("XenosMarker: %s MEM_WRITE expected=0x%08lx observed=0x%08lx "
-        "packet=0x%04lx rptr=0x%04lx wptr=0x%04lx polls=%lu\n",
-        seen == kMarkerExpected ? "PASS" : "FAIL",
+        "packet=0x%04lx rptr=0x%04lx wptr=0x%04lx polls=%lu phase=%s\n",
+        passed ? "PASS" : "FAIL",
         kMarkerExpected, seen, start, readReg32(kXenosRegCpRbReadPtr),
-        readReg32(kXenosRegCpRbWritePtr), polls);
-  if (seen == kMarkerExpected) {
-    scratch->release();
-  } else {
-    // A delayed GPU write must still have an allocated destination.
-    _markerScratch = scratch;
-  }
+        readReg32(kXenosRegCpRbWritePtr), polls, phase);
+  return passed;
 }
 
 IOReturn XenosController::queueQuad(OSObject *owner, void *clientArg, void *rgb,
@@ -951,7 +933,7 @@ bool XenosController::stepQuad() {
   const bool anisotropic = _quadGeometryMode == kXenosQuadUploadAnisotropicBatch;
 
   if (!_quadScratch) {
-    if (!drained || _markerSubmitAttempts) {
+    if (!drained) {
       if (++_quadWait >= kQuadWaitLimit) {
         finishQuad(kXenosQuadUnavailable, 0, 0, 0);
         retireSurfaceQueueEntry(0);

@@ -1,0 +1,24 @@
+Xenos command processor startup fix
+
+Alternate boot profile  gpuringfix
+Firmware                RINGFIX.ELF
+Driver archive          XWRF.MKE
+XenonCoreGraphics       0.0.5d46
+Tiger plug-in           existing XenosWinBatch.plugin
+
+On failed boots the old startup MEM_WRITE reached its write pointer
+without changing the scratch word. The ring later stopped reading at
+0x03df before WindowServer submitted a repaint. The old driver ignored
+hardware and firmware setup errors and stopped the software framebuffer
+without verifying GPU memory writes.
+
+The revised driver settles the halt and reset writes with MMIO reads,
+explicitly resets both ring pointers, checks firmware setup, and
+validates a GPU-written scratch marker before and after framebuffer
+setup. It retries up to three times before retaining the platform's
+software framebuffer. The display timer waits for the existing ring
+batch to drain before writing another idle refresh.
+
+After a cold boot, CheckXenosRingStartup.sh checks both startup markers
+and both WindowServer clear fences over SSH. The --repaint option runs
+the existing 29-batch WindowServer test only after startup passes.

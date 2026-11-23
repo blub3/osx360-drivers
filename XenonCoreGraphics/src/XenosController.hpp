@@ -82,7 +82,6 @@ private:
   volatile UInt8            *_ringBuffer;
   UInt32                    _ringBufferWritePtr;
   UInt32                    _refreshesUntilRingSample;
-  UInt32                    _markerSubmitAttempts;
   IOBufferMemoryDescriptor  *_markerScratch;
   IOCommandGate             *_quadGate;
   XenosQuadClient            *_quadClient;
@@ -201,6 +200,11 @@ private:
   IOReturn initShaders(void);
   void initME(void);
   IOReturn initHardware(void);
+  IOPhysicalAddress allocateCommandRing(void);
+  void haltCommandProcessor(void);
+  const char *startCommandProcessor(IOPhysicalAddress ringBufferPhys);
+  bool ringDrained(void);
+  bool waitForRingDrain(void);
   void initFramebuffer(void);
   void setGpuViewport(UInt32 width, UInt32 height);
   void setGpuScissors(UInt32 width, UInt32 height);
@@ -223,7 +227,7 @@ private:
   void handleTimer(IOTimerEventSource *sender);
   static IOReturn queueFramebufferProbe(OSObject *, void *, void *, void *, void *);
   void stepFramebufferProbe();
-  void runMarkerTest();
+  bool runMarkerTest(const char *phase);
   void drawResolveRectangle();
   static IOReturn queueQuad(OSObject *owner, void *client, void *rgb, void *output, void *texture);
   static IOReturn queueQuadGeometry(OSObject *owner, void *client, void *input, void *output, void *);

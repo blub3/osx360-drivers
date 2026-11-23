@@ -6,5 +6,5 @@ SOURCES			:= src
 
 include ../common/kext.mk
 
-KEXT_VERSION := 0.0.5d45
+KEXT_VERSION := 0.0.5d47
 $(KMOD_CFILE) $(KEXT_PLIST): Makefile

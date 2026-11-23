@@ -1,0 +1,29 @@
+Xenos command-ring allocation retry
+
+Alternate boot profile  gpuringbuf
+Firmware                RINGBUF.ELF
+Driver archive          XWRB.MKE
+XenonCoreGraphics       0.0.5d47
+Tiger plug-in           existing XenosWinBatch.plugin
+
+On the previous boot, d46 returned kIOReturnNoResources before its
+first command processor reset. The old driver combined all ring memory
+rejections into that status. No address or segment length was logged.
+
+Darwin xnu-792.24.17 applies the allocator's alignment mask to the
+virtual mapping before obtaining physical pages. A successful request
+for a 32 KiB-aligned virtual buffer therefore does not establish a
+32 KiB-aligned physical start.
+
+This build repeats the previous request once and reports the first
+check that d46 would have failed as XenosRingBufferOriginalCheck.
+It verifies physical continuity page by page and can accept adjoining
+pages across IOKit segment boundaries. If the original block is unusable,
+it reserves a 60 KiB contiguous block and selects a 32 KiB-aligned
+physical window. The full selected ring must fit below the video buffers.
+No command processor reset or submission runs without a usable ring.
+
+After cold boot, CheckXenosRingBuffer.sh checks the allocation result,
+both startup markers and both WindowServer startup clear fences.
+Use --repaint to run the existing 29-batch WindowServer test only if
+these checks pass.
