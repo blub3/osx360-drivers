@@ -107,6 +107,194 @@ static bool   sPmapFastScanEnabled = false;
 static UInt32 sPmapFastScanSample = 0;
 
 //
+// Optional patching of code declared through the 32-bit commpage icache flush, used by
+// sys_icache_invalidate and MakeDataExecutable. Enabled by the xe_pmapflush boot-arg or the
+// XenonPmapFlushPatch property. Code flushed directly with icbi is not covered.
+//
+// The stub scans the flushed range in user mode and enters the kernel only on a match. It uses
+// only registers the original routine clobbers, then resumes it after the replaced instruction.
+//
+extern "C" void xenonFlushStub(void);
+extern "C" void xenonFlushStubEnd(void);
+
+__asm__(
+  ".text\n"
+  ".align 2\n"
+  ".globl _xenonFlushStub\n"
+  "_xenonFlushStub:\n"
+  "  or.     r4,r4,r4\n"
+  "  beq-    3f\n"
+  "  rlwinm  r5,r3,0,0,29\n"
+  "  add     r6,r3,r4\n"
+  "  addi    r6,r6,3\n"
+  "  rlwinm  r6,r6,0,0,29\n"
+  "1:\n"
+  "  lwz     r7,0(r5)\n"
+  "  rlwinm  r0,r7,0,21,31\n"
+  "  cmplwi  r0,0x7EC\n"
+  "  bne+    2f\n"
+  "  rlwinm  r0,r7,8,24,31\n"
+  "  cmplwi  r0,0x7C\n"
+  "  beq-    4f\n"
+  "2:\n"
+  "  addi    r5,r5,4\n"
+  "  cmplw   r5,r6\n"
+  "  blt+    1b\n"
+  "  b       3f\n"
+  "4:\n"
+  "  li      r0,0x600E\n"           // Machine call 14
+  "  sc\n"
+  "3:\n"
+  "  or.     r4,r4,r4\n"
+  "  .long   0x4BFF8526\n"          // ba 0xFFFF8524
+  ".globl _xenonFlushStubEnd\n"
+  "_xenonFlushStubEnd:\n"
+  "  blr\n"
+);
+
+#define kXenonPPCCallIndex          14
+#define kXenonCommpageFlushOffset   0x520
+#define kXenonCommpageStubOffset    0xC00
+#define kXenonCommpageStubMaxSize   0x100
+#define kXenonCommpageFlushWord0    0x7C842379  // or. r4,r4,r4
+#define kXenonCommpageFlushWord1    0xA0A08026  // lhz r5,0x8026(0)
+#define kXenonCommpageFlushBranch   0x4BFF8C02  // ba 0xFFFF8C00
+#define kXenonFlushPatchMaxLength   (64U * 1024U * 1024U)
+#define kXenonSaveR3Low             0x9C
+#define kXenonSaveR4Low             0xA4
+#define kXenonSaveSRR1High          0x188
+
+// Install status: 0 not attempted, 1 installed, 2 no commpage or oversized stub,
+// 3 kernel code did not match, 4 stub area in use.
+static bool             sFlushPatchInstalled = false;
+static UInt32           sFlushPatchStatus = 0;
+static UInt32           sFlushPatchPpcCalls = 0;
+static UInt32           sFlushPatchCommPagePtr = 0;
+static volatile SInt32  sFlushPatchCalls = 0;
+static volatile SInt32  sFlushPatchWords = 0;
+static volatile SInt32  sFlushPatchFailures = 0;
+
+//
+// Machine call handler. copyin and copyout honor the caller's permissions and copy-on-write.
+// Machine calls enter with interrupts off. A positive return takes the path that restores them.
+//
+static int xenonFlushPatchCall(void *save) {
+  UInt8   *saveBytes = static_cast<UInt8*>(save);
+  UInt32  start  = *reinterpret_cast<UInt32*>(saveBytes + kXenonSaveR3Low);
+  UInt32  length = *reinterpret_cast<UInt32*>(saveBytes + kXenonSaveR4Low);
+  UInt32  words[256];
+  UInt32  addr;
+  UInt32  end;
+
+  // The hook is only installed in the 32-bit commpage.
+  if ((*reinterpret_cast<UInt32*>(saveBytes + kXenonSaveSRR1High) & 0x80000000) != 0) {
+    return 1;
+  }
+
+  ml_set_interrupts_enabled(TRUE);
+  OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchCalls));
+
+  if ((length == 0) || (length > kXenonFlushPatchMaxLength) || (start > (0xFFFFFFFFU - length - 3))) {
+    OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchFailures));
+    return 1;
+  }
+
+  addr = start & ~3U;
+  end  = (start + length + 3) & ~3U;
+  while (addr < end) {
+    UInt32 chunk = end - addr;
+    if (chunk > sizeof (words)) {
+      chunk = sizeof (words);
+    }
+
+    if (copyin((user_addr_t) addr, words, chunk) != 0) {
+      OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchFailures));
+      break;
+    }
+
+    for (UInt32 i = 0; i < (chunk / 4); i++) {
+      if ((words[i] & 0xFF0007FF) == 0x7C0007EC) {
+        UInt32 patched = words[i] & 0x03FFFFFF;
+        if (copyout(&patched, (user_addr_t) (addr + (i * 4)), sizeof (patched)) == 0) {
+          OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchWords));
+        } else {
+          OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchFailures));
+        }
+      }
+    }
+    addr += chunk;
+  }
+
+  return 1;
+}
+
+static void installFlushPatch(UInt32 ppcCallsAddr, UInt32 commPagePtrAddr) {
+  UInt32    *ppcCalls = reinterpret_cast<UInt32*>(ppcCallsAddr);
+  UInt8     *commPage = *reinterpret_cast<UInt8**>(commPagePtrAddr);
+  UInt32    *source   = reinterpret_cast<UInt32*>(&xenonFlushStub);
+  UInt32    stubSize  = reinterpret_cast<UInt32>(&xenonFlushStubEnd) - reinterpret_cast<UInt32>(&xenonFlushStub);
+  UInt32    *entry;
+  UInt32    *stub;
+  boolean_t ints;
+
+  if ((commPage == NULL) || (stubSize > kXenonCommpageStubMaxSize)) {
+    sFlushPatchStatus = 2;
+    return;
+  }
+
+  entry = reinterpret_cast<UInt32*>(commPage + kXenonCommpageFlushOffset);
+  stub  = reinterpret_cast<UInt32*>(commPage + kXenonCommpageStubOffset);
+
+  if ((ppcCalls[kXenonPPCCallIndex] != 0) || (entry[0] != kXenonCommpageFlushWord0) ||
+      (entry[1] != kXenonCommpageFlushWord1)) {
+    sFlushPatchStatus = 3;
+    return;
+  }
+  for (UInt32 i = 0; i < (kXenonCommpageStubMaxSize / 4); i++) {
+    if (stub[i] != 0) {
+      sFlushPatchStatus = 4;
+      return;
+    }
+  }
+
+  ints = ml_set_interrupts_enabled(false);
+
+  for (UInt32 i = 0; i < (stubSize / 4); i++) {
+    ml_phys_write(pmap_extract(kernel_pmap, (vm_map_offset_t) &stub[i]), source[i]);
+  }
+  invalidate_icache((vm_offset_t) stub, stubSize, 0);
+
+  ml_phys_write(pmap_extract(kernel_pmap, (vm_map_offset_t) &ppcCalls[kXenonPPCCallIndex]),
+                reinterpret_cast<UInt32>(&xenonFlushPatchCall));
+  __asm__ volatile ("sync");
+
+  // The single-word entry branch goes in last, once everything it reaches is ready.
+  ml_phys_write(pmap_extract(kernel_pmap, (vm_map_offset_t) entry), kXenonCommpageFlushBranch);
+  invalidate_icache((vm_offset_t) entry, sizeof (UInt32), 0);
+
+  ml_set_interrupts_enabled(ints);
+  sFlushPatchInstalled = true;
+  sFlushPatchStatus = 1;
+}
+
+//
+// The kernel populates the commpage after IOKit starts, so install on the first
+// executable user mapping. This runs before any user code can call the routine.
+//
+static inline void installPendingFlushPatch(void) {
+  if (sFlushPatchCommPagePtr != 0) {
+    boolean_t ints = ml_set_interrupts_enabled(false);
+    UInt32 commPagePtr = sFlushPatchCommPagePtr;
+
+    sFlushPatchCommPagePtr = 0;
+    if (commPagePtr != 0) {
+      installFlushPatch(sFlushPatchPpcCalls, commPagePtr);
+    }
+    ml_set_interrupts_enabled(ints);
+  }
+}
+
+//
 // First patched words, with neighbours, for offline code/data classification.
 // Entries are immutable once sPmapPatchLogCount includes them.
 //
@@ -212,6 +400,13 @@ bool XenonPE::serializeProperties(OSSerialize *serialize) const {
     self->setProperty("XenonPmapFastNegative", snapshot.fastNegative, 64);
     self->setProperty("XenonPmapFastVerified", snapshot.fastVerified, 64);
     self->setProperty("XenonPmapFastMismatches", snapshot.fastMismatches, 64);
+
+    self->setProperty("XenonPmapFlushStatus", sFlushPatchStatus, 32);
+    if (sFlushPatchInstalled) {
+      self->setProperty("XenonPmapFlushCalls", (UInt32) sFlushPatchCalls, 32);
+      self->setProperty("XenonPmapFlushWords", (UInt32) sFlushPatchWords, 32);
+      self->setProperty("XenonPmapFlushFailures", (UInt32) sFlushPatchFailures, 32);
+    }
 
     if (sEmulationCounterInstalled) {
       self->setProperty("XenonPmapEmulationTraps", ml_phys_read(kXenonEmulationCounterPhys), 32);
@@ -343,6 +538,8 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
   // Perform instruction patching in userspace physical pages.
   //
   if ((pmap != NULL) && (pmap != kernel_pmap) && (prot & VM_PROT_EXECUTE)) {
+    installPendingFlushPatch();
+
     vm_offset_t currPhys = pa << PAGE_SHIFT;
     UInt64 startTicks = (sPmapStatsLock != NULL) ? readTimebase() : 0;
     UInt32 wordsPatched = 0;
@@ -556,6 +753,17 @@ bool XenonPE::initPatcher(void) {
       sPmapFastScanEnabled = true;
     } else {
       XESYSLOG("Fast pmap scan crosses a page, leaving it disabled");
+    }
+  }
+
+  if ((getKernelVersion() == kKernelVersionTiger) &&
+      (checkKernelArgument("xe_pmapflush") || (getProperty("XenonPmapFlushPatch") == kOSBooleanTrue))) {
+    UInt32 ppcCallsAddr    = resolveKernelSymbol("_PPCcalls");
+    UInt32 commPagePtrAddr = resolveKernelSymbol("_commPagePtr32");
+
+    if ((ppcCallsAddr != 0) && (commPagePtrAddr != 0)) {
+      sFlushPatchPpcCalls    = ppcCallsAddr;
+      sFlushPatchCommPagePtr = commPagePtrAddr;
     }
   }
 
