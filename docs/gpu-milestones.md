@@ -740,8 +740,8 @@ and report the next milestone and the remaining count.
    matched all 6,912 window-content pixels. Submission and readback
    took 1,086 ms versus 4,276 ms for the 29-submission reference
    (3.94× faster). The move-to-visible check took 1,169 ms.
-   gpuwintile remains active. The gpuringbuf rollback, native HDMI
-   and 720p backup passed post-boot checks. Quartz Extreme stayed
+   gpuwintile remained active at that checkpoint. The gpuringbuf rollback,
+   native HDMI and 720p backup passed post-boot checks. Quartz Extreme stayed
    off, so milestone 7 and the desktop smoke test remain open.
 
    The separately staged `gpuwinauto` profile selects `XenosWinAuto.plugin`
@@ -755,18 +755,32 @@ and report the next milestone and the remaining count.
    passed on the existing boot. A private overlapping copy passed over
    SSH with ticket and fence 3, all 324 GPU and destination pixels
    matching, all 3,772 guard pixels intact, and 26 ms capture time.
-   The on-screen control read a solid white source patch on the current
-   boot with both verifiers. Two unarmed WindowServer-owned fences and
-   on-screen readbacks still require a cold boot into the candidate.
+   The on-screen control read a solid white source patch on that earlier
+   boot with both verifiers.
    All 486 pre-existing files matched after staging. The separate
    XenosWinAuto plug-in was installed on Tiger and verified as root:wheel
-   against both staged files. `gpuwinauto` is selected on OSX360BOOT for
-   the cold boot. All 494 protected files matched across activation,
+   against both staged files. `gpuwinauto` was selected on OSX360BOOT.
+   All 494 protected files matched across activation,
    including native HDMI, the earlier GPU tests and the 720p backup.
    The exact working `gpuwintile` menu is preserved as
    `kboot.conf.before-gpuwinauto.bak`. The [unarmed test recipe](../gpu/lab/gpu-window-unarmed/)
    and [boot profile index](gpu-boot-profiles.md) record the candidate inputs
    and both saved menus.
+
+   The `gpuwinauto` cold boot loaded XenonCoreGraphics 0.0.5d48 and
+   XenonFramebufferTest 0.0.5d3, registered XenosWinAuto, and completed
+   both startup fences. Over SSH, two ordinary Carbon window moves
+   completed tickets and fences 3 and 4 in order, both owned by
+   WindowServer PID 74. For each move, all 1,024 tile pixels and all
+   324 clipped framebuffer pixels matched. An independent display
+   readback matched all 256 window-content pixels per move. Both
+   clipped regions had hash `b9d0a0d5`. GPU capture took 26 and 40 ms,
+   and move-to-visible took 78 and 51 ms. The old XenosWinTile arm and
+   lock files were absent before and after the checks. `gpuwinauto`
+   remains active, and all 175 boot inventory files matched after cold
+   boot, including the `gpuwintile` rollback, native HDMI, earlier boot
+   profiles and the 720p backup. Quartz Extreme remained disabled, so
+   milestones 7 and 8 are still open.
 8. Desktop smoke test — exercise window movement, overlap, resize and
    720p/1080p switching with acceleration active.
 
