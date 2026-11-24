@@ -165,9 +165,11 @@ __asm__(
 #define kXenonSaveSRR1High          0x188
 
 // Install status: 0 not attempted, 1 installed, 2 no commpage or oversized stub,
-// 3 kernel code did not match, 4 stub area in use, 5 installed without the entry branch.
+// 3 kernel code did not match, 4 stub area in use, 5 installed without the entry branch,
+// 6 all checks passed in check-only mode, nothing written.
 static bool             sFlushPatchInstalled = false;
 static bool             sFlushPatchSkipEntry = false;
+static bool             sFlushPatchCheckOnly = false;
 static UInt32           sFlushPatchStatus = 0;
 static UInt32           sFlushPatchPpcCalls = 0;
 static UInt32           sFlushPatchCommPagePtr = 0;
@@ -256,6 +258,11 @@ static void installFlushPatch(UInt32 ppcCallsAddr, UInt32 commPagePtrAddr) {
       sFlushPatchStatus = 4;
       return;
     }
+  }
+
+  if (sFlushPatchCheckOnly) {
+    sFlushPatchStatus = 6;
+    return;
   }
 
   ints = ml_set_interrupts_enabled(false);
@@ -766,6 +773,7 @@ bool XenonPE::initPatcher(void) {
 
     if ((ppcCallsAddr != 0) && (commPagePtrAddr != 0)) {
       sFlushPatchSkipEntry   = getProperty("XenonPmapFlushNoEntry") == kOSBooleanTrue;
+      sFlushPatchCheckOnly   = getProperty("XenonPmapFlushCheckOnly") == kOSBooleanTrue;
       sFlushPatchPpcCalls    = ppcCallsAddr;
       sFlushPatchCommPagePtr = commPagePtrAddr;
     }
