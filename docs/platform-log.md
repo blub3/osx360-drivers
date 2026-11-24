@@ -8,15 +8,18 @@ Task 1 (pmap dcbz patcher) is merged into `main` (`ae01a6d`). Open follow-ups: a
 
 Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-boot`). Design: `docs/smp-design.md`.
 
-1. Implement stage 1a (PIR 0 + PIR 2): release routine, trampoline without time base writes, no-op `cpu_sync_timebase`, CPU registration fixes, per-thread interrupt controller setup and IPIs.
-2. Before that boot, fix the patcher for SMP (patch before entering the mapping, lock the counters).
-3. Send the owner the list of GPU code that assumes one CPU.
+Stage 1a works with a deferred start (`smpdef3`, commit `c6155da`): boot on one CPU, then `sudo ./xenon-cpu-start 1` over SSH starts PIR 2 (the tool is in `tools/smp`, installed in the Xbox home folder).
+
+1. Find the Ethernet slowdown with two CPUs (about 5.6/5.9 MiB/s against 7.3–9.3). First measure it in the same boot before and after starting CPU 1.
+2. Retry starting PIR 2 during boot. The `smp1b` hang probably had the same interrupt storm cause, now fixed.
+3. Run a multi-hour uptime test with two CPUs, as the brief requires.
+4. Then stage 1b (PIR 0, 2, 4).
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The Xbox is on `pmapdef`. The owner decides when to restore `gpuwinoverlap`.
+The Xbox is on `smpdef3`; its rollback selects `pmapdef`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -30,6 +33,27 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: SMP stage 1a works, two CPUs
+
+Branch `claude/smp`, commit `c6155da`. Profile `smpdef3`: `SMPDEF3.ELF` (MD5 `74abf14e8f848fa66930fd891016b7f4`) + `XSD3.MKE` (MD5 `f42bc9b0c4784482555df2fdb2d3a7a6`). XenonPlatform MD5 `343a539d3665d6af20677955410a66a1`, with `XenonSMPThread2`, `XenonSMPDeferStart` and `XenonPmapFastScan` set and link-time imports identical to `pmapfast`. Tiger's link check passed.
+
+Pass criteria for stage 1a: `hw.ncpu` = 2; both CPUs run work; a stress test finishes; SSH, WindowServer, Finder, Dock, Ethernet, audio, mouse and keyboard keep working. The multi-hour uptime test is still open.
+
+**Result: pass, except the uptime test and an Ethernet slowdown.** The owner confirmed audio, mouse and keyboard.
+
+| Check | Result |
+| --- | --- |
+| Boot | Single CPU, `hw.ncpu` 2, `hw.availcpu` 1 |
+| `sudo ./xenon-cpu-start 1` | `released PIR 2`, `hw.availcpu` 2 |
+| One busy process | 4.59 s |
+| Two busy processes in parallel | 4.76 s and 4.74 s |
+| CPU 1 over 3 s | 779 DSI, 2 external interrupts (IPIs), 1,312 decrementer ticks, 1,431 system calls |
+| 4 busy processes + 200 MiB of disk writes | All finished (about 122 s each), file MD5 correct, no panic |
+| WindowServer, Finder, Dock | Running throughout |
+| Ethernet, 3 runs | Checksums match; 5.52–5.65 MiB/s up, 5.80–5.91 MiB/s down (single CPU: 7.3–7.8 / 8.9–9.3) |
+
+**Open: Ethernet is about 25–35% slower with two CPUs.** The cause is not measured yet.
 
 ## 2026-11-24: deferred SMP start, CPU 1 runs but storms on external interrupts
 
