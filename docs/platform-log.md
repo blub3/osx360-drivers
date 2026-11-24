@@ -31,6 +31,16 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: SMP stage 1a, second CPU starts, then panics on a GPU vector
+
+Branch `claude/smp`, commit `70e2a45`. Profile `smp1a`: `SMP1A.ELF` (MD5 `c70dbdc9815a84606360970ea0551072`) + `XS1A.MKE` (MD5 `0b703b4ebd57dcf694927013158b4cfa`). XenonPlatform MD5 `b3164d6416bf4aa22c075bc49ea9e57c`, with `XenonSMPThread2` and `XenonPmapFastScan` set and link-time imports identical to `pmapfast`.
+
+**Result: partial.** The release routine, the trampoline and XNU's start path all worked. The log shows `SMP enabled for thread mask 0x5` and `released PIR 2`, and `sysctl hw.ncpu` and `hw.availcpu` report 2. Tiger reached the desktop with SSH, WindowServer, Finder and Dock running. Right after the release, XNU logged `No debugger configured - dumping debug information`, and the owner saw the panic screen.
+
+Diagnosis without a panic log (no NVRAM): the system kept running on CPU 0, so the panic returned. `/dev/kmem` showed `panicstr` cleared and `panic_caller` = `0x180214C8`. XenonPlatform loads at `0x1801F000` with its text one page in, so the caller is text offset `0x14C8`: the return from `panic("Got Xenons here!")` in `XenonInterruptController::handleInterrupt`. **PIR 2 received the Xenos vector `0x58`** because its interrupt block was opened with priority 0.
+
+Fix: secondary threads use priority `0x74`, which admits only the IPI vector `0x78` (0 accepts all, `0x7C` blocks all, as in libxenon). Any other vector on a secondary is acknowledged and dropped instead of panicking.
+
 ## 2026-11-24: SMP thread state and time base probe
 
 `XenonSMPProbe` SPR mode, loaded by hand on the running `pmapdef` system. Each parked thread stored its registers at `0x07E00C00 + PIR * 0x40`, and the area was restored afterwards. The system stayed up.

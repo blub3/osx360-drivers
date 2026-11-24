@@ -21,6 +21,16 @@ XenonInterruptController *gXenonInterruptController = NULL;
 #define kXenonIPIVector   kXenonVectorIPI1
 
 //
+// Secondary threads only take IPIs. Priority 0 accepts every vector and 0x7C blocks all
+// (libxenon), so 0x74 lets only the IPI vector 0x78 through. With priority 0, PIR 2 received the
+// Xenos vector 0x58 and hit the panic below (stage 1a, 2026-11-24).
+//
+#define kXenonSecondaryPriority   0x74
+
+// Unexpected vectors taken by secondary threads, acknowledged and dropped.
+static volatile UInt32 sXenonSecondaryStrayVectors = 0;
+
+//
 // CPU IRQ to PCI bridge IRQ mapping (filled at startup).
 // Used for masking/unmasking.
 //
@@ -213,6 +223,17 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
     return kIOReturnSuccess;
   }
 
+  //
+  // Device interrupts are routed to thread 0 only. Drop anything else a secondary receives.
+  //
+  if (pir != 0) {
+    sXenonSecondaryStrayVectors++;
+    writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
+    writeICReg64(pir, kXenonICRegEndOfInterruptAutoUpd, 0);
+    readICReg64(pir, kXenonICRegPriority);
+    return kIOReturnSuccess;
+  }
+
   switch (vectorIndex) {
     case kXenonVectorXenos:
       panic("Got Xenons here!\n");
@@ -315,11 +336,12 @@ void XenonInterruptController::enableVector(IOInterruptVectorNumber vectorNumber
 
 //
 // Configures a secondary thread's register block like libxenon's wakeup_cpus: spurious vector,
-// priority 0 and logical ID (one bit per thread). Thread 0's block is set up in start().
+// logical ID (one bit per thread) and a priority that admits only IPIs. Thread 0's block is set
+// up in start().
 //
 void XenonInterruptController::initCPUBlock(UInt32 pir) {
   writeICReg64(pir, kXenonICRegSpuriousVector, 0x7C);
-  writeICReg64(pir, kXenonICRegPriority, 0);
+  writeICReg64(pir, kXenonICRegPriority, kXenonSecondaryPriority);
   writeICReg64(pir, kXenonICRegLogicalID, 1ULL << pir);
   eieio();
 
