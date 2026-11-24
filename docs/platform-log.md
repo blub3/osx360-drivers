@@ -30,6 +30,24 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: commpage hook stage one passes
+
+Branch `claude/pmap-patcher`, commit `32db185`. Profile `pmaprt1`: `PMAPRT1.ELF` (MD5 `6bcc03c76e3643b68f3bff3265f01c0f`) + `XPR1.MKE` (MD5 `a7344a62a77e2bf2280c03b5908b57a6`, 437,696 bytes). XenonPlatform MD5 `3ac25cc11f8b0f7d25d01ca62136652e`, with link-time imports identical to `pmapfast`. Stage one: stub and machine call installed, flush entry unchanged.
+
+Pass criteria, set before the run: Tiger boots; status 5; flush entry unchanged; the stub called directly makes generated `dcbz` clear 32 bytes and `dcbzl` 128; a clean range stays unchanged.
+
+**Result: pass.** SSH, WindowServer, Finder and Dock run, with 0 fast-scan mismatches and unchanged Tiger GPU files. **The boot failures came from the link-time imports.**
+
+| Check | G5 | Xbox |
+| --- | --- | --- |
+| Status | n/a | 5 |
+| Flush entry `0xFFFF8520` | n/a | `7c842379`, unchanged |
+| Generated `dcbz`, stub called directly | 32 bytes | 32 bytes, word patched |
+| Generated `dcbzl`, stub called directly | 128 bytes | 128 bytes, word patched |
+| Clean 4 KB range, unaligned and zero-length flushes | 0 changed | 0 changed |
+| Hook counters | n/a | 2 calls, 2 words, 0 failures |
+| Generated `dcbz`, official flush (not hooked yet) | 32 bytes | 128 bytes |
+
 ## 2026-11-24: BSD dependency test fails
 
 Profile `pmapbsd`: the same binary as `pmapsym` (MD5 `4ece2e83391510dcfe674b2c3781c8a0`) with `com.apple.kpi.bsd` 8.0.0 added to `OSBundleLibraries`. Not committed. `XPBS.MKE` 435,264 bytes (MD5 `768ca72538c5657f4044030322c95172`), `PMAPBSD.ELF` MD5 `352a20bc7c3d8119151db578103b65de`.
