@@ -31,6 +31,19 @@ XenonInterruptController *gXenonInterruptController = NULL;
 static volatile UInt32 sXenonSecondaryStrayVectors = 0;
 
 //
+// Ends an interrupt on a secondary thread. EOI with auto-update reopened the block (priority 0
+// afterwards), so the Xenos vector, which is held toward PIR 2, fired continuously: about
+// 294,000 external interrupts per second on CPU 1 and no decrementer ticks (2026-11-24). Use a
+// plain EOI and put the IPI-only priority back explicitly.
+//
+#define kXenonSecondaryEOI(pir)                                         \
+  do {                                                                    \
+    writeICReg64((pir), kXenonICRegEndOfInterrupt, 0);                    \
+    writeICReg64((pir), kXenonICRegPriority, kXenonSecondaryPriority);    \
+    readICReg64((pir), kXenonICRegPriority);                              \
+  } while (0)
+
+//
 // CPU IRQ to PCI bridge IRQ mapping (filled at startup).
 // Used for masking/unmasking.
 //
@@ -217,9 +230,13 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
     if (gXenonIPIHandler != NULL) {
       gXenonIPIHandler();
     }
-    writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
-    writeICReg64(pir, kXenonICRegEndOfInterruptAutoUpd, 0);
-    readICReg64(pir, kXenonICRegPriority);
+    if (pir != 0) {
+      kXenonSecondaryEOI(pir);
+    } else {
+      writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
+      writeICReg64(pir, kXenonICRegEndOfInterruptAutoUpd, 0);
+      readICReg64(pir, kXenonICRegPriority);
+    }
     return kIOReturnSuccess;
   }
 
@@ -228,9 +245,7 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
   //
   if (pir != 0) {
     sXenonSecondaryStrayVectors++;
-    writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
-    writeICReg64(pir, kXenonICRegEndOfInterruptAutoUpd, 0);
-    readICReg64(pir, kXenonICRegPriority);
+    kXenonSecondaryEOI(pir);
     return kIOReturnSuccess;
   }
 

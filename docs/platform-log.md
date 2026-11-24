@@ -31,6 +31,23 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: deferred SMP start, CPU 1 runs but storms on external interrupts
+
+Profiles `smpdefer` (`5d20c9f`) and `smpdef2` (`c645908`): `XenonSMPThread2` + `XenonSMPDeferStart`. Both booted single-CPU with `hw.ncpu` 2 and `hw.availcpu` 1, and PIR 2 registered stopped. Tiger's `IOCPU::setProperties` only handles `IOCPUState` = `Stopped`, so `smpdef2` adds a `XenonCPU::setProperties` override.
+
+On `smpdef2`, `sudo ./xenon-cpu-start 1` over SSH logged `Starting deferred CPU PIR 2`, `released PIR 2` and `processor_start returned … state 3`, and `hw.availcpu` became **2**. The system stayed up. But CPU 1 did no work: one busy process took 4.74 s, and two in parallel took 9.52 s and 9.60 s. The load average stayed at 1.00.
+
+Per-CPU data via `/dev/kmem` (`PerProcTable` at `0x365000`; CPU 1's data at virtual `0x01161000`), diffed over 3 s. Counters from `hwCtr` at offset `0x800`:
+
+| Counter | CPU 0 | CPU 1 |
+| --- | --- | --- |
+| DSI (`0x80C`) | +1,594 | 0 |
+| External interrupts (`0x814`) | +40 | **+883,362** |
+| Decrementer (`0x824`) | +394 | 0 |
+| System calls (`0x830`) | +2,721 | 0 |
+
+**CPU 1 is stuck in an external interrupt storm.** Likely cause: the secondary handler ended with EOI plus auto-update, which reopened PIR 2's block, and the Xenos vector held toward PIR 2 fired again at once. Fix: secondaries send a plain EOI and restore priority `0x74` themselves.
+
 ## 2026-11-24: SMP stage 1a retry hangs, IC priority probe
 
 Profile `smp1b` (commit `37ebfeb`, secondaries at priority `0x74`): **fail.** The owner saw the boot hang before the desktop, and the Xbox did not answer ping or SSH. That boot left no `system.log` entries at all, so it stopped before the logger started. `pmapdef` was restored on this computer and booted normally.
