@@ -33,6 +33,10 @@ public:
   void disableVectorHard(IOInterruptVectorNumber vectorNumber, IOInterruptVector *vector);
   void enableVector(IOInterruptVectorNumber vectorNumber, IOInterruptVector *vector);
 
+  // SMP. Each hardware thread has its own register block at kXenonICBase + PIR * 0x1000.
+  void initCPUBlock(UInt32 pir);
+  void sendIPI(UInt32 fromPIR, UInt32 toPIR);
+
 private:
   volatile void       *_mmioMem;
   IOMemoryMap         *_bridgeMmioMap;
@@ -54,5 +58,8 @@ private:
     OSWriteLittleInt32(_bridgeMmioMem, offset, data);
   }
 };
+
+// The single controller instance, set once its registers are mapped.
+extern XenonInterruptController *gXenonInterruptController;
 
 #endif

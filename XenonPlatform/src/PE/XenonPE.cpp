@@ -11,6 +11,8 @@
 #include <IOKit/IODeviceTreeSupport.h>
 
 #include "XenonPE.hpp"
+#include "XenonCPU.hpp"
+#include "XenonSMP.hpp"
 
 OSDefineMetaClassAndStructors(XenonPE, super);
 
@@ -38,6 +40,8 @@ bool XenonPE::start(IOService *provider) {
     refreshFramebuffer();
     return false;
   }
+
+  setupSMP();
 
   setChipSetType(kChipSetTypeMol);
   setMachineType(kMolStdMachineType);
@@ -130,4 +134,54 @@ long XenonPE::getGMTTimeOfDay(void) {
   }
 
   return 0;
+}
+
+//
+// Optional SMP, see docs/smp-design.md. The XenonPE personality keys XenonSMPThread1..5 select
+// extra hardware threads. Without them, or if any check fails, only thread 0 runs, as before.
+// Must run before super::start(), which creates the CPU nubs.
+//
+void XenonPE::setupSMP(void) {
+  // cpu_sync_timebase prologue in Tiger 10.4.11; routeFunction relocates these four words.
+  static const UInt32 syncPrologue[4] = { 0x7C0802A6, 0xBFC1FFF8, 0x90010008, 0x38600000 };
+  UInt32  requested = 1;
+  UInt32  startCpu;
+  UInt32  syncTimebase;
+  UInt32  orgSyncTimebase;
+  char    key[24];
+
+  for (UInt32 pir = 1; pir < kXenonSMPMaxThreads; pir++) {
+    snprintf(key, sizeof (key), "XenonSMPThread%lu", (unsigned long) pir);
+    if (getProperty(key) == kOSBooleanTrue) {
+      requested |= (1U << pir);
+    }
+  }
+  if (requested == 1) {
+    return;
+  }
+
+  startCpu     = resolveKernelSymbolExact("__start_cpu");
+  syncTimebase = resolveKernelSymbolExact("_cpu_sync_timebase");
+  if (syncTimebase == 0) {
+    XESYSLOG("SMP disabled: cpu_sync_timebase not found");
+    return;
+  }
+  for (UInt32 i = 0; i < 4; i++) {
+    if (reinterpret_cast<const UInt32*>(syncTimebase)[i] != syncPrologue[i]) {
+      XESYSLOG("SMP disabled: cpu_sync_timebase does not match");
+      return;
+    }
+  }
+  if (!XenonSMPInstallRelease(startCpu)) {
+    XESYSLOG("SMP disabled: release routine not installed");
+    return;
+  }
+  if (routeFunction(syncTimebase, (UInt32) &XenonSMPNoTimebaseSync, &orgSyncTimebase) != kIOReturnSuccess) {
+    XESYSLOG("SMP disabled: cpu_sync_timebase not replaced");
+    return;
+  }
+
+  gXenonStartCpuAddr  = startCpu;
+  gXenonSMPThreadMask = requested;
+  XESYSLOG("SMP enabled for thread mask 0x%X", requested);
 }

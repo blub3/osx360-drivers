@@ -1,0 +1,171 @@
+//
+//  XenonSMP.cpp
+//  Xbox 360 secondary hardware thread start
+//
+//  XeLL enters OpenBIOS with threads 1-5 at image offset 0x60. OpenBIOS is linked at 0x07E00000,
+//  outside XNU's memory, and parks them there in "b .". This file turns that loop into a
+//  mailbox loop. A released thread invalidates its TLB like libxenon does, then enters XNU's
+//  reset vector at 0x100. XNU's cpu_start has already pointed the reset handler at 0xF0 to
+//  __start_cpu, and XenonSMPReleaseThread redirects it to a copy of __start_cpu that skips the
+//  time base writes. The time base is shared and already synchronized (docs/platform-log.md).
+//
+
+#include <IOKit/IOLib.h>
+#include "XenonSMP.hpp"
+
+extern "C" unsigned int ml_phys_read(vm_offset_t paddr);
+extern "C" void ml_phys_write(vm_offset_t paddr, unsigned int data);
+extern "C" void invalidate_icache(vm_offset_t addr, unsigned cnt, int phys);
+
+UInt32 gXenonSMPThreadMask = 1;
+void (*gXenonIPIHandler)(void) = NULL;
+
+#define kParkBase           0x07E00000
+#define kParkEntry          (kParkBase + 0x60)
+#define kReleaseCode        (kParkBase + 0x64)
+#define kTrampoline         (kParkBase + 0xE00)   // OpenBIOS 0xE00 vector, unused under XNU
+#define kMailboxBase        (kParkBase + 0xF80)   // OpenBIOS 0xF00 vector area, one word per PIR
+
+#define kResetHandlerCall   0xF4
+#define kResetVector        0x100
+
+#define kPPCBranchSelf      0x48000000            // b .
+#define kPPCBranchNext      0x48000004            // b .+4
+#define kXeLLArgMagic       0x5F617267            // "_arg", XeLL argument block at image offset 8
+
+// Mailbox loop and TLB invalidation for 0x64-0xC0. The TLB sequence is libxenon's
+// startup_from_xell.S. The routine ends in "ba 0x100".
+static const UInt32 kReleaseLoop[] = {
+  0x7C7FFAA6,   // 0x64 mfspr   r3, PIR
+  0x5463103A,   // 0x68 slwi    r3, r3, 2
+  0x3C8007E0,   // 0x6C lis     r4, 0x07E0
+  0x60840F80,   // 0x70 ori     r4, r4, 0x0F80
+  0x7CA4182E,   // 0x74 lwzx    r5, r4, r3
+  0x2C050000,   // 0x78 cmpwi   r5, 0
+  0x4182FFE4,   // 0x7C beq     0x60
+  0x38A00000,   // 0x80 li      r5, 0
+  0x7CA4192E,   // 0x84 stwx    r5, r4, r3          (one-shot: clear own mailbox)
+  0x7C0004AC,   // 0x88 sync
+  0x38600C00,   // 0x8C li      r3, 0xC00
+  0x38800100,   // 0x90 li      r4, 0x100
+  0x7C8903A6,   // 0x94 mtctr   r4
+  0x7C001A24,   // 0x98 tlbiel  r3, 0
+  0x38631000,   // 0x9C addi    r3, r3, 0x1000
+  0x4200FFF8,   // 0xA0 bdnz    0x98
+  0x7C0006AC,   // 0xA4 eieio
+  0x7C4004AC,   // 0xA8 ptesync
+  0x386003FF,   // 0xAC li      r3, 0x3FF
+  0x786307C6,   // 0xB0 rldicr  r3, r3, 32, 31
+  0x7C201A24,   // 0xB4 tlbiel  r3, 1
+  0x7C0006AC,   // 0xB8 eieio
+  0x7C4004AC,   // 0xBC ptesync
+  0x48000102    // 0xC0 ba      0x100
+};
+
+// __start_cpu in Tiger 10.4.11 (mach_kernel MD5 def99c6ef0231ea3c2a627dd26201371).
+// Words 11-13 are the time base writes (mttbl r17, mttbu r15, mttbl r16) the trampoline skips.
+// Word 14 branches to +0x84, where the trampoline continues.
+#define kStartCpuWords        16
+#define kStartCpuKeepWords    11
+#define kStartCpuContinue     0x84
+static const UInt32 kStartCpuExpected[kStartCpuWords] = {
+  0x4D4A5182, 0x4D294982, 0x83C30000, 0x83830004, 0x57DE0040, 0x539E003E, 0x3BA3FE0C, 0x7FC3F378,
+  0x81E30098, 0x3A200000, 0x8203009C, 0x7E3C43A6, 0x7DFD43A6, 0x7E1C43A6, 0x4800004C, 0x60000000
+};
+
+static bool sReleaseInstalled = false;
+
+UInt32 XenonSMPCurrentPIR(void) {
+  UInt32 pir;
+  __asm__ volatile ("mfspr %0, 1023" : "=r" (pir));
+  return pir;
+}
+
+UInt32 XenonSMPLogicalCount(void) {
+  UInt32 count = 0;
+  for (UInt32 pir = 0; pir < kXenonSMPMaxThreads; pir++) {
+    count += (gXenonSMPThreadMask >> pir) & 1;
+  }
+  return count;
+}
+
+UInt32 XenonSMPLogicalForPIR(UInt32 pir) {
+  UInt32 logical = 0;
+  for (UInt32 i = 0; i < pir; i++) {
+    logical += (gXenonSMPThreadMask >> i) & 1;
+  }
+  return logical;
+}
+
+static void writePhysCode(UInt32 phys, const UInt32 *words, UInt32 count) {
+  for (UInt32 i = 0; i < count; i++) {
+    ml_phys_write(phys + (i * 4), words[i]);
+  }
+  invalidate_icache(phys, count * 4, 1);
+}
+
+bool XenonSMPInstallRelease(UInt32 startCpuAddr) {
+  const UInt32  *startCpu = reinterpret_cast<const UInt32*>(startCpuAddr);
+  UInt32        trampoline[kStartCpuKeepWords + 1];
+
+  if ((startCpuAddr == 0) || (startCpuAddr > 0x01FFFFFF)) {
+    IOLog("XenonSMP: __start_cpu not found or out of branch range\n");
+    return false;
+  }
+  for (UInt32 i = 0; i < kStartCpuWords; i++) {
+    if (startCpu[i] != kStartCpuExpected[i]) {
+      IOLog("XenonSMP: __start_cpu word %lu is %08lx, expected %08lx\n", (unsigned long) i,
+            (unsigned long) startCpu[i], (unsigned long) kStartCpuExpected[i]);
+      return false;
+    }
+  }
+  if ((ml_phys_read(kParkEntry) != kPPCBranchSelf) ||
+      ((ml_phys_read(kParkBase) & 0xFC000003) != 0x48000000) || (ml_phys_read(kParkBase + 8) != kXeLLArgMagic)) {
+    IOLog("XenonSMP: OpenBIOS parking loop not found at 0x%08lx\n", (unsigned long) kParkEntry);
+    return false;
+  }
+
+  for (UInt32 i = 0; i < kStartCpuKeepWords; i++) {
+    trampoline[i] = startCpu[i];
+  }
+  trampoline[kStartCpuKeepWords] = 0x48000002 | ((startCpuAddr + kStartCpuContinue) & 0x03FFFFFC);  // ba
+
+  for (UInt32 pir = 0; pir < kXenonSMPMaxThreads; pir++) {
+    ml_phys_write(kMailboxBase + (pir * 4), 0);
+  }
+  writePhysCode(kTrampoline, trampoline, kStartCpuKeepWords + 1);
+  writePhysCode(kReleaseCode, kReleaseLoop, sizeof (kReleaseLoop) / sizeof (kReleaseLoop[0]));
+  __asm__ volatile ("sync");
+
+  // Last: send the parked threads from "b ." into the mailbox loop.
+  static const UInt32 branchNext = kPPCBranchNext;
+  writePhysCode(kParkEntry, &branchNext, 1);
+
+  sReleaseInstalled = true;
+  IOLog("XenonSMP: release routine installed, thread mask 0x%lx\n", (unsigned long) gXenonSMPThreadMask);
+  return true;
+}
+
+kern_return_t XenonSMPReleaseThread(UInt32 pir, UInt32 startCpuAddr) {
+  if (!sReleaseInstalled || (pir == 0) || (pir >= kXenonSMPMaxThreads)) {
+    return KERN_FAILURE;
+  }
+
+  // cpu_start wrote type 1, __start_cpu and the per_proc address to the reset handler.
+  if (ml_phys_read(kResetHandlerCall) != startCpuAddr) {
+    IOLog("XenonSMP: reset handler call is %08lx, expected __start_cpu\n",
+          (unsigned long) ml_phys_read(kResetHandlerCall));
+    return KERN_FAILURE;
+  }
+  ml_phys_write(kResetHandlerCall, kTrampoline);
+  __asm__ volatile ("sync");
+
+  ml_phys_write(kMailboxBase + (pir * 4), 1);
+  __asm__ volatile ("sync");
+
+  IOLog("XenonSMP: released PIR %lu\n", (unsigned long) pir);
+  return KERN_SUCCESS;
+}
+
+void XenonSMPNoTimebaseSync(void) {
+}
