@@ -8,9 +8,9 @@ Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
 Done and hardware-tested, all off by default: counters (`XenonPmapStats`), fast page pre-scan (`XenonPmapFastScan`, about 40x less scan time) and the commpage flush hook (`XenonPmapFlushPatch`, `pmaprt2`). Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Measure real app launch times with and without the fast scan.
+1. Decide with the owner which features become default and whether to merge into `main`.
 2. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
-3. Decide with the owner which features become default and whether to merge into `main`.
+3. Measure Finder launch time, which the brief names but this session did not measure.
 
 Not planned: a fix for data rewritten in non-Mach-O `r-x` file mappings. No running process had such a mapping (2026-11-24 survey), and a fix would need kernel mapping tracking that could leave real dcbz unpatched.
 
@@ -30,6 +30,25 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: app launch times with and without the fast scan
+
+Same XenonPlatform binary (`3ac25cc11f8b0f7d25d01ca62136652e`) in both runs, with the commpage hook and statistics on. Only `XenonPmapFastScan` differs. `pmapslow`: `PMAPSLOW.ELF` (MD5 `eb92668c947ebe2184d1a8ce59142876`) + `XPSL.MKE` (MD5 `3877cb5e870b7cf4b7476009c307d560`), fast scan off. `pmaprt2`: fast scan on.
+
+Method: fresh cold boot for each run, no user activity, 20 s settle. Per app, one cold launch (first after boot) and five warm launches, timed from `tell application to activate` until the app answers Apple events. Scan time is the patcher's own counter during that interval.
+
+Pass criterion from the brief: measurably faster app launch.
+
+**Result: pass.** Warm launches are 10–18% faster, cold launches 8–17%.
+
+| App | Cold off | Cold on | Warm median off | Warm median on | Warm saving | Scan per warm launch off / on |
+| --- | --- | --- | --- | --- | --- | --- |
+| Terminal | 1.84 s | 1.58 s | 1.36 s | 1.11 s | 0.25 s | 658 / 15.0 ms |
+| TextEdit | 1.50 s | 1.38 s | 1.54 s | 1.36 s | 0.18 s | 494 / 12.4 ms |
+| Safari | 2.28 s | 1.90 s | 2.15 s | 1.85 s | 0.31 s | 655 / 13.8 ms |
+| Calculator | 2.32 s | 2.04 s | 1.82 s | 1.64 s | 0.19 s | 513 / 12.6 ms |
+
+About 1 minute after power-on, scan time was 9.21 s without the fast scan and 0.28 s with it. The launch saving is smaller than the scan saving because some scanning happens after the app first answers. Each configuration was measured in one boot. Finder was not measured.
 
 ## 2026-11-24: executable mapping survey
 
