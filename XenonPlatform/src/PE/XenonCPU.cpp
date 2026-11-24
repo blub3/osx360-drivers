@@ -203,6 +203,24 @@ void XenonCPU::signalCPU(IOCPU *target) {
 }
 
 //
+// Overrides IOCPU::setProperties(). Tiger's IOCPU only handles IOCPUState = "Stopped": after its
+// dictionary, string and administrator checks, it returns kIOReturnUnsupported for anything else.
+// For a deferred secondary CPU that is still stopped, take that result as a start request.
+//
+IOReturn XenonCPU::setProperties(OSObject *properties) {
+  IOReturn result = super::setProperties(properties);
+
+  if ((result == kIOReturnUnsupported) && !_isBootCPU && gXenonSMPDeferStart &&
+      (getCPUState() == kIOCPUStateStopped)) {
+    XESYSLOG("Starting deferred CPU PIR %u", _pir);
+    processor_start(machProcessor);
+    XESYSLOG("processor_start returned for PIR %u, state %lu", _pir, getCPUState());
+    return kIOReturnSuccess;
+  }
+  return result;
+}
+
+//
 // Overrides IOCPU::quiesceCPU()
 //
 void XenonCPU::quiesceCPU(void) {

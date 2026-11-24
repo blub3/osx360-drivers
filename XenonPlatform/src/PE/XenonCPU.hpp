@@ -29,6 +29,7 @@ public:
   kern_return_t startCPU(vm_offset_t start_paddr, vm_offset_t arg_paddr);
   void haltCPU(void);
   void signalCPU(IOCPU *target);
+  IOReturn setProperties(OSObject *properties);
   const OSSymbol *getCPUName(void);
 
 private:
