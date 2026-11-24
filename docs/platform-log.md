@@ -38,7 +38,7 @@ Branch `claude/pmap-patcher`, commit `995ab7a`. Profile `pmapst1`: `PMAPST1.ELF`
 
 Recovery on 2026-11-24: `kboot.conf` was restored from `kboot.conf.before-pmapst1.bak` on this computer, then `pmapfast` cold booted with SSH, WindowServer, Finder and Dock running, 0 fast-scan mismatches and unchanged Tiger GPU files.
 
-The owner sees a brief memory-like pattern just before the desktop appears. It coincides with WindowServer opening the framebuffer. Whether it also occurs on `gpuwinoverlap` is not known. Before the boot, all original `OSX360BOOT` files except the intentionally changed `kboot.conf` matched the session baseline, and the Tiger GPU files were unchanged.
+The owner sees a brief memory-like pattern just before the desktop appears. It coincides with WindowServer opening the framebuffer. The owner has seen it before these patcher builds, so it is not caused by them. Before the boot, all original `OSX360BOOT` files except the intentionally changed `kboot.conf` matched the session baseline, and the Tiger GPU files were unchanged.
 
 ## 2026-11-23: commpage flush hook boot failure
 
