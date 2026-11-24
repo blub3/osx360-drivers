@@ -4,17 +4,17 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 ## Next step
 
-Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
+Task 1 (pmap dcbz patcher) is merged into `main` (`ae01a6d`). Open follow-ups: a faster path for the CoreGraphics fill routines, and a Finder launch measurement.
 
-Done and hardware-tested, all off by default: counters (`XenonPmapStats`), fast page pre-scan (`XenonPmapFastScan`, about 40x less scan time) and the commpage flush hook (`XenonPmapFlushPatch`, `pmaprt2`). Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
+Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-boot`).
 
-The fast scan is on by default and merged into `main` (owner-approved). Statistics and the commpage hook stay off by default.
+1. Design `XenonCPU::startCPU` for one secondary thread: write a release routine into the free area after the OpenBIOS parking loop at `0x07E00064`. It must set up the thread like libxenon's `startup_from_xell.S` (HID6, SLB, TLB invalidate, LPCR, HRMOR), then enter XNU's reset path at `0x100` with XNU's reset handler at `0xF0` pointing to the start routine.
+2. Fix the patcher order (patch before `pmap_enter`) before any second CPU runs user code.
+3. Fix the SMP blockers in XenonPlatform: every CPU claims to be the boot CPU, and the interrupt controller only handles CPU 0.
+4. Add CPU nodes for the other threads in OpenBIOS, or create them in XenonPlatform.
+5. List GPU code that assumes one CPU and send the list to the owner without changing it.
 
-1. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
-2. Measure Finder launch time, which the brief names but this session did not measure.
-3. Then move on to task 2 of the brief, SMP.
-
-Not planned: a fix for data rewritten in non-Mach-O `r-x` file mappings. No running process had such a mapping (2026-11-24 survey), and a fix would need kernel mapping tracking that could leave real dcbz unpatched.
+Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
@@ -32,6 +32,27 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: SMP probe of the parked secondary threads
+
+Branch `claude/smp`. `XenonSMPProbe` is a diagnostic kext, not part of the package. It was loaded by hand with `kextload` on the running `pmapdef` system and unloaded afterwards. Its results go to `system.log`, because `ioreg` stops at the IODTNVRAM entry before reaching it.
+
+Background: XeLL enters a loaded image with thread 0 at offset `0x0` and the other threads at offset `0x60` (libxenon `startup_from_xell.S`). OpenBIOS is linked at `0x07E00000`, outside XNU's memory, and parks them in `b .` at `0x07E00060`. `/dev/mem` returns zeros for physical memory on this system, so userland cannot read it.
+
+Read-only result: `0x07E00000` holds `480017f4 60000000 5f617267 00000001` (branch to OpenBIOS entry, XeLL argument marker). `0x07E00060` holds `48000000` (`b .`), and `0x64-0xFF` is empty.
+
+Release probe: the probe wrote a counting loop at `0x64-0x80`, pointed `0x60` at it for 200 ms, then restored `b .`. Each thread counted at `0xC0 + PIR * 4`.
+
+| PIR | After 100 ms | After 200 ms | Parked (+10 ms and +110 ms) |
+| --- | --- | --- | --- |
+| 0 (Tiger) | 0 | 0 | 0 |
+| 1 | 0x071141 | 0x0C8178 | 0x0C8548, unchanged |
+| 2 | 0x1907BE | 0x34EE1E | 0x34FF88, unchanged |
+| 3 | 0x18FD50 | 0x34C25A | 0x34D3AC, unchanged |
+| 4 | 0x1A443B | 0x313F4F | 0x316073, unchanged |
+| 5 | 0x1A553C | 0x31865E | 0x31A792, unchanged |
+
+**Result: all five secondary threads are alive at physical `0x07E00060` in real mode and can be redirected and parked again.** PIR 1 runs slower because it shares core 0 with Tiger. The system stayed up, with SSH, WindowServer, Finder and Dock running.
 
 ## 2026-11-24: default build test before merge
 
