@@ -8,10 +8,11 @@ Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
 Done and hardware-tested, all off by default: counters (`XenonPmapStats`), fast page pre-scan (`XenonPmapFastScan`, about 40x less scan time) and the commpage flush hook (`XenonPmapFlushPatch`, `pmaprt2`). Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
-2. Measure real app launch times with and without the fast scan.
-3. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
-4. Decide with the owner which features become default and whether to merge into `main`.
+1. Measure real app launch times with and without the fast scan.
+2. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
+3. Decide with the owner which features become default and whether to merge into `main`.
+
+Not planned: a fix for data rewritten in non-Mach-O `r-x` file mappings. No running process had such a mapping (2026-11-24 survey), and a fix would need kernel mapping tracking that could leave real dcbz unpatched.
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
@@ -29,6 +30,19 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: executable mapping survey
+
+Read-only survey on the running `pmaprt2` system with Terminal, TextEdit and Safari open: `vmmap` of all 47 processes, 1,461 executable regions.
+
+| Executable regions | Result |
+| --- | --- |
+| File-backed images | 212, all Mach-O (thin or fat), 0 other files |
+| Anonymous (`VM_ALLOCATE`) | Present in 2 processes |
+
+**Conclusion: the data-rewrite case has no exposure in normal use.** It needs a non-Mach-O file mapped executable, and none was found. Anonymous executable pages are zero-filled when first mapped, so the map-time scan finds no data in them.
+
+A fix would need the kernel to track which mappings come from Mach-O images, with invalidation when mappings change. A stale entry would leave real dcbz unpatched, which clears 128 bytes instead of 32. That risk outweighs the measured exposure, so this stays a documented limit.
 
 ## 2026-11-24: commpage hook stage two passes
 
