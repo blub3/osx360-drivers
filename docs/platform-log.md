@@ -30,6 +30,14 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: symbol test fails
+
+Profile `pmapsym`: the `pmapfast` code plus unused references to `copyin`, `copyout` and `OSIncrementAtomic`. Not committed. XenonPlatform MD5 `4ece2e83391510dcfe674b2c3781c8a0`, `XPSY.MKE` 435,232 bytes (MD5 `d6f35b3564b1e4cbb2babbf764d5730e`), `PMAPSYM.ELF` MD5 `077b2ca881f50c38e55dde1777e65e08`. Tiger's `kextload -n -t -z` accepted it.
+
+**Result: fail.** The owner reported that the cold boot failed. **Importing these symbols is enough to break the boot, even though the code never runs.**
+
+Likely cause: XenonPlatform declares only `com.apple.kernel.iokit`, `libkern` and `mach` 1.1. The GPU kexts that import `copyin` also declare `com.apple.kpi.bsd`. The boot-time linker probably cannot resolve `copyin` and `copyout` for XenonPlatform, so the platform expert does not load. Tiger's offline link check does not catch this. It may also explain earlier unexplained boot failures after a kext gained new imports. Next test: the same build with a `com.apple.kpi.bsd` dependency.
+
 ## 2026-11-24: size test boots
 
 Profile `pmappad`: the `pmapfast` code (`68a141c`) plus 8 KB of unused, incompressible data. Not committed, built in `~/osx360-build/pad` on the G5. XenonPlatform 111,472 bytes (MD5 `65582f4198fde1209fd4ed4627043668`). `XPPD.MKE` 444,352 bytes (MD5 `c8efd4bc1def9b620566027562b6427b`), `PMAPPAD.ELF` MD5 `1d43fa5ae63d2006b05a51e7db7ba075`. Tiger's link check was skipped because the Xbox was down. The G5 unpacked the archive, and all other kexts are byte-identical.
