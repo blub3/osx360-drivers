@@ -51,6 +51,7 @@ public:
 
   // Patcher functions.
   UInt32 resolveKernelSymbol(const char *symbolName);
+  UInt32 resolveKernelSymbolExact(const char *symbolName);
   UInt32 createTrampoline(UInt32 from);
   IOReturn routeFunction(UInt32 from, UInt32 to, UInt32 *trampoline);
   IOReturn mapMemory(UInt64 physAddr, UInt32 length, void **virtBase);

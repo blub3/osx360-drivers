@@ -174,6 +174,23 @@ static UInt32           sFlushPatchStatus = 0;
 static UInt32           sFlushPatchPpcCalls = 0;
 static UInt32           sFlushPatchCommPagePtr = 0;
 static volatile SInt32  sFlushPatchCalls = 0;
+
+//
+// copyin and copyout are resolved at runtime. Importing them at link time stops XenonPlatform
+// from loading at boot, even with a com.apple.kpi.bsd dependency (tested on Tiger 10.4.11).
+//
+typedef int (*xnu_copyin_func)(const user_addr_t uaddr, void *kaddr, size_t len);
+typedef int (*xnu_copyout_func)(const void *kaddr, user_addr_t udaddr, size_t len);
+
+static xnu_copyin_func  sCopyinFunc = NULL;
+static xnu_copyout_func sCopyoutFunc = NULL;
+
+// Avoids a link-time OSIncrementAtomic import. Single CPU only, like the rest of the patcher.
+static inline void flushPatchCount(volatile SInt32 *counter) {
+  boolean_t ints = ml_set_interrupts_enabled(false);
+  (*counter)++;
+  ml_set_interrupts_enabled(ints);
+}
 static volatile SInt32  sFlushPatchWords = 0;
 static volatile SInt32  sFlushPatchFailures = 0;
 
@@ -195,10 +212,10 @@ static int xenonFlushPatchCall(void *save) {
   }
 
   ml_set_interrupts_enabled(TRUE);
-  OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchCalls));
+  flushPatchCount(&sFlushPatchCalls);
 
   if ((length == 0) || (length > kXenonFlushPatchMaxLength) || (start > (0xFFFFFFFFU - length - 3))) {
-    OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchFailures));
+    flushPatchCount(&sFlushPatchFailures);
     return 1;
   }
 
@@ -210,18 +227,18 @@ static int xenonFlushPatchCall(void *save) {
       chunk = sizeof (words);
     }
 
-    if (copyin((user_addr_t) addr, words, chunk) != 0) {
-      OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchFailures));
+    if (sCopyinFunc((user_addr_t) addr, words, chunk) != 0) {
+      flushPatchCount(&sFlushPatchFailures);
       break;
     }
 
     for (UInt32 i = 0; i < (chunk / 4); i++) {
       if ((words[i] & 0xFF0007FF) == 0x7C0007EC) {
         UInt32 patched = words[i] & 0x03FFFFFF;
-        if (copyout(&patched, (user_addr_t) (addr + (i * 4)), sizeof (patched)) == 0) {
-          OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchWords));
+        if (sCopyoutFunc(&patched, (user_addr_t) (addr + (i * 4)), sizeof (patched)) == 0) {
+          flushPatchCount(&sFlushPatchWords);
         } else {
-          OSIncrementAtomic(const_cast<SInt32*>(&sFlushPatchFailures));
+          flushPatchCount(&sFlushPatchFailures);
         }
       }
     }
@@ -516,6 +533,22 @@ bool XenonPE::findKernelMachHeader(void) {
 }
 
 //
+// Resolve a kernel symbol by exact name. This function can only be called prior to kernel linker jettison.
+//
+UInt32 XenonPE::resolveKernelSymbolExact(const char *symbolName) {
+  struct nlist  *nlistSym = reinterpret_cast<struct nlist*>(_symTab);
+
+  for (UInt32 i = 0; i < _symTabNumSymbols; i++, nlistSym++) {
+    if (strcmp(symbolName, reinterpret_cast<char*>(_strTab + nlistSym->n_un.n_strx)) == 0) {
+      return nlistSym->n_value;
+    }
+  }
+
+  XESYSLOG("Failed to locate symbol '%s'", symbolName);
+  return 0;
+}
+
+//
 // Resolve a kernel symbol. This function can only be called prior to kernel linker jettison.
 //
 UInt32 XenonPE::resolveKernelSymbol(const char *symbolName) {
@@ -768,10 +801,13 @@ bool XenonPE::initPatcher(void) {
 
   if ((getKernelVersion() == kKernelVersionTiger) &&
       (checkKernelArgument("xe_pmapflush") || (getProperty("XenonPmapFlushPatch") == kOSBooleanTrue))) {
-    UInt32 ppcCallsAddr    = resolveKernelSymbol("_PPCcalls");
-    UInt32 commPagePtrAddr = resolveKernelSymbol("_commPagePtr32");
+    UInt32 ppcCallsAddr    = resolveKernelSymbolExact("_PPCcalls");
+    UInt32 commPagePtrAddr = resolveKernelSymbolExact("_commPagePtr32");
 
-    if ((ppcCallsAddr != 0) && (commPagePtrAddr != 0)) {
+    sCopyinFunc  = (xnu_copyin_func) resolveKernelSymbolExact("_copyin");
+    sCopyoutFunc = (xnu_copyout_func) resolveKernelSymbolExact("_copyout");
+
+    if ((ppcCallsAddr != 0) && (commPagePtrAddr != 0) && (sCopyinFunc != NULL) && (sCopyoutFunc != NULL)) {
       sFlushPatchSkipEntry   = getProperty("XenonPmapFlushNoEntry") == kOSBooleanTrue;
       sFlushPatchCheckOnly   = getProperty("XenonPmapFlushCheckOnly") == kOSBooleanTrue;
       sFlushPatchPpcCalls    = ppcCallsAddr;

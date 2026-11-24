@@ -30,6 +30,12 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: BSD dependency test fails
+
+Profile `pmapbsd`: the same binary as `pmapsym` (MD5 `4ece2e83391510dcfe674b2c3781c8a0`) with `com.apple.kpi.bsd` 8.0.0 added to `OSBundleLibraries`. Not committed. `XPBS.MKE` 435,264 bytes (MD5 `768ca72538c5657f4044030322c95172`), `PMAPBSD.ELF` MD5 `352a20bc7c3d8119151db578103b65de`.
+
+**Result: fail.** The owner reported that the cold boot failed. Declaring the BSD KPI does not make these imports safe for XenonPlatform. Instead of narrowing which symbol is at fault, the hook now resolves `copyin` and `copyout` at runtime by exact name and no longer uses `OSIncrementAtomic`. Its link-time imports must match the booting `pmapfast` build exactly.
+
 ## 2026-11-24: symbol test fails
 
 Profile `pmapsym`: the `pmapfast` code plus unused references to `copyin`, `copyout` and `OSIncrementAtomic`. Not committed. XenonPlatform MD5 `4ece2e83391510dcfe674b2c3781c8a0`, `XPSY.MKE` 435,232 bytes (MD5 `d6f35b3564b1e4cbb2babbf764d5730e`), `PMAPSYM.ELF` MD5 `077b2ca881f50c38e55dde1777e65e08`. Tiger's `kextload -n -t -z` accepted it.
