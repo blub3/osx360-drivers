@@ -30,6 +30,14 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: commpage hook check-only boot failure
+
+Branch `claude/pmap-patcher`, commit `874326e`. Profile `pmapchk`: `PMAPCHK.ELF` (MD5 `6b8223bd751c170645c2df9c5cc4ab46`) + `XPCK.MKE` (MD5 `1b1f102d063105b488003f96e5cc5635`, 437,280 bytes). XenonPlatform binary MD5 `4d8bef5784d88d0a094295bdb21214b1`. This build runs the install checks and writes nothing.
+
+**Result: fail.** The owner reported that the cold boot failed. The installer's writes are therefore not required for the failure.
+
+Archive sizes so far: `XPMF.MKE` 435,136 bytes boots; `XPMC.MKE` 436,960, `XPS1.MKE` 437,152 and `XPCK.MKE` 437,280 fail. All occupy 107 pages. The remaining suspects are the read-only install checks and the larger XenonPlatform binary.
+
 ## 2026-11-23: commpage hook stage one boot failure
 
 Branch `claude/pmap-patcher`, commit `995ab7a`. Profile `pmapst1`: `PMAPST1.ELF` (MD5 `1a35a0003055066862e8d5889364a60f`) + `XPS1.MKE` (MD5 `a90cae07669798812bb7d482d7b957c5`). XenonPlatform binary MD5 `91010d34fc4f96b639c87b039d7cb2f7`. This build installs the stub and machine call and leaves the commpage flush routine unchanged.
