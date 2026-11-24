@@ -8,15 +8,17 @@ Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
 Done and hardware-tested, all off by default: counters (`XenonPmapStats`), fast page pre-scan (`XenonPmapFastScan`, about 40x less scan time) and the commpage flush hook (`XenonPmapFlushPatch`, `pmaprt2`). Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Decide with the owner which features become default and whether to merge into `main`.
-2. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
-3. Measure Finder launch time, which the brief names but this session did not measure.
+The fast scan is on by default and merged into `main` (owner-approved). Statistics and the commpage hook stay off by default.
+
+1. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
+2. Measure Finder launch time, which the brief names but this session did not measure.
+3. Then move on to task 2 of the brief, SMP.
 
 Not planned: a fix for data rewritten in non-Mach-O `r-x` file mappings. No running process had such a mapping (2026-11-24 survey), and a fix would need kernel mapping tracking that could leave real dcbz unpatched.
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The Xbox is on `pmaprt2`. The owner decides when to restore `gpuwinoverlap`.
+The Xbox is on `pmapdef`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -30,6 +32,24 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: default build test before merge
+
+Branch `claude/pmap-patcher`, commit `3867c58`. Profile `pmapdef`: `PMAPDEF.ELF` (MD5 `e3d46967bd32f0f76c14acffe10e8c62`) + `XPDF.MKE` (MD5 `bf1817b9b00034e59634d297c238bb3b`, 437,664 bytes). XenonPlatform MD5 `3ac25cc11f8b0f7d25d01ca62136652e`, built from the repository `Info.plist` with only `XenonPmapFastScan` set. Tiger's link check passed.
+
+Pass criteria, set before the run: Tiger boots; only the fast scan is configured; launches stay at fast-scan times; a 50 MiB Ethernet transfer keeps its checksum; audio is audible; Tiger GPU files unchanged.
+
+**Result: pass.** The owner heard the audio and approved the merge.
+
+| Check | Result |
+| --- | --- |
+| Boot, SSH, WindowServer, Finder, Dock | Pass, no panic or new crash reports |
+| XenonPE settings | `XenonPmapFastScan = Yes` only |
+| Warm launch medians | Terminal 1.09 s, TextEdit 1.33 s, Safari 1.71 s, Calculator 1.64 s |
+| Ethernet up / down | 7.77 / 9.32 MiB/s, checksums match |
+| Tiger GPU files | Unchanged |
+
+Without statistics, scan counters are not published. The launch times match the fast-scan run, against 1.36–2.15 s without it.
 
 ## 2026-11-24: app launch times with and without the fast scan
 
