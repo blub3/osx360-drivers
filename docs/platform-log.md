@@ -30,6 +30,14 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: size test boots
+
+Profile `pmappad`: the `pmapfast` code (`68a141c`) plus 8 KB of unused, incompressible data. Not committed, built in `~/osx360-build/pad` on the G5. XenonPlatform 111,472 bytes (MD5 `65582f4198fde1209fd4ed4627043668`). `XPPD.MKE` 444,352 bytes (MD5 `c8efd4bc1def9b620566027562b6427b`), `PMAPPAD.ELF` MD5 `1d43fa5ae63d2006b05a51e7db7ba075`. Tiger's link check was skipped because the Xbox was down. The G5 unpacked the archive, and all other kexts are byte-identical.
+
+**Result: pass.** SSH, WindowServer, Finder and Dock run, with 0 fast-scan mismatches and unchanged Tiger GPU files. **Binary or archive size alone does not cause the failure.**
+
+Compared with this working code, the failing binary imports `_copyin`, `_copyout` and `_OSIncrementAtomic`, and it has a larger `__text` section (0x7F28 against 0x756C). Next test: the `pmapfast` code with unused references to those three symbols.
+
 ## 2026-11-24: hook-off boot failure
 
 Profile `pmapnof`: `PMAPNOF.ELF` (MD5 `4e33079bf18b61d0f5470edac541db93`) + `XPNF.MKE` (MD5 `9313aa4a8ca85acf1c5324c48ac9f1ba`, 437,248 bytes). Same XenonPlatform binary as `pmapchk` (MD5 `4d8bef5784d88d0a094295bdb21214b1`), with `XenonPmapFlushPatch` absent, so no hook code runs.
