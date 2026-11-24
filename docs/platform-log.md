@@ -6,13 +6,11 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 Task 1 (pmap dcbz patcher) is merged into `main` (`ae01a6d`). Open follow-ups: a faster path for the CoreGraphics fill routines, and a Finder launch measurement.
 
-Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-boot`).
+Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-boot`). Design: `docs/smp-design.md`.
 
-1. Design `XenonCPU::startCPU` for one secondary thread: write a release routine into the free area after the OpenBIOS parking loop at `0x07E00064`. It must set up the thread like libxenon's `startup_from_xell.S` (HID6, SLB, TLB invalidate, LPCR, HRMOR), then enter XNU's reset path at `0x100` with XNU's reset handler at `0xF0` pointing to the start routine.
-2. Fix the patcher order (patch before `pmap_enter`) before any second CPU runs user code.
-3. Fix the SMP blockers in XenonPlatform: every CPU claims to be the boot CPU, and the interrupt controller only handles CPU 0.
-4. Add CPU nodes for the other threads in OpenBIOS, or create them in XenonPlatform.
-5. List GPU code that assumes one CPU and send the list to the owner without changing it.
+1. Implement stage 1a (PIR 0 + PIR 2): release routine, trampoline without time base writes, no-op `cpu_sync_timebase`, CPU registration fixes, per-thread interrupt controller setup and IPIs.
+2. Before that boot, fix the patcher for SMP (patch before entering the mapping, lock the counters).
+3. Send the owner the list of GPU code that assumes one CPU.
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
@@ -32,6 +30,22 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: SMP thread state and time base probe
+
+`XenonSMPProbe` SPR mode, loaded by hand on the running `pmapdef` system. Each parked thread stored its registers at `0x07E00C00 + PIR * 0x40`, and the area was restored afterwards. The system stayed up.
+
+| Register | PIR 0 (Tiger) | PIR 1–5 (parked) |
+| --- | --- | --- |
+| `MSR` | `1000000000009030` | `9000000002003000` (64-bit, hypervisor, real mode) |
+| `HID0` | `0` | `0` |
+| `HID1` | `9c30104000000000` | same |
+| `HID4` | `00003f0000000000` | same |
+| `HID6` | `0001803800000000` | same |
+| `LPCR` | `2` | `2` |
+| `HRMOR` | `0` | `0` |
+
+Time base: the five values, read back to back before PIR 0's own read, trailed it by 0x246, 0x1F7, 0x192, 0x93 and 0x33 ticks (pass 1: 0x1A3, 0x142, 0xE5, 0x9B, 0x32). The difference shrinks with read order, so it is read latency, not offset. **All six time bases are synchronized.** XNU's `__start_cpu` and `cpu_sync_timebase` both write the time base, so the design avoids both writes.
 
 ## 2026-11-24: SMP probe of the parked secondary threads
 
