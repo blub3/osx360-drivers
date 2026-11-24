@@ -30,6 +30,14 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: hook-off boot failure
+
+Profile `pmapnof`: `PMAPNOF.ELF` (MD5 `4e33079bf18b61d0f5470edac541db93`) + `XPNF.MKE` (MD5 `9313aa4a8ca85acf1c5324c48ac9f1ba`, 437,248 bytes). Same XenonPlatform binary as `pmapchk` (MD5 `4d8bef5784d88d0a094295bdb21214b1`), with `XenonPmapFlushPatch` absent, so no hook code runs.
+
+**Result: fail.** The owner reported that the cold boot failed. The crash does not depend on running the hook. It follows the build itself.
+
+XenonPlatform binary sizes: 97,656 (`pmapstat`), 100,724 (`pmaptrap`) and 103,240 bytes (`pmapfast`) boot; 107,612, 108,000, 108,360 and 108,692 bytes fail. Next test: the `pmapfast` code (`68a141c`) with 8 KB of unused padding. If it fails, size is the trigger.
+
 ## 2026-11-24: commpage hook check-only boot failure
 
 Branch `claude/pmap-patcher`, commit `874326e`. Profile `pmapchk`: `PMAPCHK.ELF` (MD5 `6b8223bd751c170645c2df9c5cc4ab46`) + `XPCK.MKE` (MD5 `1b1f102d063105b488003f96e5cc5635`, 437,280 bytes). XenonPlatform binary MD5 `4d8bef5784d88d0a094295bdb21214b1`. This build runs the install checks and writes nothing.
