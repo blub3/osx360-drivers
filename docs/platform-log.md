@@ -8,10 +8,10 @@ Task 1 (pmap dcbz patcher) is merged into `main` (`ae01a6d`). Open follow-ups: a
 
 Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-boot`). Design: `docs/smp-design.md`.
 
-Stage 1a works with a deferred start (`smpdef3`, commit `c6155da`): boot on one CPU, then `sudo ./xenon-cpu-start 1` over SSH starts PIR 2 (the tool is in `tools/smp`, installed in the Xbox home folder).
+**Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Find the Ethernet slowdown with two CPUs (about 5.6/5.9 MiB/s against 7.3–9.3). First measure it in the same boot before and after starting CPU 1.
-2. Retry starting PIR 2 during boot. The `smp1b` hang probably had the same interrupt storm cause, now fixed.
+1. Find the Ethernet slowdown with two CPUs (about 5.4–5.9 MiB/s against 7.3–9.3). First measure it in the same boot before and after starting CPU 1 (`smpdef3`).
+2. Look at the display error the owner saw while shutting down a two-CPU session. `quiesceCPU` and `haltCPU` are still empty, so shutdown does not stop CPU 1 cleanly.
 3. Run a multi-hour uptime test with two CPUs, as the brief requires.
 4. Then stage 1b (PIR 0, 2, 4).
 
@@ -19,7 +19,7 @@ Gate everything behind a personality flag, because the firmware cannot pass boot
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The Xbox is on `smpdef3`; its rollback selects `pmapdef`. The owner decides when to restore `gpuwinoverlap`.
+The Xbox is on `smp1c`; its rollback selects `smpdef3`, whose rollback selects `pmapdef`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -33,6 +33,27 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: SMP stage 1a starts the second CPU during boot
+
+Profile `smp1c`: `SMP1C.ELF` (MD5 `5fdd5ed6513788c6f18ea50db78f9b16`) + `XS1C.MKE` (MD5 `f37da1fb64f499654397eb73c4b4de63`). Same XenonPlatform binary as `smpdef3` (`343a539d3665d6af20677955410a66a1`), with `XenonSMPThread2` and `XenonPmapFastScan` and without `XenonSMPDeferStart`.
+
+**Result: pass.** This is the boot that hung as `smp1b` before the interrupt storm fix.
+
+| Check | Result |
+| --- | --- |
+| Boot log | `SMP enabled for thread mask 0x5`, `released PIR 2` |
+| `hw.ncpu` / `hw.availcpu` | 2 / 2 after boot |
+| One busy process | 4.58 s |
+| Two busy processes in parallel | 4.65 s and 4.66 s |
+| CPU 1 over 3 s | 2 external interrupts, 1,244 decrementer ticks |
+| WindowServer, Finder, Dock | Running, no panic log |
+| Ethernet 50 MiB | Checksums match, 5.46 MiB/s up, 5.39 MiB/s down (still slow, see open items) |
+| Tiger GPU files | Unchanged |
+
+Audio, mouse and keyboard were confirmed by the owner on `smpdef3` with the same binary, not re-checked on this boot.
+
+Open: while shutting down the previous two-CPU session (`smpdef3`), the owner saw an error mentioning a buffer on the desktop. `system.log` has no entry for it. `XenonCPU::quiesceCPU` and `haltCPU` are still empty, so shutdown does not stop CPU 1 cleanly. That is the first suspect.
 
 ## 2026-11-24: SMP stage 1a works, two CPUs
 
