@@ -48,6 +48,8 @@
 		<dict>
 			<key>CFBundleIdentifier</key>
 			<string>__BUNDLE__.__MODULE__</string>
+			<key>XenonPmapFastScan</key>
+			<true/>
 			<key>IOClass</key>
 			<string>XenonPE</string>
 			<key>IONameMatch</key>
