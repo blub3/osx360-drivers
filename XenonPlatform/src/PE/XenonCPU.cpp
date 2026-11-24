@@ -125,7 +125,13 @@ bool XenonCPU::start(IOService *provider) {
     gCPUIC->registerCPUInterruptController();
   }
 
-  processor_start(machProcessor);
+  if (!_isBootCPU && gXenonSMPDeferStart) {
+    // Started later through IOCPU::setProperties (IOCPUState = "Running").
+    setCPUState(kIOCPUStateStopped);
+    XESYSLOG("PIR %u registered as logical CPU %lu, start deferred", _pir, getCPUNumber());
+  } else {
+    processor_start(machProcessor);
+  }
   registerService();
   XEDBGLOG("Initialized CPU PIR %u", _pir);
 
@@ -167,6 +173,17 @@ void XenonCPU::initCPU(bool boot) {
 
   // Installs this CPU's external interrupt handler in its own per_proc.
   gCPUIC->enableCPUInterrupt(this);
+
+  //
+  // The platform controller's registerInterrupt waits until every CPU has enabled its handler.
+  // Deferred CPUs enable theirs only when started, so the boot CPU counts them in advance. The
+  // extra calls only reinstall the boot CPU's own handler.
+  //
+  if (_isBootCPU && gXenonSMPDeferStart) {
+    for (UInt32 i = 1; i < _numCPUs; i++) {
+      gCPUIC->enableCPUInterrupt(this);
+    }
+  }
 
   //
   // CPU is now running.

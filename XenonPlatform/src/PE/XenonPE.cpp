@@ -183,5 +183,6 @@ void XenonPE::setupSMP(void) {
 
   gXenonStartCpuAddr  = startCpu;
   gXenonSMPThreadMask = requested;
-  XESYSLOG("SMP enabled for thread mask 0x%X", requested);
+  gXenonSMPDeferStart = (getProperty("XenonSMPDeferStart") == kOSBooleanTrue);
+  XESYSLOG("SMP enabled for thread mask 0x%X%s", requested, gXenonSMPDeferStart ? ", start deferred" : "");
 }

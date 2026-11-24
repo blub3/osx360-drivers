@@ -18,6 +18,7 @@ extern "C" void ml_phys_write(vm_offset_t paddr, unsigned int data);
 extern "C" void invalidate_icache(vm_offset_t addr, unsigned cnt, int phys);
 
 UInt32 gXenonSMPThreadMask = 1;
+bool gXenonSMPDeferStart = false;
 void (*gXenonIPIHandler)(void) = NULL;
 
 #define kParkBase           0x07E00000

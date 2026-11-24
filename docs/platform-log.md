@@ -31,6 +31,23 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
 
+## 2026-11-24: SMP stage 1a retry hangs, IC priority probe
+
+Profile `smp1b` (commit `37ebfeb`, secondaries at priority `0x74`): **fail.** The owner saw the boot hang before the desktop, and the Xbox did not answer ping or SSH. That boot left no `system.log` entries at all, so it stopped before the logger started. `pmapdef` was restored on this computer and booted normally.
+
+IC priority probe (`XenonSMPProbe` IC mode, real-mode 64-bit access, on the running `pmapdef` system). CPU 0 sent IPIs to the parked PIR 3 and read PIR 3's acknowledge register:
+
+| Priority | Vector `0x78` | Vector `0x70` |
+| --- | --- | --- |
+| `0x00`, `0x40` | delivered | delivered |
+| `0x70` | delivered | latched only |
+| `0x74`, `0x77` | delivered | latched only |
+| `0x78`, `0x7C` | latched only | latched only |
+
+**A vector is delivered only when it is above the block priority.** So `0x74` passes IPIs, and the `smp1b` hang is not an IPI filter problem. XeLL had already left PIR 3's block at ID 8, priority `0x74`.
+
+Interpretation: in `smp1a`, PIR 2 died in its first interrupt. In `smp1b` it survived startup, and something in early boot then stalled with two CPUs. Next: start the secondary CPU after boot (`XenonSMPDeferStart`) and watch `system.log` live over SSH, so a failure leaves CPU 0 and its logs reachable.
+
 ## 2026-11-24: SMP stage 1a, second CPU starts, then panics on a GPU vector
 
 Branch `claude/smp`, commit `70e2a45`. Profile `smp1a`: `SMP1A.ELF` (MD5 `c70dbdc9815a84606360970ea0551072`) + `XS1A.MKE` (MD5 `0b703b4ebd57dcf694927013158b4cfa`). XenonPlatform MD5 `b3164d6416bf4aa22c075bc49ea9e57c`, with `XenonSMPThread2` and `XenonPmapFastScan` set and link-time imports identical to `pmapfast`.

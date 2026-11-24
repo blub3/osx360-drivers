@@ -15,6 +15,10 @@
 // Bit n set means hardware thread PIR n runs XNU. Bit 0 is always set.
 extern UInt32 gXenonSMPThreadMask;
 
+// With XenonSMPDeferStart, secondary CPUs are registered stopped at boot and started later by
+// setting IOCPUState to "Running" on their XenonCPU (IOCPU::setProperties, admin only).
+extern bool gXenonSMPDeferStart;
+
 // XNU's IPI handler, from ml_processor_register. Called for the IPI vector on any CPU.
 extern void (*gXenonIPIHandler)(void);
 

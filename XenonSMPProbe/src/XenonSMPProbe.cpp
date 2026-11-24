@@ -52,6 +52,7 @@ private:
   void writeCode(UInt32 phys, UInt32 word);
   void runReleaseProbe(void);
   void runSPRProbe(void);
+  void runICProbe(void);
 };
 
 //
@@ -187,7 +188,9 @@ bool XenonSMPProbe::start(IOService *provider) {
   publishWords("Words0x60", kParkEntry, 8);
   publishWords("Words0xC0", kCounterBase, 8);
 
-  if (getProperty("XenonSMPProbeSPR") == kOSBooleanTrue) {
+  if (getProperty("XenonSMPProbeIC") == kOSBooleanTrue) {
+    runICProbe();
+  } else if (getProperty("XenonSMPProbeSPR") == kOSBooleanTrue) {
     runSPRProbe();
   } else if (getProperty("XenonSMPProbeRelease") == kOSBooleanTrue) {
     runReleaseProbe();
@@ -272,4 +275,143 @@ void XenonSMPProbe::runSPRProbe(void) {
 
   setProperty("SPRProbe", "done");
   IOLog("XenonSMPProbe: SPR probe done, threads parked, areas restored\n");
+}
+
+
+//
+// IC probe: real-mode 64-bit access to the interrupt controller at 0x200_0005_0000. Real mode is
+// cache-inhibited here (LPCR = 2, RMCI). Each routine fits in one page, checked before use, so
+// it cannot take an instruction fault with data translation off.
+//
+extern "C" void xenonProbeICRead(UInt32 offset, UInt64 *value);
+extern "C" void xenonProbeICWrite(UInt32 offset, const UInt64 *value);
+extern "C" void xenonProbeICEnd(void);
+
+__asm__(
+  ".text\n"
+  ".align 6\n"
+  ".globl _xenonProbeICRead\n"
+  "_xenonProbeICRead:\n"
+  "  mfmsr   r9\n"
+  "  li      r10,0\n"
+  "  ori     r10,r10,0x8010\n"   // EE | DR
+  "  andc    r11,r9,r10\n"
+  "  li      r12,1\n"
+  "  rldimi  r11,r12,63,0\n"     // SF
+  "  li      r10,0x200\n"
+  "  rldicr  r10,r10,32,31\n"    // 0x200_0000_0000
+  "  oris    r10,r10,0x0005\n"   // + 0x0005_0000
+  "  rldicl  r3,r3,0,32\n"
+  "  or      r10,r10,r3\n"
+  "  mtmsrd  r11\n"
+  "  isync\n"
+  "  ld      r12,0(r10)\n"
+  "  sync\n"
+  "  mtmsrd  r9\n"
+  "  isync\n"
+  "  std     r12,0(r4)\n"
+  "  blr\n"
+  ".globl _xenonProbeICWrite\n"
+  "_xenonProbeICWrite:\n"
+  "  ld      r12,0(r4)\n"
+  "  mfmsr   r9\n"
+  "  li      r10,0\n"
+  "  ori     r10,r10,0x8010\n"
+  "  andc    r11,r9,r10\n"
+  "  li      r8,1\n"
+  "  rldimi  r11,r8,63,0\n"
+  "  li      r10,0x200\n"
+  "  rldicr  r10,r10,32,31\n"
+  "  oris    r10,r10,0x0005\n"
+  "  rldicl  r3,r3,0,32\n"
+  "  or      r10,r10,r3\n"
+  "  mtmsrd  r11\n"
+  "  isync\n"
+  "  std     r12,0(r10)\n"
+  "  sync\n"
+  "  mtmsrd  r9\n"
+  "  isync\n"
+  "  blr\n"
+  ".globl _xenonProbeICEnd\n"
+  "_xenonProbeICEnd:\n"
+  "  blr\n"
+);
+
+static UInt64 icRead(UInt32 offset) {
+  UInt64 value __attribute__((aligned(8))) = 0;
+  xenonProbeICRead(offset, &value);
+  return value;
+}
+
+static void icWrite(UInt32 offset, UInt64 data) {
+  UInt64 value __attribute__((aligned(8))) = data;
+  xenonProbeICWrite(offset, &value);
+}
+
+#define kICThread         3                 // parked thread with external interrupts off
+#define kICBlock          (kICThread * 0x1000)
+#define kICLogicalID      0x00
+#define kICPriority       0x08
+#define kICIPIGen         0x10
+#define kICAck            0x50
+#define kICEOI            0x60
+#define kICSpurious       0x70
+
+void XenonSMPProbe::runICProbe(void) {
+  static const UInt32 priorities[] = { 0x00, 0x40, 0x70, 0x74, 0x77, 0x78, 0x7C };
+  static const UInt32 vectors[]    = { 0x78, 0x70 };
+  UInt32    start = reinterpret_cast<UInt32>(&xenonProbeICRead);
+  UInt32    end   = reinterpret_cast<UInt32>(&xenonProbeICEnd);
+  UInt64    savedID, savedPriority, savedSpurious;
+  boolean_t ints;
+
+  if ((start & ~0xFFFUL) != (end & ~0xFFFUL)) {
+    IOLog("XenonSMPProbe: IC probe skipped, access routine crosses a page\n");
+    return;
+  }
+
+  ints = ml_set_interrupts_enabled(false);
+  savedID       = icRead(kICBlock + kICLogicalID);
+  savedPriority = icRead(kICBlock + kICPriority);
+  savedSpurious = icRead(kICBlock + kICSpurious);
+  ml_set_interrupts_enabled(ints);
+  IOLog("XenonSMPProbe: PIR %d block before: ID %lx priority %lx spurious %lx\n", kICThread,
+        (unsigned long) savedID, (unsigned long) savedPriority, (unsigned long) savedSpurious);
+
+  for (UInt32 v = 0; v < (sizeof (vectors) / sizeof (vectors[0])); v++) {
+    for (UInt32 p = 0; p < (sizeof (priorities) / sizeof (priorities[0])); p++) {
+      UInt64 delivered;
+      UInt64 later = 0x7C;
+
+      ints = ml_set_interrupts_enabled(false);
+      icWrite(kICBlock + kICSpurious, 0x7C);
+      icWrite(kICBlock + kICLogicalID, 1ULL << kICThread);
+      icWrite(kICBlock + kICPriority, priorities[p]);
+      icWrite(kICIPIGen, ((UInt64) (1U << kICThread) << 16) | vectors[v]);   // from thread 0's block
+      delivered = icRead(kICBlock + kICAck) & 0x7F;
+      if (delivered != 0x7C) {
+        icWrite(kICBlock + kICEOI, 0);
+      } else {
+        // Not delivered at this priority: open the block to see whether it was latched.
+        icWrite(kICBlock + kICPriority, 0);
+        later = icRead(kICBlock + kICAck) & 0x7F;
+        if (later != 0x7C) {
+          icWrite(kICBlock + kICEOI, 0);
+        }
+      }
+      ml_set_interrupts_enabled(ints);
+
+      IOLog("XenonSMPProbe: IPI vector %02lx at priority %02lx: ack %02lx (latched %02lx)\n",
+            (unsigned long) vectors[v], (unsigned long) priorities[p], (unsigned long) delivered,
+            (unsigned long) later);
+    }
+  }
+
+  ints = ml_set_interrupts_enabled(false);
+  icWrite(kICBlock + kICSpurious, savedSpurious);
+  icWrite(kICBlock + kICPriority, savedPriority);
+  icWrite(kICBlock + kICLogicalID, savedID);
+  ml_set_interrupts_enabled(ints);
+  setProperty("ICProbe", "done");
+  IOLog("XenonSMPProbe: IC probe done, PIR %d block restored\n", kICThread);
 }
