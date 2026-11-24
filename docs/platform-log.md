@@ -10,7 +10,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Find the Ethernet slowdown with two CPUs (about 5.4–5.9 MiB/s against 7.3–9.3). First measure it in the same boot before and after starting CPU 1 (`smpdef3`).
+1. Find the Ethernet slowdown with two CPUs (about 5.4–5.9 MiB/s against 7.3–9.3). SSH is CPU-bound in `sshd` and the network path is clean (see the 2026-11-24 investigation). Next, measure an unencrypted transfer (the Python HTTP server did not start over SSH, so try `nohup` from a script file) in `smpdef3` before and after starting CPU 1.
 2. Look at the display error the owner saw while shutting down a two-CPU session. `quiesceCPU` and `haltCPU` are still empty, so shutdown does not stop CPU 1 cleanly.
 3. Run a multi-hour uptime test with two CPUs, as the brief requires.
 4. Then stage 1b (PIR 0, 2, 4).
@@ -33,6 +33,22 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: Ethernet slowdown investigation on two CPUs (`smp1c`)
+
+Read-only measurements on the running two-CPU system, around 50 MiB transfers each way over SSH (5.13 MiB/s up, 5.52 down):
+
+| Measure | Result |
+| --- | --- |
+| TCP data retransmitted, retransmit timeouts, bad checksums | 0 |
+| Completely duplicate packets received | +34 over about 100 MiB |
+| External interrupts, CPU 0 (all Ethernet) | +187,533 in about 19 s, about 9,900/s |
+| External interrupts, CPU 1 (IPIs) | +1,824, about 96/s |
+| `sshd` CPU during an SSH download | 93–99% of one CPU |
+
+**Ruled out:** packet loss, driver errors and an IPI storm. **SSH throughput is limited by `sshd`'s encryption on one thread**, so it falls when that thread runs slower or waits longer. With two CPUs, `sshd` can run on CPU 1 while all Ethernet interrupts and the network stack run on CPU 0. Cross-core data movement or lock handoff in Tiger's network stack would fit that, but it is not measured.
+
+An unencrypted HTTP comparison failed: the Python 2.3 HTTP server did not stay up when started over SSH, so no HTTP number was taken.
 
 ## 2026-11-24: SMP stage 1a starts the second CPU during boot
 
