@@ -6,16 +6,16 @@ Non-GPU platform work on Mac OS X 10.4.11 for the Xbox 360 Slim. GPU results sta
 
 Task: pmap dcbz patcher, branch `claude/pmap-patcher`.
 
-Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
+Done and hardware-tested, all off by default: counters (`XenonPmapStats`), fast page pre-scan (`XenonPmapFastScan`, about 40x less scan time) and the commpage flush hook (`XenonPmapFlushPatch`, `pmaprt2`). Do not restrict patching to `__TEXT,__text`: that would leave real dcbz code in `__textcoal_nt` and GLEngine's `__const` unpatched.
 
-1. Fix runtime-generated dcbz, which currently clears 128 bytes instead of 32. Page-fault detection will not work, because 32-bit processes can execute from `rw-` and `r--` pages on both the Xbox and the G5. The Cell handbook documents no usable hardware control. The commpage hook at `0xFFFF8520` (commit `b1848dc`) failed to boot and must stay disabled. Stage one (`995ab7a`, no entry branch) also crashed, so the entry branch and stub execution are not required to trigger the failure. Next, find which install step or build change causes it, one boot at a time.
+1. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
+2. Measure real app launch times with and without the fast scan.
+3. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
+4. Decide with the owner which features become default and whether to merge into `main`.
 
-The Xbox runs `pmapfast` again (recovered 2026-11-24). Do not restore `gpuwinoverlap` until the owner says so.
-2. Stop rewriting data in file-backed `r-x` mappings that are not Mach-O images.
-3. Measure real app launch times with and without the fast scan.
-4. Evaluate a faster path for the CoreGraphics fill routines, which cause most dcbz traps.
+Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The Xbox is on `pmapfast`. The owner decides when to restore `gpuwinoverlap`.
+The Xbox is on `pmaprt2`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -29,6 +29,28 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-24: commpage hook stage two passes
+
+Profile `pmaprt2`: `PMAPRT2.ELF` (MD5 `1dcd23a14b0e67eb9656a3ae11868aa0`) + `XPR2.MKE` (MD5 `a1b83b3f61d5dcbdc4d82200afc9065d`, 437,664 bytes). Same XenonPlatform binary as `pmaprt1` (`3ac25cc11f8b0f7d25d01ca62136652e`), with the flush entry branch enabled. Tiger's link check passed.
+
+Pass criteria, set before the run: Tiger boots; status 1; generated `dcbz` through the official flush clears 32 bytes; a clean range stays unchanged; no hook failures; apps launch; a 50 MiB Ethernet transfer keeps its checksum; audio is audible.
+
+**Result: pass.** The owner heard the audio.
+
+| Check | Result |
+| --- | --- |
+| Boot, SSH, WindowServer, Finder, Dock | Pass, no panic or new crash reports |
+| Hook status | 1 |
+| Generated `dcbz`, official `sys_icache_invalidate` | 32 bytes (128 before the hook) |
+| Generated `dcbzl` | 128 bytes |
+| Clean 4 KB range, unaligned and zero-length flushes | 0 changed |
+| Terminal, TextEdit and Safari launch and quit | Pass |
+| Hook calls from boot and these launches | 0, apart from the test's 2 words, with 0 failures |
+| Ethernet up / down | 7.56 / 9.09 MiB/s, checksums match |
+| Tiger GPU files | Unchanged |
+
+No Tiger program in this sample generated `dcbz` code at runtime. Code flushed directly with `icbi` is still not covered.
 
 ## 2026-11-24: commpage hook stage one passes
 
