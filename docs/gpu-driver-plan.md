@@ -67,6 +67,13 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 1.1, libxenon init registers.
+  - **What I tried:** after a fresh boot, `XenosGPU` wrote libxenon's `Xe_pSetup`/`Xe_pResetCP`/`Xe_pMasterInit` registers on every start.
+  - **Result:** session 0 passed (1,447 frames in 20 s); session 1 stalled after 71 frames again (`rptr=0x0410`). **These registers are not the cause.**
+  - **What XeLL leaves at boot** (read before writing): `0x3214` = 3, `0x3294` = 1, `0x3408` = `0x10800`, `0x07D4` = 0, `0x2054` = `0x2154` = `0xFF00`, `0x3C10` = 0, `0x3C40` = `0x1A`, `0x3C4C` = 0, `0x87E4` = 0. XeLL does not use libxenon's `Xe_Init` values. `0x3408` is `SQ_INST_STORE_MANAGMENT`, which `XenosGPU`'s display state sets to `0x180`.
+  - **Change:** the writes are now opt-in (`XenosGPULibxenonInit`).
+  - **Clear so far:** the first session after boot always works (4,127 and 1,447 frames). Every session after a `XenosGPU` stop and start stalls at frame 71.
+  - **Next:** dump a set of GPU registers that is safe to read (no FIFO or data-port registers) at the start of session 0 and session 1, and compare them, instead of guessing.
 - 2026-11-25, Claude: step 1.1, build `560c59e` (3D block reset only on a busy pipeline), after a fresh boot.
   - **First session: pass.** The reset was skipped (`RBBM_STATUS` `0x00040110`), both markers passed, **4,127 frames in 62 s** (about 66 per second) with no busy tick, and the unload drained the ring, halted the CP and restarted the CPU refresh. **The libxenon 3D reset without libxenon's `Xe_pInit1` register set was what made every run since 23:01 stall at frame 73.**
   - **Second session (cycle 1 of 20): fail.** It stalled after 71 frames (`rptr=0x0410`, `RBBM_STATUS=0xF3250110`), although the pipeline was idle at start and no 3D reset ran. This matches the first build's reload failure at 22:48. So after one complete session, the next stalls at about frame 71.

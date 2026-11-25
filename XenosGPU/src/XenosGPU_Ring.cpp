@@ -486,6 +486,60 @@ bool XenosGPU::resetGraphicsBlocks(const char *when) {
   return !(after & 0x80000000);
 }
 
+//
+// Registers libxenon's Xe_pSetup, Xe_pResetCP and Xe_pMasterInit (drivers/xenos/xe.c) write around the
+// CP start, and which XenonCoreGraphics never wrote. XeLL runs them at every boot, so a first session
+// starts with XeLL's values; if the CP reset clears some of them, a second session does not, and it
+// stalled at frame 71 (2026-11-25). Tested 2026-11-25: they do not fix that, and XeLL's own values
+// differ (0x3214 = 3, 0x3408 = 0x10800, 0x2054/0x2154 = 0xFF00, 0x3C10 = 0, 0x3C40 = 0x1A), so they
+// are off unless the personality key XenosGPULibxenonInit is set.
+//
+static const UInt32 kEdramPolls = 1000;
+
+void XenosGPU::libxenonCPRegisters(void) {
+  // Xe_pSetup / Xe_pResetCP, right after the ME runs.
+  IOLog("XenosGPU: libxenon CP registers before: 0x3214=0x%08lx 0x3294=0x%08lx 0x3408=0x%08lx\n",
+        (unsigned long)readReg(0x3214), (unsigned long)readReg(0x3294), (unsigned long)readReg(0x3408));
+  writeReg(0x3214, 7);
+  writeReg(0x3294, 1);
+  writeReg(0x3408, 0x800);
+}
+
+bool XenosGPU::waitEdramIdle(UInt32 *value) {
+  for (UInt32 i = 0; i < kEdramPolls; i++) {
+    *value = readReg(0x3C4C);
+    if (!(*value & 0x80000000)) {
+      return true;
+    }
+    IODelay(10);
+  }
+  return false;
+}
+
+void XenosGPU::libxenonMasterInit(void) {
+  IOLog("XenosGPU: libxenon master init before: 0x07D4=0x%08lx 0x2054=0x%08lx 0x2154=0x%08lx "
+        "0x3C10=0x%08lx 0x3C40=0x%08lx 0x3C4C=0x%08lx 0x87E4=0x%08lx\n",
+        (unsigned long)readReg(0x07D4), (unsigned long)readReg(0x2054), (unsigned long)readReg(0x2154),
+        (unsigned long)readReg(0x3C10), (unsigned long)readReg(0x3C40), (unsigned long)readReg(0x3C4C),
+        (unsigned long)readReg(0x87E4));
+  writeReg(0x07D4, 0);
+  writeReg(0x07D4, 1);
+  writeReg(0x2054, 0x1E);
+  writeReg(0x2154, 0x1E);
+  writeReg(0x3C10, 0xD);
+  writeReg(0x3C40, 0x17);
+  writeReg(0x3C48, 0);
+  UInt32 first = 0, second = 0;
+  bool firstIdle = waitEdramIdle(&first);
+  writeReg(0x3C40, 0x1017);
+  writeReg(0x3C48, 0);
+  bool secondIdle = waitEdramIdle(&second);
+  writeReg(0x87E4, 0x17);
+  IOLog("XenosGPU: libxenon master init done: EDRAM waits %s (0x%08lx) and %s (0x%08lx)\n",
+        firstIdle ? "ok" : "TIMEOUT", (unsigned long)first, secondIdle ? "ok" : "TIMEOUT",
+        (unsigned long)second);
+}
+
 const char *XenosGPU::startCommandProcessor(void) {
   haltCommandProcessor();
   if (!resetGraphicsBlocks("at start")) {
@@ -526,6 +580,10 @@ const char *XenosGPU::startCommandProcessor(void) {
     return "start";
   }
   IODelay(1000);
+  if (_libxenonInit) {
+    libxenonCPRegisters();
+    libxenonMasterInit();
+  }
 
   initMicroEngine();
   submit();

@@ -35,6 +35,7 @@ bool XenosGPU::start(IOService *provider) {
   _marker = NULL;
   _heapMap = NULL;
   _useHeap = false;
+  _libxenonInit = (getProperty("XenosGPULibxenonInit") == kOSBooleanTrue);
   _workLoop = NULL;
   _timer = NULL;
   _presenting = _platformStopped = false;

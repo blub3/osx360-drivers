@@ -64,6 +64,7 @@ private:
   IOPhysicalAddress         _markerPhys;
   IOMemoryMap               *_heapMap;
   bool                      _useHeap;
+  bool                      _libxenonInit;
   IOBufferMemoryDescriptor  *_texCoordsDesc;
   IOPhysicalAddress         _texCoordsPhys;
   IOBufferMemoryDescriptor  *_quadDesc;
@@ -102,6 +103,9 @@ private:
   void releaseBuffers(void);
   IOReturn loadFirmware(void);
   void haltCommandProcessor(void);
+  void libxenonCPRegisters(void);
+  void libxenonMasterInit(void);
+  bool waitEdramIdle(UInt32 *value);
   bool resetGraphicsBlocks(const char *when);
   bool ringDrained(void);
   bool waitForRingDrain(void);
