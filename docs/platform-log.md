@@ -14,7 +14,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 2. Fix the SMC lock hold (audit finding 2) in a separate build.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
-5. Then stage 2 (all six threads). Its idle loop must not take issue slots from the other thread on the same core.
+5. Stage 2 (all six threads): profile `smp6a` with a low-priority idle loop is built, see below.
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
@@ -51,6 +51,19 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - **SSH is about 20% faster with two CPUs** than with CPU 1 stopped in the same boot. With one CPU, receiving at line rate already takes 93% of the CPU in the kernel.
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
+
+## 2026-11-25: stage 2 profile `smp6a` (built, not booted)
+
+All six hardware threads, PIR n as logical CPU n, started deferred (`XenonSMPThread1`..`5`, `XenonSMPDeferStart`), with the new `XenonSMPIdleLow`:
+
+- Waiting threads (parked, or not yet started) run at low thread priority: the parking loop enters through `or 1,1,1` at `0x07E00060` instead of `b .+4`, and a released thread sets medium priority (`or 2,2,2`) before entering XNU. Until now the waiting threads spun at normal priority and could take issue slots from the running thread on the same core.
+- `machine_idle` is routed to `XenonSMPIdle`: about 10 µs at low priority with external interrupts off, then medium priority and interrupts on, as Tiger's `machine_idle` does without nap. Low priority never reaches an interrupt handler or another thread; pending interrupts wait up to 10 µs. The four prologue words are checked first; if they differ, the idle loop stays Tiger's.
+
+XenonPlatform `55e43266be5d0fab9f80c73f005d401c`, no new kernel imports against `smp3a`. Profile `smp6a`: `audfix` (XenonAudio fix) with this XenonPlatform; `SMP6A.ELF` (MD5 `4159ec0d3b09965f561521f4b986a570`) + `XS6A.MKE` (MD5 `76b3c9f177cc22dc8bc5a23d71ce54e8`); the other 8 kexts are byte-identical to `audfix`.
+
+Baseline on `audfix` (three CPUs, waiting threads at normal priority, no screensaver): one loop 4.58 s, three in parallel 4.60–4.62 s, six in parallel 9.14–9.27 s.
+
+Test: `tools/host/smp6-test.sh` measures the same loop with 1, 3 and 6 CPUs in one boot, then stops and starts each secondary. Pass: `hw.ncpu` 6 with 1, 3, then 6 running; every running secondary takes decrementer ticks and fewer than 1,000 external interrupts per second; one loop with six CPUs at most 4.70 s; six loops finish in less than twice the three-loop time on three CPUs; each secondary stops (`hw.availcpu` 5, no ticks) and starts again with clocks at most 2 s apart; Ethernet checksums, desktop, three `say` runs at 3.0–5.0 s, no panic.
 
 ## 2026-11-25: SMP two-hour uptime test with three CPUs
 

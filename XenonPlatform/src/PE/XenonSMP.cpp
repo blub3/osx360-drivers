@@ -33,10 +33,14 @@ void (*gXenonIPIHandler)(void) = NULL;
 
 #define kPPCBranchSelf      0x48000000            // b .
 #define kPPCBranchNext      0x48000004            // b .+4
+#define kPPCPriorityLow     0x7C210B78            // or r1,r1,r1: thread priority low
+#define kPPCPriorityMedium  0x7C421378            // or r2,r2,r2: thread priority medium (normal)
 #define kXeLLArgMagic       0x5F617267            // "_arg", XeLL argument block at image offset 8
 
-// Mailbox loop and TLB invalidation for 0x64-0xC0. The TLB sequence is libxenon's
-// startup_from_xell.S. The routine ends in "ba 0x100".
+// Mailbox loop and TLB invalidation for 0x64-0xC4. The TLB sequence is libxenon's
+// startup_from_xell.S. The routine ends in "ba 0x100". The loop branches back to 0x60, which holds
+// "b .+4", or "or 1,1,1" with XenonSMPIdleLow so that a waiting thread runs at low priority and
+// leaves the core's issue slots to the other thread. A released thread returns to medium priority.
 static const UInt32 kReleaseLoop[] = {
   0x7C7FFAA6,   // 0x64 mfspr   r3, PIR
   0x5463103A,   // 0x68 slwi    r3, r3, 2
@@ -47,21 +51,22 @@ static const UInt32 kReleaseLoop[] = {
   0x4182FFE4,   // 0x7C beq     0x60
   0x38A00000,   // 0x80 li      r5, 0
   0x7CA4192E,   // 0x84 stwx    r5, r4, r3          (one-shot: clear own mailbox)
-  0x7C0004AC,   // 0x88 sync
-  0x38600C00,   // 0x8C li      r3, 0xC00
-  0x38800100,   // 0x90 li      r4, 0x100
-  0x7C8903A6,   // 0x94 mtctr   r4
-  0x7C001A24,   // 0x98 tlbiel  r3, 0
-  0x38631000,   // 0x9C addi    r3, r3, 0x1000
-  0x4200FFF8,   // 0xA0 bdnz    0x98
-  0x7C0006AC,   // 0xA4 eieio
-  0x7C4004AC,   // 0xA8 ptesync
-  0x386003FF,   // 0xAC li      r3, 0x3FF
-  0x786307C6,   // 0xB0 rldicr  r3, r3, 32, 31
-  0x7C201A24,   // 0xB4 tlbiel  r3, 1
-  0x7C0006AC,   // 0xB8 eieio
-  0x7C4004AC,   // 0xBC ptesync
-  0x48000102    // 0xC0 ba      0x100
+  kPPCPriorityMedium,   // 0x88 or r2, r2, r2
+  0x7C0004AC,   // 0x8C sync
+  0x38600C00,   // 0x90 li      r3, 0xC00
+  0x38800100,   // 0x94 li      r4, 0x100
+  0x7C8903A6,   // 0x98 mtctr   r4
+  0x7C001A24,   // 0x9C tlbiel  r3, 0
+  0x38631000,   // 0xA0 addi    r3, r3, 0x1000
+  0x4200FFF8,   // 0xA4 bdnz    0x9C
+  0x7C0006AC,   // 0xA8 eieio
+  0x7C4004AC,   // 0xAC ptesync
+  0x386003FF,   // 0xB0 li      r3, 0x3FF
+  0x786307C6,   // 0xB4 rldicr  r3, r3, 32, 31
+  0x7C201A24,   // 0xB8 tlbiel  r3, 1
+  0x7C0006AC,   // 0xBC eieio
+  0x7C4004AC,   // 0xC0 ptesync
+  0x48000102    // 0xC4 ba      0x100
 };
 
 // __start_cpu in Tiger 10.4.11 (mach_kernel MD5 def99c6ef0231ea3c2a627dd26201371).
@@ -76,6 +81,7 @@ static const UInt32 kStartCpuExpected[kStartCpuWords] = {
 };
 
 static bool sReleaseInstalled = false;
+static UInt32 sParkEntryWord = kPPCBranchNext;
 
 UInt32 XenonSMPCurrentPIR(void) {
   UInt32 pir;
@@ -106,7 +112,7 @@ static void writePhysCode(UInt32 phys, const UInt32 *words, UInt32 count) {
   invalidate_icache(phys, count * 4, 1);
 }
 
-bool XenonSMPInstallRelease(UInt32 startCpuAddr) {
+bool XenonSMPInstallRelease(UInt32 startCpuAddr, bool lowPriorityPark) {
   const UInt32  *startCpu = reinterpret_cast<const UInt32*>(startCpuAddr);
   UInt32        trampoline[kStartCpuKeepWords + 1];
 
@@ -140,11 +146,12 @@ bool XenonSMPInstallRelease(UInt32 startCpuAddr) {
   __asm__ volatile ("sync");
 
   // Last: send the parked threads from "b ." into the mailbox loop.
-  static const UInt32 branchNext = kPPCBranchNext;
-  writePhysCode(kParkEntry, &branchNext, 1);
+  sParkEntryWord = lowPriorityPark ? kPPCPriorityLow : kPPCBranchNext;
+  writePhysCode(kParkEntry, &sParkEntryWord, 1);
 
   sReleaseInstalled = true;
-  IOLog("XenonSMP: release routine installed, thread mask 0x%lx\n", (unsigned long) gXenonSMPThreadMask);
+  IOLog("XenonSMP: release routine installed, thread mask 0x%lx%s\n", (unsigned long) gXenonSMPThreadMask,
+        lowPriorityPark ? ", waiting threads at low priority" : "");
   return true;
 }
 
@@ -223,7 +230,7 @@ void XenonSMPParkSelf(UInt32 logicalCPU) {
   UInt32 perProc;
 
   if (!sReleaseInstalled || (gXenonPerProcTable == 0) ||
-      (ml_phys_read(kParkEntry) != kPPCBranchNext)) {
+      (ml_phys_read(kParkEntry) != sParkEntryWord)) {
     return;
   }
   perProc = *reinterpret_cast<volatile UInt32*>(gXenonPerProcTable + (logicalCPU * kPerProcEntrySize) +
@@ -236,4 +243,30 @@ void XenonSMPParkSelf(UInt32 logicalCPU) {
   *reinterpret_cast<volatile UInt32*>(perProc + kPerProcSaveTBL) = 0;
   *reinterpret_cast<volatile UInt32*>(perProc + kPerProcSaveTBU) = 0;
   xenonSMPPark(perProc);   // starts with sync, so the stores are visible before SleepState
+}
+
+//
+// Replaces machine_idle with XenonSMPIdleLow. Tiger cannot nap on Xenon (supports_nap = false), so
+// its idle loop spins at medium priority and takes half of the core's issue slots from the other
+// hardware thread. This spins about 10 us at low priority with external interrupts off, so the low
+// priority never reaches an interrupt handler or another thread, then returns at medium priority
+// with interrupts on, like Tiger's machine_idle without nap. Pending interrupts (IPIs, decrementer,
+// devices on CPU 0) wait at most this long.
+//
+#define kIdleSpinTicks      500                   // time base at 50 MHz: 10 us
+
+void XenonSMPIdle(void) {
+  UInt32 msr;
+  UInt32 start;
+  UInt32 now;
+
+  __asm__ volatile ("mfmsr %0" : "=r" (msr));
+  __asm__ volatile ("mtmsr %0" : : "r" (msr & ~0x8000U));   // EE off
+  __asm__ volatile ("mftb %0" : "=r" (start));
+  __asm__ volatile ("or r1,r1,r1");
+  do {
+    __asm__ volatile ("mftb %0" : "=r" (now));
+  } while ((now - start) < kIdleSpinTicks);
+  __asm__ volatile ("or r2,r2,r2");
+  __asm__ volatile ("mtmsr %0" : : "r" (msr | 0x8000U));    // EE on
 }

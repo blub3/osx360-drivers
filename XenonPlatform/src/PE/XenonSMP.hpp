@@ -28,13 +28,18 @@ UInt32 XenonSMPLogicalForPIR(UInt32 pir);
 
 // Checks __start_cpu and the OpenBIOS parking area, then installs the release routine and
 // the trampoline. Returns false, changing nothing, if anything differs from what was measured.
-bool XenonSMPInstallRelease(UInt32 startCpuAddr);
+// With lowPriorityPark, waiting threads run at low thread priority (XenonSMPIdleLow).
+bool XenonSMPInstallRelease(UInt32 startCpuAddr, bool lowPriorityPark);
 
 // Called from XenonCPU::startCPU after XNU's cpu_start has filled the reset handler.
 kern_return_t XenonSMPReleaseThread(UInt32 pir, UInt32 startCpuAddr);
 
 // Replaces cpu_sync_timebase: all six time bases are already synchronized in hardware.
 void XenonSMPNoTimebaseSync(void);
+
+// Replaces machine_idle with XenonSMPIdleLow: spins briefly at low thread priority with
+// interrupts off, then returns with interrupts on, so an idle CPU leaves its core to the other thread.
+extern "C" void XenonSMPIdle(void);
 
 // Kernel addresses resolved by XenonPE at start (0 if not found): PerProcTable and processor_exit.
 // processor_exit is not a link-time import of the booting build, so it is called through this.
