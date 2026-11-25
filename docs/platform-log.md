@@ -20,7 +20,7 @@ Gate everything behind a personality flag, because the firmware cannot pass boot
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The boot stick defaults to `smp6b`; its rollback (`kboot.conf.before-smp6b.bak`) selects `smp6a`, and the `audfix` entry stays as a three-CPU fallback. `kboot.conf` has 64 entries, the XeLL limit: replace an entry for the next profile. `smp1c` and `pmapdef` are still on the stick. Old test profiles were moved off the stick to the owner's PC (`stick-archive/2026-11-25`). Keep `kboot.conf` at 64 entries or fewer (XeLL limit). SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
+The boot stick defaults to `smp6b`; `audfix` is the three-CPU fallback and `pmapdef` the single-CPU reference. At the owner's request (2026-11-25) `kboot.conf` was cut from 64 entries (XeLL's limit) to 7: `smp6b`, `audfix`, `pmapdef`, `gpuwinoverlap`, `openbios`, `framebuffer`, `hdminative`. The 56 other GPU entries, `smp3a` and Claude's older test files went to the owner's PC (`stick-archive/2026-11-25-entries`, 137 files with MD5 manifest and restore notes); the stick booted `smp6b` afterwards. `kboot.conf.before-cleanup.bak` on the stick is the old file and needs the archived files back. Old test profiles were moved off the stick to the owner's PC (`stick-archive/2026-11-25`). Keep `kboot.conf` at 64 entries or fewer (XeLL limit). SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
