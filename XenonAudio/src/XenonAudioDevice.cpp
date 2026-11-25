@@ -94,10 +94,12 @@ bool XenonAudioDevice::initHardware(IOService *provider) {
   // Optional interrupt-driven updates; falls back to the timer if anything fails.
   _useInterrupt = (getProperty("XenonAudioInterrupt") == kOSBooleanTrue) && setupInterrupt(provider);
   _wantInterrupt = _useInterrupt;
-  _positionFix   = _useInterrupt;
   _ackMask       = kXenonAudioRegControlAck;
   _testKnobs     = (getProperty("XenonAudioTestKnobs") == kOSBooleanTrue);
-  _resetOnStart  = (getProperty("XenonAudioResetOnStart") == kOSBooleanTrue);
+  // Both fixed in timer mode on hardware (2026-11-25): without them the start of a sound is lost
+  // and the end of the buffer repeats. The test switches can still turn them off.
+  _positionFix   = true;
+  _resetOnStart  = true;
 
   // Create audio engines for outputs.
   _audioOutputEngine = createAudioEngine(_sampleBuffer, kXenonSampleBufferLength, "Xbox 360 A/V");
@@ -196,8 +198,8 @@ UInt32 XenonAudioDevice::getAudioPosition(XenonAudioEngine *audioEngine) {
   UInt32  position;
 
   if (audioEngine == _audioOutputEngine) {
-    // The original code reads the control register here; the position is in the state register.
-    // The fix is limited to interrupt mode until it has been tested on its own.
+    // The position is in the state register. The original code read the control register, which
+    // hardly changes, so the engine never erased behind the play head and the buffer looped.
     reg = _positionFix ? kXenonAudioRegState : kXenonAudioRegControl;
   } else {
     return kIOReturnUnsupported;
@@ -212,8 +214,8 @@ UInt32 XenonAudioDevice::getAudioPosition(XenonAudioEngine *audioEngine) {
 }
 
 //
-// Timer handler.
-// TODO: In the future the interrupt should be used for this, but right now it just creates a storm.
+// Timer handler. The default; interrupt mode (XenonAudioInterrupt) is experimental, see
+// docs/audio-interrupt.md.
 //
 void XenonAudioDevice::handleTimer(IOTimerEventSource *sender) {
   // Get new timestamp if the buffer has looped around.

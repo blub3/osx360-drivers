@@ -105,4 +105,8 @@ Booted with `audrst` (three CPUs, desktop running, no panic; `XenonAudioTestKnob
 
 **The start of a sound is still lost, about 0.5–1 s,** but only the first sound after silence. Round E rules out the engine start: the engine and the DMA had been playing zeros for 2 s, and the start was still lost. Round F shows that once sound is playing, everything after it is complete. This fits an HDMI sink (TV or receiver) that mutes on digital silence and unmutes late; not confirmed. Checks: whether other sources on the same TV input lose their start, and whether a tiny non-zero signal (±1 LSB dither) in silence keeps the sound.
 
-Next: make reset on start and the position fix the default in timer mode (without the test switches) and test that build.
+## Reset on start and position fix by default (`audfix`, built, not booted)
+
+XenonAudio `1b5beed26cd550f414b1e2cb61ea1d32`: reset on start and the position fix are always on, timer mode, with the repository's `Info.plist` (no `XenonAudioInterrupt`, no `XenonAudioTestKnobs`). No new kernel imports against `audrst`. Profile `audfix`: `smp3a` (three CPUs) with this XenonAudio; `AUDFIX.ELF` (MD5 `9797c14a4ea9182ef782126e760eec88`) + `XAFX.MKE` (MD5 `4dbdaedd95f2bf26b7b201879b166b49`); the other 8 kexts are byte-identical to `smp3a`.
+
+Pass criteria: the regression checks (SSH, WindowServer/Finder/Dock, Ethernet checksums, no panic); five timed `say` runs of "Audio test after the restart." at 3.0–5.0 s each; the owner hears continuous speech clean and complete, with no repeated end. The lost start after silence is a known open issue and does not fail this test.
