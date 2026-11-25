@@ -23,6 +23,7 @@ Logs and test data go to `$XBOX_TEST_OUT`, by default `~/xbox-test-logs`.
 | `audio-measure.sh` | Timer interrupt cost of XenonAudio, idle and while `say` plays |
 | `audio-irq-test.sh` | Checks of the interrupt-driven audio build (profile `audirq`) |
 | `audio-round.sh <label> <ack> <posfix> <interrupt>` | One listening round with the XenonAudio test switches |
+| `xbox-gui.sh status\|stop\|start\|restart` | Stops, starts or restarts WindowServer and the autologin session without a reboot (about 9 s); never use `killall loginwindow` instead |
 
 Each script checks numeric pass criteria and logs `FAIL` lines and a summary.
 
