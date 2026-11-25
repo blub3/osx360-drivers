@@ -10,7 +10,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Multi-hour uptime test with three CPUs (`smp3a`), and the owner's check of audio, mouse and keyboard.
+1. The owner's check of audio, mouse and keyboard with three CPUs (the two-hour uptime test with three CPUs passed).
 2. Fix the SMC lock hold (audit finding 2) in a separate build.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
@@ -52,9 +52,28 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
 
+## 2026-11-25: SMP two-hour uptime test with three CPUs
+
+Three CPUs from boot, display off, no user activity, same script as the two-CPU test (heartbeat every minute, load and Ethernet check every 10 minutes). The Xbox ran profile `audknb`: its XenonPlatform is byte-identical to `smp3a`; XenonAudio was the test build, switched to timer mode, and no audio played during the test.
+
+**Result: pass, 0 failures.** 2 h 1 min (11:15–13:17, uptime 2 h 39 min at the end).
+
+| Check | Result |
+| --- | --- |
+| Heartbeats | 113, none missed |
+| `hw.availcpu`, WindowServer, Finder, Dock | 3, running at every heartbeat |
+| 10 MiB Ethernet up and down, 13 checks | Checksums match every time |
+| CPU 1 / CPU 2 external interrupts | 0–1 per second |
+| CPU 1 / CPU 2 decrementer ticks | 176–504 per second |
+| One busy process | 4.60–4.61 s |
+| Three busy processes in parallel | 6.62–7.17 s each |
+| Panic log | None |
+
+The screensaver ran the whole time (load average about 1.0), so three loops shared the two remaining CPUs: 1.5 × 4.6 s ≈ 6.9 s, as measured.
+
 ## 2026-11-25: SMP stage 1b works, three CPUs (`smp3a`)
 
-**Result: pass, 0 failures** (multi-hour uptime with three CPUs still open).
+**Result: pass, 0 failures** (the two-hour uptime test with three CPUs passed later the same day, see above).
 
 | Check | Result |
 | --- | --- |
