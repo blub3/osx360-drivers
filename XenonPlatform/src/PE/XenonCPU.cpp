@@ -203,15 +203,15 @@ void XenonCPU::signalCPU(IOCPU *target) {
 }
 
 //
-// Overrides IOCPU::setProperties(). Tiger's IOCPU only handles IOCPUState = "Stopped": after its
-// dictionary, string and administrator checks, it returns kIOReturnUnsupported for anything else.
-// For a deferred secondary CPU that is still stopped, take that result as a start request.
+// Overrides IOCPU::setProperties(). Tiger's IOCPU::setProperty accepts only the lower-case
+// IOCPUState values "running" (processor_start if stopped) and "stopped" (haltCPU if running),
+// and setProperties returns kIOReturnUnsupported for anything else. tools/smp/xenon-cpu-start
+// sends "Running"; for a stopped secondary CPU, take that result as a start request.
 //
 IOReturn XenonCPU::setProperties(OSObject *properties) {
   IOReturn result = super::setProperties(properties);
 
-  if ((result == kIOReturnUnsupported) && !_isBootCPU && gXenonSMPDeferStart &&
-      (getCPUState() == kIOCPUStateStopped)) {
+  if ((result == kIOReturnUnsupported) && !_isBootCPU && (getCPUState() == kIOCPUStateStopped)) {
     XESYSLOG("Starting deferred CPU PIR %u", _pir);
     processor_start(machProcessor);
     XESYSLOG("processor_start returned for PIR %u, state %lu", _pir, getCPUState());
@@ -221,10 +221,20 @@ IOReturn XenonCPU::setProperties(OSObject *properties) {
 }
 
 //
-// Overrides IOCPU::quiesceCPU()
+// Overrides IOCPU::quiesceCPU(). Tiger reaches it only through processor_offline -> cpu_sleep,
+// on the CPU that goes offline, with interrupts off. If it returns, processor_offline panics
+// ("zombie processor"). Shutdown and restart do not stop CPUs (halt_all_cpus calls
+// PEHaltRestart directly), and the boot CPU would only get here for system sleep.
 //
 void XenonCPU::quiesceCPU(void) {
-  // TODO
+  if (_isBootCPU || (gXenonInterruptController == NULL) || (XenonSMPCurrentPIR() != _pir)) {
+    return;
+  }
+
+  // setCPUState only stores the state. Running again is set by initCPU after the next start.
+  setCPUState(kIOCPUStateStopped);
+  gXenonInterruptController->parkCPUBlock(_pir);
+  XenonSMPParkSelf(getCPUNumber());
 }
 
 //
@@ -241,10 +251,19 @@ kern_return_t XenonCPU::startCPU(vm_offset_t start_paddr, vm_offset_t arg_paddr)
 }
 
 //
-// Overrides IOCPU::haltCPU()
+// Overrides IOCPU::haltCPU(). Tiger calls it for IOCPUState = "stopped" on a running CPU (and from
+// IOCPUSleepKernel, which Xenon does not use). processor_exit takes the CPU offline; it ends in
+// quiesceCPU on that CPU and returns once the CPU has parked.
 //
 void XenonCPU::haltCPU(void) {
-  // TODO
+  typedef kern_return_t (*ProcessorExitFunc)(processor_t processor);
+
+  if (_isBootCPU || (gXenonProcessorExitAddr == 0) || (gXenonPerProcTable == 0)) {
+    return;
+  }
+  XESYSLOG("Stopping CPU PIR %u", _pir);
+  kern_return_t result = reinterpret_cast<ProcessorExitFunc>(gXenonProcessorExitAddr)(machProcessor);
+  XESYSLOG("processor_exit returned 0x%X for PIR %u, state %lu", result, _pir, getCPUState());
 }
 
 //

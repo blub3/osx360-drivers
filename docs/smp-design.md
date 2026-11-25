@@ -70,7 +70,7 @@ The owner gets a list of GPU code that assumes one CPU (for example `refreshFram
 
 Every stage keeps the default boot unchanged. A gated profile on the boot USB has its own rollback, as with the patcher work.
 
-## Status (2026-11-24)
+## Status (2026-11-25)
 
 Stage 1a works on hardware: PIR 2 runs as CPU 1, during boot (`XenonSMPThread2`) or started later (`XenonSMPDeferStart` + `tools/smp/xenon-cpu-start`). Two busy processes run in parallel at single-CPU speed, and the desktop, audio, mouse, keyboard and Ethernet keep working. See `docs/platform-log.md` for measurements.
 
@@ -80,4 +80,6 @@ Lessons from the hardware tests:
 - On a secondary, end each interrupt with a plain EOI and restore priority `0x74`. EOI with auto-update reopened the block and caused an interrupt storm of about 294,000 per second.
 - Tiger's `IOCPU::setProperties` only stops CPUs, so `XenonCPU` overrides it to start a deferred CPU.
 
-Open: Ethernet runs about 25–35% slower with two CPUs; `quiesceCPU`/`haltCPU` are empty; multi-hour uptime test; stages 1b and 2.
+Two-hour uptime test passed on 2026-11-25. `smppark` (built, not yet booted) adds stopping and restarting a secondary CPU through `IOCPUState` and the interrupt barrier from `docs/smp-driver-audit.md`.
+
+Open: Ethernet runs about 25–35% slower with two CPUs; SMC lock hold (audit finding 2); stages 1b and 2.

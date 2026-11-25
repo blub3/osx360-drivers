@@ -36,4 +36,14 @@ kern_return_t XenonSMPReleaseThread(UInt32 pir, UInt32 startCpuAddr);
 // Replaces cpu_sync_timebase: all six time bases are already synchronized in hardware.
 void XenonSMPNoTimebaseSync(void);
 
+// Kernel addresses resolved by XenonPE at start (0 if not found): PerProcTable and processor_exit.
+// processor_exit is not a link-time import of the booting build, so it is called through this.
+extern UInt32 gXenonPerProcTable;
+extern UInt32 gXenonProcessorExitAddr;
+
+// Called on a secondary thread from quiesceCPU (cpu_sleep). Marks it SleepState and sends it back
+// to the mailbox loop, from where startCPU can release it again. Returns only if parking is
+// not possible.
+void XenonSMPParkSelf(UInt32 logicalCPU);
+
 #endif

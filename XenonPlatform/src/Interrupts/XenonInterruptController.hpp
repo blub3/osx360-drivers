@@ -35,6 +35,7 @@ public:
 
   // SMP. Each hardware thread has its own register block at kXenonICBase + PIR * 0x1000.
   void initCPUBlock(UInt32 pir);
+  void parkCPUBlock(UInt32 pir);
   void sendIPI(UInt32 fromPIR, UInt32 toPIR);
 
 private:

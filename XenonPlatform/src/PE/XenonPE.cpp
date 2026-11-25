@@ -181,6 +181,13 @@ void XenonPE::setupSMP(void) {
     return;
   }
 
+  // Needed only to stop a secondary CPU again (IOCPUState = "stopped"); optional.
+  gXenonPerProcTable      = resolveKernelSymbolExact("_PerProcTable");
+  gXenonProcessorExitAddr = resolveKernelSymbolExact("_processor_exit");
+  if ((gXenonPerProcTable == 0) || (gXenonProcessorExitAddr == 0)) {
+    XESYSLOG("SMP: PerProcTable or processor_exit not found, secondary CPUs cannot be stopped");
+  }
+
   gXenonStartCpuAddr  = startCpu;
   gXenonSMPThreadMask = requested;
   gXenonSMPDeferStart = (getProperty("XenonSMPDeferStart") == kOSBooleanTrue);

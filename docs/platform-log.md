@@ -10,16 +10,16 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Find the Ethernet slowdown with two CPUs (about 5.4–5.9 MiB/s against 7.3–9.3). SSH is CPU-bound in `sshd` and the network path is clean (see the 2026-11-24 investigation). Next, measure an unencrypted transfer (the Python HTTP server did not start over SSH, so try `nohup` from a script file) in `smpdef3` before and after starting CPU 1.
-2. Look at the display error the owner saw while shutting down a two-CPU session. `quiesceCPU` and `haltCPU` are still empty, so shutdown does not stop CPU 1 cleanly.
-3. Run a multi-hour uptime test with two CPUs, as the brief requires.
-4. Then stage 1b (PIR 0, 2, 4).
+1. Test `smppark` (built, not staged): stop CPU 1 and start it again, three rounds (both CPUs available again, CPU 1 takes no decrementer ticks while stopped, Ethernet checksums). Then measure Ethernet with CPU 1 running, stopped and running again in the same boot, unencrypted with `nc` and over SSH.
+2. Fix the SMC lock hold (audit finding 2) in a separate build.
+3. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
+4. Then stage 1b (PIR 0, 2, 4). Its idle loop must not take issue slots from the other thread on the same core.
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The Xbox is on `smp1c`; its rollback selects `smpdef3`, whose rollback selects `pmapdef`. The owner decides when to restore `gpuwinoverlap`.
+The Xbox is on `smp1c`; its rollback selects `smpdef3`, whose rollback selects `pmapdef`. SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -33,6 +33,35 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-25: `smppark` build, CPU 1 can be stopped again (not booted)
+
+Built on the G5, link-time imports identical to `pmapfast`. XenonPlatform MD5 `6069f8e71250249bcb2c4bc7b0f1e9a7`. Profile `smppark`: `SMPPARK.ELF` (MD5 `96dee5bd8edf9745bdfc61a6a9fff320`) + `XSPK.MKE` (MD5 `18ee08df08b09ea32f05cc2aa780e0b6`), with `XenonSMPThread2` and `XenonPmapFastScan`. All other kexts in the mkext are byte-identical to `XWOV.MKE`.
+
+- Interrupt barrier (audit finding 1): `sync` before `interruptActive = 0`.
+- Stopping a secondary CPU (audit finding 3). Tiger's `IOCPU::setProperty` (`0x2E299C`) accepts only lower-case `IOCPUState` values: `"running"` calls `processor_start` on a stopped CPU, `"stopped"` calls `haltCPU` on a running one. `haltCPU` calls `processor_exit` (resolved at runtime). Tiger then runs `processor_offline` → `cpu_sleep`, which tail-calls `quiesceCPU` on the CPU going offline and panics with "zombie processor" if it returns. `quiesceCPU` now blocks the thread's interrupt priority (`0x7C`), sets `SleepState` in its `per_proc` (which `cpu_exit_wait` waits for) and returns to the mailbox loop at `0x07E00064` in real mode with the MSR XeLL left there. A later start goes through the same release path as the first.
+- `tools/smp/xenon-cpu-start <n> stop` (MD5 `d085ca0b62ac4f27b9f42983871f23d2`).
+
+Finding while reading Tiger: shutdown and restart do not stop CPUs. `host_reboot` → `halt_all_cpus` → `PEHaltRestart`. The empty `quiesceCPU` therefore did not cause the display error at shutdown.
+
+## 2026-11-25: SMP two-hour uptime test (`smp1c`)
+
+Two CPUs from boot, display off, no user activity. A script on the Linux host checked the Xbox every minute and ran a load and Ethernet check every 10 minutes.
+
+**Result: pass.** 2 h 1 min (06:18–08:19, uptime 2 h 7 min at the end).
+
+| Check | Result |
+| --- | --- |
+| Heartbeats | 113, none missed |
+| `hw.availcpu`, WindowServer, Finder, Dock | 2, running at every heartbeat |
+| 10 MiB Ethernet up and down, 13 checks | Checksums match every time |
+| CPU 1 external interrupts | 0–6 per second (IPIs only) |
+| CPU 1 decrementer ticks | 177–499 per second |
+| One busy process | 4.58–4.72 s |
+| Two busy processes in parallel | 4.63–4.66 s for the first two checks, then 8.79–9.20 s |
+| Panic log | None |
+
+The parallel result changed at about 06:30, when the screensaver started: `ScreenSaverEngine` used about 83% of one CPU (44 minutes of CPU time by 07:22), and the load average stayed near 1.0. With that load on one CPU, two loops sharing the other take twice as long. Total CPU use was about 48%, so both CPUs were scheduled. The screensaver load made this a mixed-load test rather than an idle one.
 
 ## 2026-11-24: Ethernet slowdown investigation on two CPUs (`smp1c`)
 

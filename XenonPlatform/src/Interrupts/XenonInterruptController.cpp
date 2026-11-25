@@ -289,6 +289,12 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
     disableVectorHard(vectorIndex, vector);
   }
 
+  //
+  // Tiger's enableInterrupt, possibly on the other CPU, waits for interruptActive = 0 and then
+  // reads interruptDisabledHard. The flag and the bridge mask write must be complete first, or
+  // the source could stay masked.
+  //
+  sync();
   vector->interruptActive = 0;
 
   // EOI it.
@@ -367,6 +373,16 @@ void XenonInterruptController::initCPUBlock(UInt32 pir) {
     }
     writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
   }
+  eieio();
+}
+
+//
+// Blocks every vector on a thread that is about to park (priority 0x7C, as libxenon).
+// initCPUBlock opens it again when the thread is started.
+//
+void XenonInterruptController::parkCPUBlock(UInt32 pir) {
+  writeICReg64(pir, kXenonICRegPriority, 0x7C);
+  readICReg64(pir, kXenonICRegPriority);
   eieio();
 }
 

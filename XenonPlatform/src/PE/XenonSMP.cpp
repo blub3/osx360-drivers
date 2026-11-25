@@ -16,6 +16,7 @@
 extern "C" unsigned int ml_phys_read(vm_offset_t paddr);
 extern "C" void ml_phys_write(vm_offset_t paddr, unsigned int data);
 extern "C" void invalidate_icache(vm_offset_t addr, unsigned cnt, int phys);
+extern "C" boolean_t ml_set_interrupts_enabled(boolean_t enable);
 
 UInt32 gXenonSMPThreadMask = 1;
 bool gXenonSMPDeferStart = false;
@@ -169,4 +170,61 @@ kern_return_t XenonSMPReleaseThread(UInt32 pir, UInt32 startCpuAddr) {
 }
 
 void XenonSMPNoTimebaseSync(void) {
+}
+
+UInt32 gXenonPerProcTable = 0;
+UInt32 gXenonProcessorExitAddr = 0;
+
+// PerProcTable entries in Tiger 10.4.11: 16 bytes, per_proc virtual address at +0x0C
+// (cpu_exit_wait). cpu_flags is the halfword at per_proc + 2; SleepState is 0x0800.
+#define kPerProcEntrySize   16
+#define kPerProcVaddr       0x0C
+
+//
+// Parks the calling thread for good: sets SleepState in its per_proc word 0 (cpu_number and
+// cpu_flags), which releases cpu_exit_wait on the CPU that asked, then returns to the mailbox
+// loop at 0x07E00064 in real mode with the MSR XeLL left on parked threads (measured,
+// 0x9000000002003000: 64-bit, hypervisor, ME, FP, VEC). No memory is touched after the flag.
+//
+extern "C" void xenonSMPPark(UInt32 perProc);
+
+__asm__(
+  ".text\n"
+  ".align 4\n"
+  ".globl _xenonSMPPark\n"
+  "_xenonSMPPark:\n"
+  "  lis     r5,0x07E0\n"
+  "  ori     r5,r5,0x0064\n"
+  "  li      r6,0\n"
+  "  oris    r6,r6,0x9000\n"
+  "  rldicr  r6,r6,32,31\n"
+  "  oris    r6,r6,0x0200\n"
+  "  ori     r6,r6,0x3000\n"
+  "  mtsrr0  r5\n"
+  "  mtsrr1  r6\n"
+  "  sync\n"
+  "1:\n"
+  "  lwarx   r4,0,r3\n"
+  "  ori     r4,r4,0x0800\n"
+  "  stwcx.  r4,0,r3\n"
+  "  bne-    1b\n"
+  "  sync\n"
+  "  rfid\n"
+);
+
+void XenonSMPParkSelf(UInt32 logicalCPU) {
+  UInt32 perProc;
+
+  if (!sReleaseInstalled || (gXenonPerProcTable == 0) ||
+      (ml_phys_read(kParkEntry) != kPPCBranchNext)) {
+    return;
+  }
+  perProc = *reinterpret_cast<volatile UInt32*>(gXenonPerProcTable + (logicalCPU * kPerProcEntrySize) +
+                                                kPerProcVaddr);
+  if ((perProc == 0) || ((perProc & 3) != 0)) {
+    return;
+  }
+
+  ml_set_interrupts_enabled(FALSE);
+  xenonSMPPark(perProc);
 }
