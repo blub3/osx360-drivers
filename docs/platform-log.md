@@ -10,16 +10,17 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Boot `smppk2` and repeat the stop/start test, checking that time no longer jumps after a restart. Then measure Ethernet with CPU 1 running, stopped and running again in the same boot, unencrypted with `nc` and over SSH.
+1. Boot `smp3a` (stage 1b, three CPUs): `hw.ncpu` 3, timer ticks and no interrupt storm on CPUs 1 and 2, three busy processes in parallel, stop and restart each secondary, clock spread, Ethernet.
 2. Fix the SMC lock hold (audit finding 2) in a separate build.
-3. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
-4. Then stage 1b (PIR 0, 2, 4). Its idle loop must not take issue slots from the other thread on the same core.
+3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
+4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
+5. Then stage 2 (all six threads). Its idle loop must not take issue slots from the other thread on the same core.
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The Xbox is on `smp1c`; its rollback selects `smpdef3`, whose rollback selects `pmapdef`. SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
+The boot stick defaults to `smp3a`; its rollback selects `smppk2`. `smp1c` and `pmapdef` are still on the stick. Old test profiles were moved off the stick to the owner's PC (`stick-archive/2026-11-25`). Keep `kboot.conf` at 64 entries or fewer (XeLL limit). SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -33,6 +34,27 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-25: `smppk2` on hardware; Ethernet with one and two CPUs in the same boot
+
+**Stop/start test on `smppk2`: pass, 0 failures.** Three rounds, as on `smppark`, plus a clock check after each start: 60 `date` processes, which land on both CPUs, differed by 0–1 s (94 s on `smppark` after three restarts). No `mach_absolute_time` warnings from `mDNSResponder` since boot. The owner confirmed mouse and keyboard after the restarts. The time base fix works.
+
+**Ethernet** (same boot, CPU 1 running, stopped with `xenon-cpu-start 1 stop`, then running again; 64 MiB per transfer with `nc`, 3 runs per state, 16 MiB over SSH):
+
+| State | `nc` up / down (MiB/s) | SSH up / down (MiB/s) | Xbox CPU during `nc` upload | CPU 0 external interrupts |
+| --- | --- | --- | --- | --- |
+| 2 CPUs | 11.21 / 11.13–11.21 | 4.66 / 4.64 | 56% sys, 39% idle | about 9,000/s |
+| CPU 1 stopped | 11.20–11.21 / 11.21 | 3.78 / 3.87 | 93% sys, 0% idle | about 9,230/s |
+| 2 CPUs again | 11.20–11.21 / 11.13 | 4.65 / 4.78 | 56% sys, 40% idle | about 9,050/s |
+
+- **Unencrypted transfers run at about 11.2 MiB/s in every state**, which is the practical limit of a 100 Mbit/s link. The driver and network stack are not slower with two CPUs.
+- **SSH is about 20% faster with two CPUs** than with CPU 1 stopped in the same boot. With one CPU, receiving at line rate already takes 93% of the CPU in the kernel.
+- The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
+- CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
+
+## 2026-11-25: stage 1b profile `smp3a` (staged, not booted)
+
+Same XenonPlatform binary as `smppk2` (`25f0e0441e5b606eac7647c976a0bd6f`), with `XenonSMPThread2` and `XenonSMPThread4`: PIR 0, 2 and 4, one thread per core. No code change was needed: CPU count, logical numbers, interrupt controller blocks, IPIs, mailboxes and parking are all per PIR. Profile `smp3a`: `SMP3A.ELF` (MD5 `72f2a4eef4760e465b7fac76cff8da4d`) + `XS3A.MKE` (MD5 `bfda9bdef09b0ed64eb22f2afef93449`). Its `kboot.conf` entry replaces `smppk2`'s (63 entries); `kboot.conf.before-smp3a.bak` boots `smppk2`.
 
 ## 2026-11-25: `smppark` on hardware, CPU 1 stops and starts; time base fix `smppk2`
 

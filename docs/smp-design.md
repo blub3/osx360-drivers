@@ -82,4 +82,6 @@ Lessons from the hardware tests:
 
 Two-hour uptime test passed on 2026-11-25. `smppark` (built, not yet booted) adds stopping and restarting a secondary CPU through `IOCPUState` and the interrupt barrier from `docs/smp-driver-audit.md`.
 
-Open: Ethernet runs about 25–35% slower with two CPUs; SMC lock hold (audit finding 2); stages 1b and 2.
+Stopping and restarting a secondary CPU works on hardware (`smppk2`, with the time base fix). In the same boot, unencrypted Ethernet runs at the 100 Mbit/s line rate with one or two CPUs, and SSH is about 20% faster with two.
+
+Open: SMC lock hold (audit finding 2); stage 1b (`smp3a`, staged); stage 2.
