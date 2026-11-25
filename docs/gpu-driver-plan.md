@@ -18,6 +18,7 @@ The plan is shared: Claude and ChatGPT/Codex take turns on branch `gpu/xenos-dri
    - Shut the Xbox down over SSH (`sudo shutdown -h now`). Every restart lands in the Aurora dashboard and needs the owner to start XeLL by hand; restart only the GUI (`tools/host/xbox-gui.sh restart`) where possible.
    - Back up `kboot.conf` before changing it and keep it at 64 entries or fewer.
    - Never enable a GPU interrupt source before vector `0x58` is routed (step 0.5): on thread 0 it panics today.
+   - Never write all ones to `RBBM_SOFT_RESET` (`0x00F0`): it hangs the whole console without a panic screen. Reset only blocks whose bits are known.
    - Never add a kernel import that no booting kext already has. No 64-bit division in kernel code (the kernel exports no `__udivdi3`; `kextload -n -t` does not catch it).
    - Merge into `main` only after a passing hardware test and the owner's OK, with a merge commit named "Merge the tested …".
 
@@ -33,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load, unload, display handback | in progress | Claude | `da34871` | First load presents with the GPU; reloads hang the 3D pipeline (partial reset); see log |
+| 1.1 Load, unload, display handback | in progress | Claude | `da34871` | First load presents with the GPU; reloads hang the 3D pipeline; a full `RBBM_SOFT_RESET` hangs the console; see log |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -66,6 +67,12 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 1.1, full reset test: **console hang.**
+  - **What I tried:** `XenosGPU` changed to reset every RBBM block at start and stop: halt the CP, `RBBM_SOFT_RESET` (`0x00F0`) = `0xFFFFFFFF`, `IOSleep(30)`, then 0, logging `RBBM_STATUS` and the display surface before and after.
+  - **Result:** it was loaded once, on the GPU still hung from the earlier cycles. The Xbox stopped answering during the load, before any log line reached the host: no ping, "No route to host". The owner saw a frozen or black screen, not the panic screen, so it was a hard hang (a CPU access to the GPU or bus that never completes), not a kernel panic. The Xbox needed a power cycle and XeLL.
+  - **Code:** that version is not committed; the branch keeps the CP-only reset of `da34871`.
+  - **New rule:** never write all ones to `RBBM_SOFT_RESET`.
+  - **Next:** find the Xenos bit layout of `RBBM_SOFT_RESET`. Then reset only the blocks `RBBM_STATUS` shows busy (`RB`, `SQ`, `PA`, `SC`, `SX`, `VGT`), not the memory hub or bus interface, and try it first on a freshly booted, idle GPU.
 - 2026-11-25, Claude: step 1.1 in progress, stopped here.
   - **The driver:** `XenosGPU` (`da34871`, hand-loaded, `--strict` imports pass) uses XenonCoreGraphics' ring start-up, firmware load and display state. It stops XenonPE's CPU refresh and presents the desktop with the GPU every 15 ms.
   - **First load: pass.** Both `MEM_WRITE` markers passed, the CP started on attempt 1, 2,089 frames in 32 s (about 65 per second) with no busy tick. At unload the ring was drained, the CP halted and the CPU refresh restarted. Idle CPU was 88% free, against 72% with the CPU refresh.
