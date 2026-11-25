@@ -17,7 +17,7 @@ The plan is shared: Claude and ChatGPT/Codex take turns on branch `gpu/xenos-dri
    - Define the pass criteria before a hardware run. Every run also checks SSH, WindowServer/Finder/Dock, Ethernet and audio.
    - Shut the Xbox down over SSH (`sudo shutdown -h now`).
    - Back up `kboot.conf` before changing it and keep it at 64 entries or fewer.
-   - Never add a kernel import that no booting kext already has.
+   - Never add a kernel import that no booting kext already has. No 64-bit division in kernel code (the kernel exports no `__udivdi3`; `kextload -n -t` does not catch it).
    - Merge into `main` only after a passing hardware test and the owner's OK, with a merge commit named "Merge the tested …".
 
 ## Status
@@ -28,7 +28,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | --- | --- | --- | --- | --- |
 | 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | `ee56b82` | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
 | 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
-| 0.3 Runtime kext loading, 64 MiB contiguous memory | open | | | |
+| 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | this commit | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
 | 0.4 Panic path, panic reboot, GPU interrupt line | open | | | |
 | 0.5 Development boot profile `gpudev` (R4) | open | | | |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
@@ -65,6 +65,13 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 0.3 done, details in `docs/gpu-memory-map.md`.
+  - **Probe:** `XenosGPUProbe` (new, hand-loaded from `/Library/OSX360Dev`, not in the package) matches the Xenos PCI device in its own category.
+  - **Runtime loading works:** `kextload` succeeded with the desktop up, and the probe attached next to XenonFramebufferTest, XenosController and XenosDisplayAccelerator. `kextunload` succeeded with the desktop up and with the GUI down (`xbox-gui.sh stop`), and it loaded again afterwards. The first build failed to load on `___udivdi3` even though `kextload -n -t` accepted it, so 64-bit division in kernel code is now in the rules.
+  - **Contiguous memory:** 16 MiB passed on all five loads, 32, 64 and 128 MiB always failed. Tiger has only 272 MiB of RAM (OpenBIOS gives it `0x00000000`–`0x01FFFFFF` and `0x10000000`–`0x1EFFFFFF`), with 37–53 MiB free.
+  - **Unused RAM:** the device tree marks `0x08100000`–`0x0FFFFFFF` (127 MiB) available, and Tiger does not manage it. A pattern written to every 256th byte (520,192 words, 88 ms) read back with 0 mismatches, again at unload 2.5 minutes later (across a WindowServer restart and an Ethernet transfer), and was fully intact at the next load. This is the planned GPU heap, without a firmware change. Retention over hours is checked by loading the probe again later in the same boot (it reports the intact words).
+  - **Memory-pressure step skipped:** 32 MiB already fails on a fresh boot, and the unused range makes large allocations unnecessary.
+  - **Regression checks:** 10 MiB Ethernet round trip OK, 6 CPUs registered and 1 running, eight Xenon kexts loaded, desktop up, no panic, `say` returned 0.
 - 2026-11-25, Claude: step 0.2 done.
   - **Method:** `tools/host/xbox-gui.sh` with `stop`, `start` and `restart`.
     - `stop` switches the loginwindow console line in `/etc/ttys` off and sends `HUP` to launchd. launchd ends loginwindow, WindowServer exits, and nothing respawns.
@@ -132,7 +139,7 @@ The plan below replaces the test selectors with a small, generic kernel driver a
 
 Kernel driver `XenosGPU` (new bundle ID; it replaces XenonCoreGraphics in phase 6):
 
-- **GPU memory:** a contiguous heap (64–128 MiB), allocations as handles and owned by a client, mapped cacheable into the client's task with explicit cache flushes, and freed when the client exits. No cache-inhibited user mappings: Tiger's `memcpy` and `bzero` use `dcbz`.
+- **GPU memory:** a contiguous heap (64–128 MiB; candidate: the 127 MiB at `0x08100000`–`0x0FFFFFFF` that Tiger does not manage, `docs/gpu-memory-map.md`), allocations as handles and owned by a client, mapped cacheable into the client's task with explicit cache flushes, and freed when the client exits. No cache-inhibited user mappings: Tiger's `memcpy` and `bzero` use `dcbz`.
 - **Command submission:** clients build PM4 command buffers in their own GPU memory. The kernel ring holds only `CP_INDIRECT_BUFFER` packets and fence writes. The kernel checks that every address in a buffer belongs to the client. A root-only development mode skips the check.
 - **Fences:** a timestamp written by the GPU into a page mapped read-only into every client, and a wait call that uses the GPU interrupt.
 - **Hang recovery:** a watchdog on ring progress, a soft reset (`RBBM_SOFT_RESET`) with ring and firmware reinit, an error returned to the client, and the display back on the software path.
@@ -174,7 +181,7 @@ All checks are R0 over SSH unless marked.
    - Find in the 10.4.11 kernel which platform call a panic ends in. XenonPE overrides no halt or restart function today.
    - Plan a hook that copies the panic text to a RAM area kept across a soft reboot, then asks the SMC to reboot without locks.
    - Find the Xenos interrupt line. Free60 Linux and the interrupt controller in `XenonPlatform/src/Interrupts` are the sources.
-5. **Development boot profile `gpudev` (R4, once).** The `main6` kexts without XenonCoreGraphics, plus the platform changes from steps 3 and 4 (panic reboot, GPU interrupt routing, the heap if needed). The desktop then runs on XenonPE's CPU refresh until `XenosGPU` is loaded. `main6` stays the stick default until `gpudev` passes the usual checks (SSH, desktop, Ethernet, audio).
+5. **Development boot profile `gpudev` (R4, once).** The `main6` kexts without XenonCoreGraphics, plus the platform changes from steps 3 and 4 (panic reboot, GPU interrupt routing). Step 0.3 found the heap in RAM Tiger does not manage; the firmware should mark it reserved in the device tree, so it is not claimed by anything else. The desktop then runs on XenonPE's CPU refresh until `XenosGPU` is loaded. `main6` stays the stick default until `gpudev` passes the usual checks (SSH, desktop, Ethernet, audio).
 6. **Development loop:**
    - sync the source to the G5 and build there;
    - copy the kext to the Xbox and load it;
