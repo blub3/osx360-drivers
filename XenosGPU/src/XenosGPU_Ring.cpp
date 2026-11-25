@@ -458,6 +458,14 @@ void XenosGPU::initDisplayState(void) {
 //
 bool XenosGPU::resetGraphicsBlocks(const char *when) {
   UInt32 before = readReg(kXenosRegRbbmStatus);
+  // Only when the pipeline is busy: on an idle GPU the reset (without libxenon's Xe_pInit1 register
+  // set) was followed by a stall at frame 71-73 in every run, while the one long run (2,089 frames,
+  // 2026-11-25 22:47) started without it.
+  if (!(before & 0x80000000)) {
+    IOLog("XenosGPU: 3D block reset %s skipped, pipeline idle (RBBM_STATUS 0x%08lx)\n", when,
+          (unsigned long)before);
+    return true;
+  }
   UInt32 rounds;
   for (rounds = 0; rounds < 100; rounds++) {
     if (rounds > 0 && !(readReg(kXenosRegRbbmStatus) & 0x80000000)) {

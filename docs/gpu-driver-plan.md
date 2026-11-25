@@ -67,6 +67,11 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 1.1, GUI restart test.
+  - **Result:** fresh boot, `xbox-gui.sh restart` (desktop after 20.8 s), then `XenosGPU` for 60 s: stall after 73 frames again (`rptr=0x0428`). The GUI restart is not the difference.
+  - **New lead:** the only long run (22:47) was the first build, which reset only the CP. Every build since 23:01 resets the 3D blocks at start (libxenon values) **without** libxenon's following `Xe_pInit1` register set (`0x01A8` = 0, `0x0E6C` = `0xC0F0000`, `0x3400` = `0x40401` then `0x40400`, `0x3300` = `0x3A22`, `0x340C` = `0x1003F1F`, `0x00F4` = `0x1E`). Every one of those runs stalled at frame 71–73, even on a fresh boot.
+  - **Next build:** the 3D reset runs only when `RBBM_STATUS` shows `GUI_ACTIVE` at start, so an idle GPU starts exactly as in the 22:47 run. If that runs long, the recovery path must add the `Xe_pInit1` registers after the reset.
+  - **Still unexplained:** the reload failure of the first build (cycle 1, 71 frames).
 - 2026-11-25, Claude: step 1.1, two more tests (`520626e`), each after a shutdown and restart by the owner.
   - **Ring in the GPU heap:** `XenosGPU` takes its ring, marker and vertex buffers from the heap at `0x08200000` (uncached; `XenosGPUTigerMemory` selects the old Tiger allocations). Both markers passed, then the GPU **stalled after 73 frames again**, at the same `rptr=0x0428` and `RBBM_STATUS=0xEAA50110`. The ring's physical address is not the cause.
   - **50 ms presentation** (`XenosGPUSlowPresent`): stall after 71 frames (about 3.5 s, `rptr=0x0410`, the resolve of frame 71). **The stall is count-based**, about 71–73 frames at any rate.
