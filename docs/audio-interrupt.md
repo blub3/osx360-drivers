@@ -70,3 +70,22 @@ During the probe session CPU 1 (PIR 2) stopped: 0 decrementer ticks and 0 interr
 Compared with the timer build on the same system, playback added 833 decrementer ticks per second instead of about 5,750.
 
 Suspects: the `0x1C` acknowledge written every descriptor (only bit 3 is known to be the descriptor status), and the position fix, which lets Tiger's engine erase behind the real position. Next: profile `audknb` with test switches (`XenonAudioTestKnobs`, `tools/audio/xenon-audio-set`) to compare acknowledge `0x08`/`0x1C`, position fix on/off and timer/interrupt mode in one boot.
+
+## Listening rounds with `audknb` (2026-11-25)
+
+Profile `audknb`: XenonAudio `e6f57823f78f913716225317f073f392` with `XenonAudioInterrupt` and `XenonAudioTestKnobs`, `AUDKNB.ELF` (MD5 `b5302bec0a8837924d82900b2e174827`) + `XAKB.MKE` (MD5 `c2f786cb855a914f4f5db5f4e673a5b0`). Sentence: "The quick brown fox jumps over the lazy dog, while the Xbox plays this sentence for the listening test.", three times.
+
+| Round | Mode | Result |
+| --- | --- | --- |
+| A | Timer, original position code (the old driver's behaviour) | Clean, but the owner heard "fox jumps over the lazy dog, while the Xbox plays this sentence for the listening test test test": **the start is missing and the end repeats** |
+| B | Interrupt, acknowledge `0x08`, original position code | **Kernel panic** (grey screen) as soon as playback started; the Xbox went off the network |
+
+**Round A explains the glitches.** Tiger's IOAudioEngine assumes playback starts at frame 0, but XenonAudio never restarts the DMA channel: it continues at whatever descriptor it stopped on, so the start of a sound lands behind the play head. After the end, the original code reports a wrong position (control instead of state register), so the engine never erases the played part and the 341 ms buffer keeps looping ("test test test"). With the position fix, the engine erases behind the real position, which is not where it expects it, which fits the dropouts and gaps of the first interrupt test.
+
+**Round B, second panic.** Acknowledging only bit 3 probably left another status (starved) set, so the level line stayed active and CPU 0 took the same interrupt continuously. The storm guard (`disableInterrupt` from the filter) did not stop it. No panic text: the Xbox was off the network and has no NVRAM. After a power cycle, the running driver was switched to timer mode and the stick's default set back to `smp3a` (`kboot.conf.before-revert-smp3a.bak` keeps the previous file).
+
+Interrupt mode stays off until both panics are understood and the storm guard masks the line in the bridge itself.
+
+## Next: restart the channel at every engine start (`audrst`, built, not booted)
+
+XenonAudio `fbb13929625d5840146a16fee695f41b`: with `XenonAudioResetOnStart`, `startAudio` re-runs `setupSampleDescriptors` (clear the buffer, rewrite the descriptors, restart at descriptor 0) and resets the wrap detection. Profile `audrst`: timer mode only (no `XenonAudioInterrupt`), with the switches; `AUDRST.ELF` (MD5 `47d9255901ee5b14e2a08c0e3607a259`) + `XARS.MKE` (MD5 `7b1a05d5fde12b8450b8ab9975d83764`). Listening plan: reset on with the original position code, then reset on with the position fix; both should play the whole sentence once, without the repeated end.

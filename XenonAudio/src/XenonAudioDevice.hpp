@@ -69,6 +69,7 @@ private:
   bool                          _wantInterrupt;
   volatile bool                 _positionFix;
   volatile UInt32               _ackMask;
+  volatile bool                 _resetOnStart;
 
   // Descriptor and sample buffers.
   UInt32                      *_descBuffer;

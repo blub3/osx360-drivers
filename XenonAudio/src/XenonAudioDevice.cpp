@@ -97,6 +97,7 @@ bool XenonAudioDevice::initHardware(IOService *provider) {
   _positionFix   = _useInterrupt;
   _ackMask       = kXenonAudioRegControlAck;
   _testKnobs     = (getProperty("XenonAudioTestKnobs") == kOSBooleanTrue);
+  _resetOnStart  = (getProperty("XenonAudioResetOnStart") == kOSBooleanTrue);
 
   // Create audio engines for outputs.
   _audioOutputEngine = createAudioEngine(_sampleBuffer, kXenonSampleBufferLength, "Xbox 360 A/V");
@@ -130,6 +131,19 @@ IOReturn XenonAudioDevice::startAudio(XenonAudioEngine *audioEngine) {
     return false;
   }
   XEDBGLOG("Start register 0x%X", reg);
+
+  //
+  // IOAudioEngine assumes playback starts at frame 0 (performAudioEngineStart takes the first time
+  // stamp just before this). Without a reset, the hardware continues at whatever descriptor it
+  // stopped on, so the start of a sound is written behind the play head and lost, and after the
+  // end the stale buffer keeps looping (owner, 2026-11-25). Re-initialize the channel: clear the
+  // buffer, rewrite the descriptors and restart at descriptor 0, then forget the old read pointer
+  // so the first timer tick does not count a wrap.
+  //
+  if (_resetOnStart) {
+    setupSampleDescriptors();
+    _lastReadPtr = 0;
+  }
 
   writeReg32(reg, readReg32(reg) | kXenonAudioRegControlRun);
   if (_useInterrupt && _wantInterrupt && !_intStorm) {
@@ -326,6 +340,7 @@ void XenonAudioDevice::updatePosition(bool keepAllValid) {
 // only for administrators. Numbers only (no OSBoolean, which no booting kext imports):
 //   XenonAudioAck          acknowledge bits written to control in interrupt mode (0x08 or 0x1C)
 //   XenonAudioPositionFix  1 = report the position from the state register, 0 = original code
+//   XenonAudioResetOnStart 1 = restart the DMA channel at descriptor 0 on every engine start
 //   XenonAudioUseInterrupt 1 = interrupt mode, 0 = polling timer; applies at the next engine start
 // Overrides IORegistryEntry::setProperties().
 //
@@ -355,6 +370,11 @@ IOReturn XenonAudioDevice::setProperties(OSObject *properties) {
     _positionFix = (number->unsigned32BitValue() != 0);
     changed = true;
   }
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioResetOnStart"));
+  if (number != NULL) {
+    _resetOnStart = (number->unsigned32BitValue() != 0);
+    changed = true;
+  }
   number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioUseInterrupt"));
   if (number != NULL) {
     _wantInterrupt = _useInterrupt && (number->unsigned32BitValue() != 0);
@@ -364,8 +384,8 @@ IOReturn XenonAudioDevice::setProperties(OSObject *properties) {
     return kIOReturnUnsupported;
   }
 
-  XESYSLOG("Test switches: ack %02X, position fix %u, interrupt mode %u (now %s)", _ackMask, _positionFix,
-           _wantInterrupt, _intEnabled ? "interrupt" : "timer");
+  XESYSLOG("Test switches: ack %02X, position fix %u, reset on start %u, interrupt mode %u (now %s)", _ackMask,
+           _positionFix, _resetOnStart, _wantInterrupt, _intEnabled ? "interrupt" : "timer");
   return kIOReturnSuccess;
 }
 

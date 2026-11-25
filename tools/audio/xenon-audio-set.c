@@ -4,6 +4,7 @@
  *
  *   xenon-audio-set ack 8|28          acknowledge bits in interrupt mode (0x08 or 0x1C, decimal)
  *   xenon-audio-set posfix 0|1        position from the state register (1) or the original code (0)
+ *   xenon-audio-set reset 0|1         restart the DMA channel at descriptor 0 on every engine start
  *   xenon-audio-set interrupt 0|1     interrupt mode (1) or polling timer (0), from the next start
  *
  * Build on Mac OS X 10.4 or later:
@@ -22,13 +23,15 @@ int main(int argc, char **argv) {
   int value;
 
   if (argc != 3) {
-    fprintf(stderr, "usage: %s ack|posfix|interrupt <number>\n", argv[0]);
+    fprintf(stderr, "usage: %s ack|posfix|reset|interrupt <number>\n", argv[0]);
     return 2;
   }
   if (strcmp(argv[1], "ack") == 0) {
     key = CFSTR("XenonAudioAck");
   } else if (strcmp(argv[1], "posfix") == 0) {
     key = CFSTR("XenonAudioPositionFix");
+  } else if (strcmp(argv[1], "reset") == 0) {
+    key = CFSTR("XenonAudioResetOnStart");
   } else if (strcmp(argv[1], "interrupt") == 0) {
     key = CFSTR("XenonAudioUseInterrupt");
   } else {
