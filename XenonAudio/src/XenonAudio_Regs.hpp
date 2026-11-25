@@ -34,7 +34,19 @@
 // Audio control.
 #define kXenonAudioRegControl               0x08
 #define kXenonAudioRegControlRun            BIT24
+// Control bits 2-4 are written as 0x1C at init. Bit 3 reads back as the per-descriptor completion
+// status and is cleared by writing 1; writing 0x1C also clears the starved status (measured with
+// XenonAudioProbe, docs/audio-interrupt.md).
+#define kXenonAudioRegControlStatusMask     0xFF
+#define kXenonAudioRegControlAck            0x1C
 // Audio format? Analog vs digital.
 #define kXenonAudioRegFormat                0x0C
+
+// Second DMA channel at 0x10-0x1C. Firmware leaves it stalled with Run set, which holds the audio
+// interrupt line active. XenonAudio does not use it.
+#define kXenonAudioRegControl1              0x18
+
+// Interrupt mode: more interrupts than this per second (about 94 are expected) count as a storm.
+#define kXenonAudioIntStormPerSecond        1000
 
 #endif

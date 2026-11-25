@@ -17,6 +17,7 @@
 #include <IOKit/pci/IOPCIDevice.h>
 
 #include <IOKit/IOTimerEventSource.h>
+#include <IOKit/IOFilterInterruptEventSource.h>
 #include "XenonCommon.hpp"
 
 class XenonAudioEngine;
@@ -49,6 +50,17 @@ private:
   IOTimerEventSource            *_timerEventSource;
   UInt32                        _lastReadPtr;
 
+  // Interrupt-driven position updates (XenonAudioInterrupt personality key). The polling timer
+  // stays the default and the fallback.
+  IOFilterInterruptEventSource  *_intEventSource;
+  bool                          _useInterrupt;
+  volatile bool                 _intStorm;
+  bool                          _intEnabled;
+  UInt32                        _intWindowStart;
+  UInt32                        _intWindowCount;
+  UInt32                        _ticksPerSecond;
+  volatile UInt32               _intCount;
+
   // Descriptor and sample buffers.
   UInt32                      *_descBuffer;
   IOBufferMemoryDescriptor    *_descBufferDesc;
@@ -71,6 +83,11 @@ private:
 
   // Internal functions.
   void handleTimer(IOTimerEventSource *sender);
+  bool filterInterrupt(IOFilterInterruptEventSource *source);
+  void handleInterrupt(IOInterruptEventSource *source, int count);
+  void updatePosition(bool keepAllValid);
+  bool setupInterrupt(IOService *provider);
+  void startTimer(void);
   bool setAudioMute(bool mute);
   bool allocateSampleDescriptors(void);
   void setupSampleDescriptors(void);
