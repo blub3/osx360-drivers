@@ -9,6 +9,7 @@
 #include "adreno_pm4.xml.h"
 #include "adreno_common.xml.h"
 #include "a2xx.xml.h"
+#include <libkern/libkern.h>
 
 static const float sTexCoords[] = {
   0.0f, 1.0f,
@@ -91,46 +92,187 @@ void XenosController::initME(void) {
   writeRing(0x00000000);
 }
 
-IOReturn XenosController::initHardware(void) {
-  IOPhysicalAddress ringBufferPhys;
-  IOByteCount       segLength;
+// The halt write and both reset edges must reach the device before its next phase.
+static const UInt32 kCpMeHalt = 1U << 28;
+static const UInt32 kCpMeRunControl = 0x0000ffff;
+static const UInt32 kCpRingControl = 0x0802000c;
+static const UInt32 kCpAllowReadPtrWrite = 1U << 31;
+static const UInt32 kStartupAttempts = 3;
+static const UInt32 kDrainPolls = 5000;
 
-  _ringBufferDesc = IOBufferMemoryDescriptor::withOptions(kIOMemoryPhysicallyContiguous, kXenosRingbufferLength * 4, kXenosRingbufferLength * 4);
-  if (_ringBufferDesc == NULL) {
-    return kIOReturnNoResources;
+void XenosController::haltCommandProcessor(void) {
+  writeReg32(kXenosRegCpMeControl, kCpMeHalt | kCpMeRunControl);
+  (void)readReg32(kXenosRegCpMeControl);
+  IODelay(2000);
+}
+
+bool XenosController::ringDrained(void) {
+  return readReg32(kXenosRegCpRbReadPtr) == _ringBufferWritePtr &&
+         readReg32(kXenosRegCpRbWritePtr) == _ringBufferWritePtr;
+}
+
+bool XenosController::waitForRingDrain(void) {
+  for (UInt32 i = 0; i < kDrainPolls; ++i) {
+    if (ringDrained())
+      return true;
+    IODelay(10);
   }
-  _ringBuffer = (volatile UInt8*) _ringBufferDesc->getBytesNoCopy();
-  ringBufferPhys = _ringBufferDesc->getPhysicalSegment(0, &segLength);
-  _ringBufferWritePtr = 0;
+  return false;
+}
 
-  XEDBGLOG("Ring buffer at 0x%X (%p)", ringBufferPhys, _ringBuffer);
-
-  // Configure firmware.
-  writeReg32(kXenosRegCpMeControl, (1 << 28));
-  loadFirmware();
-
-  writeReg32(kXenosRegCpIntAck, 0xFFFF);
-  writeReg32(kXenosRegCpDebug, 0);
-
-  // Reset command processor.
+const char *XenosController::startCommandProcessor(IOPhysicalAddress ringBufferPhys) {
+  haltCommandProcessor();
   writeReg32(kXenosRegRbbmSoftReset, 1);
+  (void)readReg32(kXenosRegRbbmSoftReset);
   IODelay(1000);
   writeReg32(kXenosRegRbbmSoftReset, 0);
+  (void)readReg32(kXenosRegRbbmSoftReset);
+  IODelay(1000);
 
-  // Setup ring buffer.
-  writeReg32(kXenosRegCpRbControl, readReg32(kXenosRegCpRbControl) | 0x80000000);
+  haltCommandProcessor();
+  if (!(readReg32(kXenosRegCpMeControl) & kCpMeHalt))
+    return "halt";
+
+  // Disable pointer writeback from the preceding boot and reset both MMIO pointers.
+  _ringBufferWritePtr = 0;
+  writeReg32(kXenosRegCpRbControl, kCpRingControl | kCpAllowReadPtrWrite);
+  writeReg32(kXenosRegCpRbReadPtrWrite, 0);
   writeReg32(kXenosRegCpRbWritePtr, 0);
-  writeReg32(kXenosRegCpRbControl, readReg32(kXenosRegCpRbControl) & ~0x80000000);
-
-  writeReg32(kXenosRegCpRbControl, 0xC | 0x8020000);
+  writeReg32(kXenosRegCpRbControl, kCpRingControl);
   writeReg32(kXenosRegCpRbBase, ringBufferPhys);
+  writeReg32(kXenosRegCpRbWritePtrDelay, 0x10);
+  writeReg32(kXenosRegScratchUMask, 0);
+  writeReg32(kXenosRegScratchAddr, 0);
+  writeReg32(kXenosRegCpIntControl, 0);
+  writeReg32(kXenosRegCpIntAck, 0xffff);
+  writeReg32(kXenosRegCpDebug, 0);
+  writeReg32(kXenosRegCpSnoopControl, 0x1a);
+  if (!ringDrained())
+    return "reset-pointers";
+  if (loadFirmware() != kIOReturnSuccess)
+    return "firmware";
 
-  writeReg32(kXenosRegCpMeControl, 0);
+  writeReg32(kXenosRegCpMeControl, kCpMeRunControl);
+  if (readReg32(kXenosRegCpMeControl) & kCpMeHalt)
+    return "start";
+  IODelay(1000);
 
   initME();
   syncRingBuffer();
+  if (!waitForRingDrain())
+    return "me-init";
+  if (!runMarkerTest("command-processor"))
+    return "command-processor-marker";
 
-  return kIOReturnSuccess;
+  initFramebuffer();
+  syncRingBuffer();
+  if (!waitForRingDrain())
+    return "framebuffer-init";
+  if (!runMarkerTest("framebuffer"))
+    return "framebuffer-marker";
+  return NULL;
+}
+
+static const IOByteCount kCommandRingBytes = kXenosRingbufferLength * sizeof(UInt32);
+static const IOPhysicalAddress kCommandRingLimit = 0x20000000 - 2 * kXenosFramebufferLength;
+
+static bool ringPagesContiguous(IOBufferMemoryDescriptor *buffer, IOByteCount start,
+                                IOPhysicalAddress physical) {
+  for (IOByteCount page = 0; page < kCommandRingBytes; page += PAGE_SIZE) {
+    IOByteCount length = 0;
+    if (buffer->getPhysicalSegment(start + page, &length) != physical + page || length < PAGE_SIZE)
+      return false;
+  }
+  return true;
+}
+
+IOPhysicalAddress XenosController::allocateCommandRing(void) {
+  for (UInt32 attempt = 0; attempt < 2; ++attempt) {
+    const bool alignedWindow = attempt != 0;
+    // Tiger aligns the virtual mapping. Allow room to align the physical base ourselves.
+    const IOByteCount capacity = alignedWindow ? 2 * kCommandRingBytes - PAGE_SIZE : kCommandRingBytes;
+    const IOByteCount alignment = alignedWindow ? PAGE_SIZE : kCommandRingBytes;
+    const char *layout = alignedWindow ? "aligned-window" : "direct";
+    IOBufferMemoryDescriptor *buffer = IOBufferMemoryDescriptor::withOptions(
+        kIOMemoryPhysicallyContiguous, capacity, alignment);
+    IOByteCount firstSegment = 0;
+    volatile UInt8 *bytes = buffer
+        ? static_cast<volatile UInt8 *>(buffer->getBytesNoCopy()) : NULL;
+    const IOPhysicalAddress base = bytes ? buffer->getPhysicalSegment(0, &firstSegment) : 0;
+    const IOByteCount offset = alignedWindow ? (-base & (kCommandRingBytes - 1)) : 0;
+    const IOPhysicalAddress physical = base + offset;
+    const char *failure = NULL;
+    if (!buffer)
+      failure = "allocation";
+    else if (!bytes)
+      failure = "virtual-address";
+    else if (!base)
+      failure = "physical-address";
+    else if (base & (alignment - 1))
+      failure = "physical-alignment";
+    else if (capacity - offset < kCommandRingBytes)
+      failure = "capacity";
+    else if (physical < base || physical > kCommandRingLimit - kCommandRingBytes)
+      failure = "gpu-address-range";
+
+    if (!alignedWindow) {
+      // Record the same first failing check as d46, even if the new per-page check can recover.
+      const char *original = failure;
+      if (base && !(base & (kCommandRingBytes - 1)) && firstSegment < kCommandRingBytes)
+        original = "first-segment-length";
+      setProperty("XenosRingBufferOriginalCheck", original ? original : "pass");
+      IOLog("XenosRingBuffer: original=%s physical=0x%08lx first_segment=%lu\n",
+            original ? original : "pass", base, firstSegment);
+    }
+    if (!failure && !ringPagesContiguous(buffer, offset, physical))
+      failure = "physical-contiguity";
+
+    if (!failure) {
+      _ringBufferDesc = buffer;
+      _ringBuffer = bytes + offset;
+      setProperty("XenosRingBufferLayout", layout);
+      setProperty("XenosRingBufferPhysical", physical, 32);
+      setProperty("XenosRingBufferOffset", offset, 32);
+      IOLog("XenosRingBuffer: PASS layout=%s physical=0x%08lx offset=%lu bytes=%lu\n",
+            layout, physical, offset, kCommandRingBytes);
+      return physical;
+    }
+    IOLog("XenosRingBuffer: FAIL layout=%s check=%s physical=0x%08lx first_segment=%lu "
+          "offset=%lu capacity=%lu\n", layout, failure, base, firstSegment, offset, capacity);
+    if (buffer)
+      buffer->release();
+    if (alignedWindow)
+      setProperty("XenosRingBufferFailure", failure);
+  }
+  return 0;
+}
+
+IOReturn XenosController::initHardware(void) {
+  const IOPhysicalAddress physical = allocateCommandRing();
+  if (!physical)
+    return kIOReturnNoResources;
+
+  bzero(const_cast<UInt8 *>(_ringBuffer), kCommandRingBytes);
+  syncData(_ringBuffer, kCommandRingBytes);
+  for (UInt32 attempt = 1; attempt <= kStartupAttempts; ++attempt) {
+    setProperty("XenosRingStartupAttempts", attempt, 32);
+    const char *failure = startCommandProcessor(physical);
+    if (!failure) {
+      _markerScratch->release();
+      _markerScratch = NULL;
+      IOLog("XenosRingStartup: PASS attempt=%lu rptr=0x%04lx wptr=0x%04lx\n",
+            attempt, readReg32(kXenosRegCpRbReadPtr), readReg32(kXenosRegCpRbWritePtr));
+      return kIOReturnSuccess;
+    }
+    IOLog("XenosRingStartup: FAIL attempt=%lu phase=%s rptr=0x%04lx wptr=0x%04lx "
+          "me=0x%08lx status=0x%08lx interrupt=0x%08lx\n",
+          attempt, failure, readReg32(kXenosRegCpRbReadPtr), readReg32(kXenosRegCpRbWritePtr),
+          readReg32(kXenosRegCpMeStatus), readReg32(kXenosRegRbbmStatus),
+          readReg32(kXenosRegCpIntStatus));
+  }
+  // Keep the ring and scratch backing wired if a device write could still be outstanding.
+  haltCommandProcessor();
+  return kIOReturnIOError;
 }
 
 void XenosController::initFramebuffer(void) {
@@ -181,15 +323,7 @@ void XenosController::initFramebuffer(void) {
   writeRing(CP_REG(REG_A2XX_PA_SC_WINDOW_OFFSET));
   writeRing(0x00000000);
 
-  float halfWidth = _fbWidth * 0.5f;
-  float halfHeight = _fbHeight * 0.5f;
-
-  writeRingPacket3(CP_SET_CONSTANT, 5);
-  writeRing(CP_REG(REG_A2XX_PA_CL_VPORT_XSCALE));
-  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XSCALE */
-  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XOFFSET */
-  writeRing(fui(-halfHeight));	/* PA_CL_VPORT_YSCALE */
-  writeRing(fui(halfHeight));	/* PA_CL_VPORT_YOFFSET */
+  setGpuViewport(_fbWidth, _fbHeight);
 
   writeRingPacket3(CP_SET_CONSTANT, 2);
   writeRing(CP_REG(REG_A2XX_PA_CL_CLIP_CNTL));
@@ -220,15 +354,7 @@ void XenosController::initFramebuffer(void) {
     A2XX_PA_SU_SC_MODE_CNTL_FRONT_PTYPE(PC_DRAW_TRIANGLES) |
     A2XX_PA_SU_SC_MODE_CNTL_BACK_PTYPE(PC_DRAW_TRIANGLES));
 
-  writeRingPacket3(CP_SET_CONSTANT, 3);
-  writeRing(CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
-  writeRing(xy32(0,0));                 /* PA_SC_WINDOW_SCISSOR_TL */
-  writeRing(xy32(_fbWidth, _fbHeight)); /* PA_SC_WINDOW_SCISSOR_BR */
-
-  writeRingPacket3(CP_SET_CONSTANT, 3);
-  writeRing(CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_TL));
-  writeRing(xy32(0,0));                 /* PA_SC_SCREEN_SCISSOR_TL */
-  writeRing(xy32(_fbWidth, _fbHeight)); /* PA_SC_SCREEN_SCISSOR_BR */
+  setGpuScissors(_fbWidth, _fbHeight);
 
   writeRingPacket3(CP_SET_CONSTANT, 2);
   writeRing(CP_REG(REG_A2XX_RB_BLEND_CONTROL));
@@ -280,43 +406,108 @@ void XenosController::initFramebuffer(void) {
   writeRing((k_8_8_8_8 << 16) );    /* RB_COLOR_INFO */
   writeRing(A2XX_RB_DEPTH_INFO_DEPTH_BASE(ALIGN(_fbWidth, 32) * ALIGN(_fbHeight, 32))); /* RB_DEPTH_INFO */
 
-  writeRingPacket3(CP_SET_CONSTANT, 7);
-  writeRing((0x1 << 16) | 0x78); // type = fetch (base is 0x4800, val is offset)
-  writeRing(_triagPhys | 3); // kVertex
-  writeRing(0x2 | 48);			 // 12 dwords | k8in32 endian
-  writeRing(_texCoordsPhys | 3); 	 // kVertex
-  writeRing(0x2 | 32);			 // 12 dwords | k8in32 endian
-  writeRing(0x00000000);
-  writeRing(0x00000000);
+  setGpuDisplayVertices();
 
+  setGpuTexture(_fbPhysAddr, _fbWidth, _fbHeight, SQ_TEX_FILTER_BILINEAR, false);
+
+  setResolveTarget(_gpuPhysAddr, _fbWidth, _fbHeight, kResolveConvert, kResolveDisplayFormat);
+
+  setGpuDisplayShaders();
+}
+
+void XenosController::setGpuViewport(UInt32 width, UInt32 height) {
+  float halfWidth = width * 0.5f;
+  float halfHeight = height * 0.5f;
+
+  writeRingPacket3(CP_SET_CONSTANT, 5);
+  writeRing(CP_REG(REG_A2XX_PA_CL_VPORT_XSCALE));
+  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XSCALE */
+  writeRing(fui(halfWidth));	/* PA_CL_VPORT_XOFFSET */
+  writeRing(fui(-halfHeight));	/* PA_CL_VPORT_YSCALE */
+  writeRing(fui(halfHeight));	/* PA_CL_VPORT_YOFFSET */
+}
+
+void XenosController::setGpuWindowScissor(UInt32 left, UInt32 top, UInt32 right, UInt32 bottom,
+                                           bool disableOffset) {
+  writeRingPacket3(CP_SET_CONSTANT, 3);
+  writeRing(CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
+  const UInt32 offsetFlag = disableOffset ? A2XX_PA_SC_WINDOW_SCISSOR_TL_WINDOW_OFFSET_DISABLE : 0;
+  writeRing(xy32(left, top) | offsetFlag);
+  writeRing(xy32(right, bottom));
+}
+
+void XenosController::setGpuScissors(UInt32 width, UInt32 height) {
+  setGpuWindowScissor(0, 0, width, height);
+  writeRingPacket3(CP_SET_CONSTANT, 3);
+  writeRing(CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_TL));
+  writeRing(xy32(0,0));                 /* PA_SC_SCREEN_SCISSOR_TL */
+  writeRing(xy32(width, height)); /* PA_SC_SCREEN_SCISSOR_BR */
+}
+
+void XenosController::setResolveTarget(UInt32 address, UInt32 width, UInt32 height,
+                                       UInt32 control, UInt32 format) {
+  writeRingPacket3(CP_SET_CONSTANT, 5);
+  writeRing(CP_REG(REG_A2XX_RB_COPY_CONTROL));
+  writeRing(control);
+  writeRing(address);
+  writeRing(xy32(width, height));
+  writeRing(format);
+}
+
+void XenosController::setGpuTexture(UInt32 address, UInt32 width, UInt32 height,
+                                      enum sq_tex_filter filter, bool tiled, UInt32 mipAddress,
+                                      enum sq_tex_filter mipFilter, UInt32 lodBiasSteps, UInt32 anisoFilter) {
   writeRingPacket3(CP_SET_CONSTANT, 7);
   writeRing(0x00010000);
   writeRing(
-    A2XX_SQ_TEX_0_PITCH(ALIGN(_fbWidth, 32)) |
+    (tiled ? 1U << 31 : 0) | // Xbox 360 uses bit 31 to select tiled storage.
+    A2XX_SQ_TEX_0_PITCH(ALIGN(width, 32)) |
     A2XX_SQ_TEX_0_CLAMP_X(SQ_TEX_WRAP) |
     A2XX_SQ_TEX_0_CLAMP_Y(SQ_TEX_WRAP));
-  writeRing(_fbPhysAddr | FMT_8_8_8_8);
+  writeRing(address | FMT_8_8_8_8);
   writeRing(
-    A2XX_SQ_TEX_2_HEIGHT(_fbHeight - 1) |
-    A2XX_SQ_TEX_2_WIDTH(_fbWidth - 1));
+    A2XX_SQ_TEX_2_HEIGHT(height - 1) |
+    A2XX_SQ_TEX_2_WIDTH(width - 1));
   writeRing(
     A2XX_SQ_TEX_3_SWIZ_X(SQ_TEX_Y) |
     A2XX_SQ_TEX_3_SWIZ_Y(SQ_TEX_Z) |
     A2XX_SQ_TEX_3_SWIZ_Z(SQ_TEX_W) |
     A2XX_SQ_TEX_3_SWIZ_W(SQ_TEX_X) |
-    A2XX_SQ_TEX_3_XY_MAG_FILTER(SQ_TEX_FILTER_BILINEAR) |
-    A2XX_SQ_TEX_3_XY_MIN_FILTER(SQ_TEX_FILTER_BILINEAR));
-  writeRing(0x00000000);
-  writeRing(0x00000200);
+    A2XX_SQ_TEX_3_XY_MAG_FILTER(filter) |
+    A2XX_SQ_TEX_3_XY_MIN_FILTER(filter) |
+    (UInt32(mipFilter) << 23) |
+    (anisoFilter << 25));
+  // Word 4 selects levels 0..1 and encodes LOD bias in units of 1/32.
+  // Word 5 selects 2D and the packed mip tail.
+  writeRing(mipAddress ? ((1U << 6) | (lodBiasSteps << 12)) : 0);
+  writeRing(0x00000200 | (mipAddress ? (mipAddress | (1U << 11)) : 0));
+}
 
-  writeRingPacket3(CP_SET_CONSTANT, 5);
-  writeRing(CP_REG(REG_A2XX_RB_COPY_CONTROL));
-  writeRing(0x00100000);                  /* RB_COPY_CONTROL */
-  writeRing(_gpuPhysAddr);                /* RB_COPY_DEST_BASE */
-  writeRing(xy32(_fbWidth, _fbHeight));   /* RB_COPY_DEST_PITCH */
-  writeRing(A2XX_RB_COPY_DEST_INFO_FORMAT(COLORX_S8_8_8_8) |
-    A2XX_RB_COPY_DEST_INFO_SWAP(1));      /* RB_COPY_DEST_INFO */
+void XenosController::setGpuDisplayVertices() {
+  setGpuVertices(_triagPhys, sizeof(sTriag), _texCoordsPhys, sizeof(sTexCoords));
+}
 
+void XenosController::setGpuVertices(UInt32 positionAddress, UInt32 positionBytes,
+                                       UInt32 uvAddress, UInt32 uvBytes) {
+  // The Xenos SQ latches all three fetch pairs as a six-dword group.
+  // Updating the two position dwords alone can disrupt later draws and resolves.
+  writeRingPacket3(CP_SET_CONSTANT, 7);
+  writeRing((1 << 16) | 0x78); // Fetch bank, group containing position and UVs.
+  writeRing(positionAddress | 3);
+  writeRing(positionBytes | 2); // Size in dwords at bit 2, with 8-in-32 byte order.
+  writeRing(uvAddress | 3);
+  writeRing(uvBytes | 2);
+  writeRing(0);
+  writeRing(0);
+}
+
+void XenosController::setGpuEdRamMode(enum a2xx_rb_edram_mode mode) {
+  writeRingPacket3(CP_SET_CONSTANT, 2);
+  writeRing(CP_REG(REG_A2XX_RB_MODECONTROL));
+  writeRing(A2XX_RB_MODECONTROL_EDRAM_MODE(mode));
+}
+
+void XenosController::setGpuDisplayShaders() {
   writeRingPacket3(CP_IM_LOAD_IMMEDIATE, 2 + 21);
   writeRing(0x00000000);
   writeRing(0x00000015);
@@ -332,11 +523,17 @@ void XenosController::initFramebuffer(void) {
   writeRing(CP_REG(REG_A2XX_SQ_PROGRAM_CNTL));
   writeRing(0x10030002);
 
+  setGpuTexturePixelShader(false);
+}
+
+void XenosController::setGpuTexturePixelShader(bool explicit2D) {
   writeRingPacket3(CP_IM_LOAD_IMMEDIATE, 2 + 12);
   writeRing(0x00000001);
   writeRing(0x0000000c);
   writeRing(0x00031002); writeRing(0x00001000); writeRing(0xc4000000);
   writeRing(0x00001003); writeRing(0x00002000); writeRing(0x00000000);
-  writeRing(0x10000001); writeRing(0x1ffff688); writeRing(0x00000000);
+  // Fetch slot 0 passes normalized UVs and takes its filters from the sampler.
+  const UInt32 fetchDimension2D = 1U << 14;
+  writeRing(0x10000001); writeRing(0x1ffff688); writeRing(explicit2D ? fetchDimension2D : 0);
   writeRing(0x140f8000); writeRing(0x00000000); writeRing(0xe2000000);
 }
