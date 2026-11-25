@@ -82,8 +82,13 @@ Pass criteria, fixed before the boot:
 | --- | --- |
 | 1. Boot | Pass. Desktop with autologin; the owner confirmed it is very slow, as expected. SSH works. Seven Xenon kexts, no XenonCoreGraphics. `hw.ncpu` 6, `hw.availcpu` 1. No panic. |
 | 2. XenonPE log | Pass. "GPU heap 0x8200000-0xFFFFFFF (126 MiB) published", "Panic screen armed: font 0x36e51c, record mapped at 0x8100000" (the kernel's `_iso_font` address), "No panic record from before this boot", "GPU vector 0x58 is dispatched to its driver on thread 0". |
-| 3. Regression | Ethernet: pass. 10 MiB with matching checksums both ways, 7.0 s up and 3.5 s down over SSH, slower than `main6` because of the CPU refresh. `say` returned 0; the owner's confirmation of the audio is pending. Idle CPU load is about 24% system time, from the CPU framebuffer refresh. |
+| 3. Regression | Ethernet: pass. 10 MiB with matching checksums both ways, 7.0 s up and 3.5 s down over SSH, slower than `main6` because of the CPU refresh. **Audio: fail.** The owner heard the `say` check glitchy. Idle CPU load is about 24% system time, from the CPU framebuffer refresh. |
 | 4. Panic screen test | Pass. `XenonPanicScreenTest` from 22:35:14 to 22:35:23; the owner read the text, readable and the right way round, so the font's bit order is correct. Then the desktop came back and the probe unloaded. `kextload` returns before the probe's 8 s wait ends, so the probe can only be unloaded afterwards. |
 | 5. Deliberate panic | Not done (optional, needs the owner's OK and a power cycle). |
+
+**Audio cause:** a `say` played with the CPU refresh paused was clean; one with it running was glitchy. The owner heard both, at 22:38:12 and 22:38:23. The probe switch `XenosGPUProbeStopRefresh` pauses the refresh through `PlatformStopFB` and resumes it at unload. `XenonPE::refreshFramebuffer` converts the whole 1080p screen with interrupts disabled on CPU 0 every 500 ms; on `main6` the GPU does that copy. So audio is only good on `gpudev` while a GPU driver presents the desktop:
+
+- **Step 1.1:** `XenosGPU` takes over the presentation and stops the CPU refresh. Its pass criteria include a clean `say`.
+- **Fallback:** with the next XenonPlatform change that needs a boot anyway, let `refreshFramebuffer` enable interrupts between rows. Then `gpudev` without a GPU driver also has usable audio.
 
 **RAM after a shutdown:** the probe's heap pattern from before the shutdown was gone (0 of 516,096 words intact). A powered-off Xbox keeps nothing in RAM. A panic record could at most survive a restart, which is untested.

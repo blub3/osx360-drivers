@@ -7,7 +7,7 @@ Diagnostic kext for step 0.3 of the GPU plan (`docs/gpu-driver-plan.md`). It is 
 - Tries physically contiguous allocations of 16, 32, 64 and 128 MiB.
 - Tests the GPU heap in RAM Tiger does not manage, `0x08200000`–`0x0FFFFFFF` (XenonPE keeps its panic record at `0x08100000`): reports how much of an earlier pattern is still intact, writes a pattern to every 256th byte and checks it again at unload. It writes nowhere else and touches no GPU register.
 
-Two switches in the personality, both off: `XenosGPUProbePanicScreenTest` draws XenonPE's panic screen for 8 s without a panic (profile `gpudev`); `XenosGPUProbePanic` panics on purpose, which then needs the owner (power cycle, XeLL from Aurora).
+Three switches in the personality, all off: `XenosGPUProbeStopRefresh` pauses XenonPE's CPU framebuffer refresh while the probe is loaded (the screen freezes); `XenosGPUProbePanicScreenTest` draws XenonPE's panic screen for 8 s without a panic (profile `gpudev`); `XenosGPUProbePanic` panics on purpose, which then needs the owner (power cycle, XeLL from Aurora).
 
 Results go to `system.log` (`XenosGPUProbe: ...`). Results so far: `docs/gpu-memory-map.md`.
 

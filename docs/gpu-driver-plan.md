@@ -31,7 +31,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | `6808916` | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
-| 0.5 Development boot profile `gpudev` (R4) | done | Claude | this commit | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio confirmation pending; `docs/gpu-dev-profile.md` |
+| 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
 | 1.1 Load, unload, display handback | open | | | |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
@@ -66,6 +66,10 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: `gpudev` audio.
+  - **Result:** the owner heard the boot check glitchy. A `say` with XenonPE's CPU refresh paused (new probe switch `XenosGPUProbeStopRefresh`) was clean; one with it running was glitchy.
+  - **Cause:** `refreshFramebuffer` keeps interrupts off on CPU 0 while it converts the whole screen, every 500 ms.
+  - **Fix:** step 1.1 now requires `XenosGPU` to present the desktop with the GPU and stop the CPU refresh, with a clean `say` as a pass criterion. Fallback: make `refreshFramebuffer` enable interrupts between rows with the next XenonPlatform change that needs a boot.
 - 2026-11-25, Claude: step 0.5 done. `gpudev` booted at 22:31 as the stick's default.
   - **Checks:**
     - seven Xenon kexts, 6 CPUs registered and 1 running, desktop up (very slow, as expected), no panic;
@@ -220,7 +224,7 @@ All checks are R0 over SSH unless marked.
 
 ## Phase 1: kernel core (R2 for each change)
 
-1. Load and unload: take the GPU from XenonPE, bring the ring up with the checked reset from 0.0.5d46, and give the display back on unload. Pass: 20 load and unload cycles with the desktop up.
+1. Load and unload: take the GPU from XenonPE, bring the ring up with the checked reset from 0.0.5d46, present the desktop with the GPU (stop XenonPE's CPU refresh with `PlatformStopFB`), and give the display back on unload (`PlatformStartFB`). Pass: 20 load and unload cycles with the desktop up, and a clean `say` while `XenosGPU` is loaded (on `gpudev` the CPU refresh makes audio glitchy).
 2. Debug client, fence page and the GPU interrupt. Pass: a fence wait by interrupt, plus a VBlank count that matches 60 Hz.
 3. GPU memory manager. Pass: allocate, map, free and exit with memory still held, without leaks (heap counters back at their start values).
 4. Command submission with the address check, and the FIFO queue across clients. Pass: the existing clear, triangle and texture tests as user programs, run from several processes at once, fences in order.

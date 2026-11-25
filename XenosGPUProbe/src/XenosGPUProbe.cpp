@@ -29,6 +29,7 @@
 #include <IOKit/IOPlatformExpert.h>
 #include <IOKit/pci/IOPCIDevice.h>
 #include <pexpert/pexpert.h>
+#include "XenonCommon.hpp"
 #include <pexpert/ppc/boot.h>
 
 static const UInt32 kMiB = 1024 * 1024;
@@ -49,6 +50,7 @@ public:
 private:
   IOBufferMemoryDescriptor *_kept;
   IOMemoryMap *_holeMap;
+  bool _refreshStopped;
   void testHole(void);
   UInt32 checkHole(void);
   void listNeighbours(IOService *provider);
@@ -266,6 +268,7 @@ IOBufferMemoryDescriptor *XenosGPUProbe::tryContiguous(UInt32 mib) {
 bool XenosGPUProbe::start(IOService *provider) {
   _kept = NULL;
   _holeMap = NULL;
+  _refreshStopped = false;
   if (!super::start(provider)) {
     return false;
   }
@@ -310,6 +313,16 @@ bool XenosGPUProbe::start(IOService *provider) {
       end->release();
     }
   }
+  // Pause XenonPE's CPU framebuffer refresh while the probe is loaded (audio diagnosis on gpudev).
+  if (getProperty("XenosGPUProbeStopRefresh") == kOSBooleanTrue) {
+    const OSSymbol *stopFB = OSSymbol::withCString(kXenonFuncPlatformStopFB);
+    if (stopFB != NULL) {
+      IOReturn result = getPlatform()->callPlatformFunction(stopFB, true, NULL, NULL, NULL, NULL);
+      _refreshStopped = (result == kIOReturnSuccess);
+      IOLog("XenosGPUProbe: CPU framebuffer refresh paused: 0x%08lx\n", (unsigned long)result);
+      stopFB->release();
+    }
+  }
   if (getProperty("XenosGPUProbePanic") == kOSBooleanTrue) {
     panic("XenosGPUProbe: deliberate panic to test the XenonPE panic screen");
   }
@@ -319,6 +332,15 @@ bool XenosGPUProbe::start(IOService *provider) {
 }
 
 void XenosGPUProbe::stop(IOService *provider) {
+  if (_refreshStopped) {
+    const OSSymbol *startFB = OSSymbol::withCString(kXenonFuncPlatformStartFB);
+    if (startFB != NULL) {
+      getPlatform()->callPlatformFunction(startFB, true, NULL, NULL, NULL, NULL);
+      startFB->release();
+    }
+    _refreshStopped = false;
+    IOLog("XenosGPUProbe: CPU framebuffer refresh running again\n");
+  }
   if (_holeMap != NULL) {
     IOLog("XenosGPUProbe: hole check at unload: %lu mismatches\n", (unsigned long)checkHole());
     _holeMap->release();
