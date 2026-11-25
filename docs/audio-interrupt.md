@@ -86,6 +86,23 @@ Profile `audknb`: XenonAudio `e6f57823f78f913716225317f073f392` with `XenonAudio
 
 Interrupt mode stays off until both panics are understood and the storm guard masks the line in the bridge itself.
 
-## Next: restart the channel at every engine start (`audrst`, built, not booted)
+## Restart the channel at every engine start (`audrst`)
 
-XenonAudio `fbb13929625d5840146a16fee695f41b`: with `XenonAudioResetOnStart`, `startAudio` re-runs `setupSampleDescriptors` (clear the buffer, rewrite the descriptors, restart at descriptor 0) and resets the wrap detection. Profile `audrst`: timer mode only (no `XenonAudioInterrupt`), with the switches; `AUDRST.ELF` (MD5 `47d9255901ee5b14e2a08c0e3607a259`) + `XARS.MKE` (MD5 `7b1a05d5fde12b8450b8ab9975d83764`). Listening plan: reset on with the original position code, then reset on with the position fix; both should play the whole sentence once, without the repeated end.
+XenonAudio `fbb13929625d5840146a16fee695f41b`: with `XenonAudioResetOnStart`, `startAudio` re-runs `setupSampleDescriptors` (clear the buffer, rewrite the descriptors, restart at descriptor 0) and resets the wrap detection. Profile `audrst`: timer mode only (no `XenonAudioInterrupt`), with the switches; `AUDRST.ELF` (MD5 `47d9255901ee5b14e2a08c0e3607a259`) + `XARS.MKE` (MD5 `7b1a05d5fde12b8450b8ab9975d83764`). Listening plan (before the test): reset on with the original position code, then reset on with the position fix; both should play the whole sentence once, without the repeated end.
+
+### Listening rounds with `audrst` (2026-11-25)
+
+Booted with `audrst` (three CPUs, desktop running, no panic; `XenonAudioTestKnobs` and `XenonAudioResetOnStart` present), all rounds in timer mode with reset on start. `xenon-audio-set` `7e13ad9c025d0824a9313109f25a3d42` installed on the Xbox (the old build is kept as `xenon-audio-set.noreset`). Pass: the whole sentence heard once each time, no missing start, no repeated end, no crackles.
+
+| Round | Change | What the owner heard | Decrementer ticks/s, all CPUs, playing |
+| --- | --- | --- | --- |
+| C | Original position code | Still glitchy | 6,148 |
+| D | Position fix | Clean, no repeated end, but "The quick" missing at the start | 4,852 |
+| E | As D, 2 s of silence (`[[slnc 2000]]`) before each sentence | "The quick" still missing | |
+| F | As D, one `say`: "Hello." and the sentence twice | "Hello" and the first "The quick" missing; **the second sentence clear, clean and complete** | |
+
+**Reset on start plus the position fix fixes the buffer bugs:** the repeated end is gone, and continuous speech plays cleanly. Round C fails as expected: with the original code the reported position comes from the control register, which hardly changes, so the engine never erases behind the play head.
+
+**The start of a sound is still lost, about 0.5–1 s,** but only the first sound after silence. Round E rules out the engine start: the engine and the DMA had been playing zeros for 2 s, and the start was still lost. Round F shows that once sound is playing, everything after it is complete. This fits an HDMI sink (TV or receiver) that mutes on digital silence and unmutes late; not confirmed. Checks: whether other sources on the same TV input lose their start, and whether a tiny non-zero signal (±1 LSB dither) in silence keeps the sound.
+
+Next: make reset on start and the position fix the default in timer mode (without the test switches) and test that build.
