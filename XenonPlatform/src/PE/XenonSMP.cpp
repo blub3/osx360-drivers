@@ -180,6 +180,13 @@ UInt32 gXenonProcessorExitAddr = 0;
 #define kPerProcEntrySize   16
 #define kPerProcVaddr       0x0C
 
+// cpu_sleep saves the time base at per_proc + 0x1B8 (lower) and + 0x1BC (upper) before calling
+// quiesceCPU; cpu_init (0x93018) writes it back on the next start if it is not zero. That set
+// CPU 1's time base back by the time it was parked (2026-11-25). The time base keeps running in
+// hardware, so the saved value is cleared before parking.
+#define kPerProcSaveTBL     0x1B8
+#define kPerProcSaveTBU     0x1BC
+
 //
 // Parks the calling thread for good: sets SleepState in its per_proc word 0 (cpu_number and
 // cpu_flags), which releases cpu_exit_wait on the CPU that asked, then returns to the mailbox
@@ -226,5 +233,7 @@ void XenonSMPParkSelf(UInt32 logicalCPU) {
   }
 
   ml_set_interrupts_enabled(FALSE);
-  xenonSMPPark(perProc);
+  *reinterpret_cast<volatile UInt32*>(perProc + kPerProcSaveTBL) = 0;
+  *reinterpret_cast<volatile UInt32*>(perProc + kPerProcSaveTBU) = 0;
+  xenonSMPPark(perProc);   // starts with sync, so the stores are visible before SleepState
 }

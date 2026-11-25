@@ -10,7 +10,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Test `smppark` (built, not staged): stop CPU 1 and start it again, three rounds (both CPUs available again, CPU 1 takes no decrementer ticks while stopped, Ethernet checksums). Then measure Ethernet with CPU 1 running, stopped and running again in the same boot, unencrypted with `nc` and over SSH.
+1. Boot `smppk2` and repeat the stop/start test, checking that time no longer jumps after a restart. Then measure Ethernet with CPU 1 running, stopped and running again in the same boot, unencrypted with `nc` and over SSH.
 2. Fix the SMC lock hold (audit finding 2) in a separate build.
 3. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
 4. Then stage 1b (PIR 0, 2, 4). Its idle loop must not take issue slots from the other thread on the same core.
@@ -33,6 +33,23 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-25: `smppark` on hardware, CPU 1 stops and starts; time base fix `smppk2`
+
+**Boot stick:** the first `smppark` staging did not boot; only XeLL appeared. XeLL-Reloaded stores at most 64 boot entries (`MAX_KERNELS 64` in `source/lv2/kboot/kbootconf.h`) and does not check the count, so later entries overwrite memory after the table. `kboot.conf` already had 66 entries, and `smppark` made 67. With the owner's OK, the test entries `pmaprt2`, `pmapfast`, `pmaptrap` and `smpdef3` were removed from `kboot.conf` (their files stay on the stick), leaving 63. Keep `kboot.conf` at 64 entries or fewer.
+
+**Stop/start test** (three rounds, `IOCPUState` set with `sudo xenon-cpu-start 1 stop` and `sudo xenon-cpu-start 1`): **pass, 0 failures, with one bug.**
+
+| Check | Result |
+| --- | --- |
+| Stop | `processor_exit returned 0x0`, about 1 s. `hw.availcpu` 1, CPU 1 takes 0 decrementer ticks in 5 s |
+| One / two busy processes while stopped | 4.70–4.72 s / 9.37–9.44 s (one CPU) |
+| Start | `released PIR 2`, `processor_start returned ... state 3`, about 1 s. `hw.availcpu` 2, CPU 1 about 960–970 ticks in 5 s |
+| Two busy processes after start | 4.59–4.67 s |
+| Ethernet 10 MiB up and down | Checksums match in every round |
+| WindowServer, Finder, Dock; panic log | Running throughout; none |
+
+**Bug: each restart set CPU 1's time base back by the time it was stopped.** A busy loop measured −26.85 s after the first restart (32 s stopped) and −58.39 s after the second. Tiger's `cpu_sleep` saves the time base at `per_proc + 0x1B8`/`0x1BC`, and `cpu_init` (`0x93018`) writes it back on the next start when it is not zero. On Apple hardware the time base stops during sleep; on Xenon it keeps running. Fix (`smppk2`): clear the saved value before parking. XenonPlatform MD5 `25f0e0441e5b606eac7647c976a0bd6f`, imports identical to `pmapfast`. Profile `smppk2`: `SMPPK2.ELF` (MD5 `0a0ba8982c3a1489abcdfedb5471f7a6`) + `XSP2.MKE` (MD5 `8f64b913723e910b0816d69f58d4e104`). Not yet booted.
 
 ## 2026-11-25: `smppark` build, CPU 1 can be stopped again (not booted)
 
