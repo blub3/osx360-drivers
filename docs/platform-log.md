@@ -10,17 +10,17 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. The owner's check of audio, mouse and keyboard with three CPUs (the two-hour uptime test with three CPUs passed).
+1. Two-hour uptime test with six CPUs (`smp6b`); the two-hour test with three CPUs passed.
 2. Fix the SMC lock hold (audit finding 2) in a separate build.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
-5. Stage 2 (all six threads) works with `smp6a` (below). Next: two-hour uptime test with six CPUs; the low-priority parking loop for the normal single-CPU boot.
+5. Stage 2 (all six threads) works with `smp6b` (below), with waiting and idle threads at low priority. Open: the low-priority parking loop for the normal single-CPU boot (one loop 4.58 s → about 2.4 s), and Tiger's scheduler, which does not know which CPUs share a core.
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The boot stick defaults to `smp3a`; its rollback selects `smppk2`. `smp1c` and `pmapdef` are still on the stick. Old test profiles were moved off the stick to the owner's PC (`stick-archive/2026-11-25`). Keep `kboot.conf` at 64 entries or fewer (XeLL limit). SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
+The boot stick defaults to `smp6b`; its rollback (`kboot.conf.before-smp6b.bak`) selects `smp6a`, and the `audfix` entry stays as a three-CPU fallback. `kboot.conf` has 64 entries, the XeLL limit: replace an entry for the next profile. `smp1c` and `pmapdef` are still on the stick. Old test profiles were moved off the stick to the owner's PC (`stick-archive/2026-11-25`). Keep `kboot.conf` at 64 entries or fewer (XeLL limit). SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -69,6 +69,8 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 | Stop and start each of CPUs 5–1 | `hw.availcpu` 5 and 0 ticks while stopped, 6 and ticks again after start, clocks 0–1 s apart |
 | Ethernet, desktop, panic log | Checksums match, WindowServer/Finder/Dock running, none |
 | Three `say` runs | 3.90, 3.19, 3.19 s |
+
+- **Listening (owner), six CPUs running:** the `audfix` round (the sentence three times with 1 s gaps, then "Hello." and the sentence twice in one `say`) sounded the same as on `audfix`: clean, no repeated end, only the start after silence cut. The longer cut in the `smp6a` test runs came from their longer gaps (about 7 s between runs), not from SMP.
 
 ## 2026-11-25: boot spinner over the desktop after a late CPU start; fix `smp6b` (build)
 
