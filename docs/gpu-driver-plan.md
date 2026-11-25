@@ -34,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load, unload, display handback | in progress | Claude | `520626e` | Presenting stalls the GPU in the resolve of frame 71–73 at any rate, ring in Tiger memory or the heap; only a reboot clears it; see log |
+| 1.1 Load, unload, display handback | in progress | Claude | `560c59e` | First session after boot works (4,127 frames, clean unload); a second session stalls at frame 71; see log |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -67,6 +67,14 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 1.1, build `560c59e` (3D block reset only on a busy pipeline), after a fresh boot.
+  - **First session: pass.** The reset was skipped (`RBBM_STATUS` `0x00040110`), both markers passed, **4,127 frames in 62 s** (about 66 per second) with no busy tick, and the unload drained the ring, halted the CP and restarted the CPU refresh. **The libxenon 3D reset without libxenon's `Xe_pInit1` register set was what made every run since 23:01 stall at frame 73.**
+  - **Second session (cycle 1 of 20): fail.** It stalled after 71 frames (`rptr=0x0410`, `RBBM_STATUS=0xF3250110`), although the pipeline was idle at start and no 3D reset ran. This matches the first build's reload failure at 22:48. So after one complete session, the next stalls at about frame 71.
+  - **Next candidate:** libxenon's `Xe_pSetup`, `Xe_pResetCP` and `Xe_pMasterInit`, which XeLL runs at boot, write registers neither XenonCoreGraphics nor `XenosGPU` writes:
+    - around the CP: `0x07D0` = `0xFFFF`, `0x07F0` = 0, `0x0774` = 0, `0x0770` = 0, `0x3214` = 7, `0x3294` = 1, `0x3408` = `0x800`, `0x07EC` = `0x1A`;
+    - after the CP start: `0x07D4` = 0 then 1, `0x2054` = `0x1E`, `0x2154` = `0x1E`, the EDRAM `0x3C10` = `0xD`, `0x3C40` = `0x17` with `0x3C48`/`0x3C4C`, then `0x3C40` = `0x1017` and `0x87E4` = `0x17`.
+
+    If the CP reset clears some of them, a first session still has XeLL's values and a second does not. Next build: the same writes on every start.
 - 2026-11-25, Claude: step 1.1, GUI restart test.
   - **Result:** fresh boot, `xbox-gui.sh restart` (desktop after 20.8 s), then `XenosGPU` for 60 s: stall after 73 frames again (`rptr=0x0428`). The GUI restart is not the difference.
   - **New lead:** the only long run (22:47) was the first build, which reset only the CP. Every build since 23:01 resets the 3D blocks at start (libxenon values) **without** libxenon's following `Xe_pInit1` register set (`0x01A8` = 0, `0x0E6C` = `0xC0F0000`, `0x3400` = `0x40401` then `0x40400`, `0x3300` = `0x3A22`, `0x340C` = `0x1003F1F`, `0x00F4` = `0x1E`). Every one of those runs stalled at frame 71–73, even on a fresh boot.
