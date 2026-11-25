@@ -27,7 +27,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | Step | State | By | Commit | Result |
 | --- | --- | --- | --- | --- |
 | 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | `ee56b82` | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
-| 0.2 WindowServer restart over SSH | open | | | |
+| 0.2 WindowServer restart over SSH | in progress | Claude | | Not reliable yet; reboot over SSH works unattended (about 2 min). See log |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | open | | | |
 | 0.4 Panic path, panic reboot, GPU interrupt line | open | | | |
 | 0.5 Development boot profile `gpudev` (R4) | open | | | |
@@ -65,6 +65,17 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 0.2 in progress, stopped here.
+  - **How Tiger runs the GUI:** WindowServer runs as user `windowserver`, child of `launchd`, and is a mach_init on-demand service (`com.apple.windowserver`, `/etc/mach_init.d/WindowServer.plist`). loginwindow comes from the console line in `/etc/ttys`. Autologin is on (user 501).
+  - **`sudo killall loginwindow`:** WindowServer exits within 1 s. The new loginwindow (root) waits forever in `CGSServerPort` → `_CGSGetCoreGraphicsServerVersion` (`sample`): the on-demand restart does not happen.
+  - **WindowServer started by hand:** `sudo nohup …/WindowServer -daemon &` brought the desktop back in 6.2 s. The new WindowServer loaded `XenosWinOverlap.plugin` again and completed its startup fences, so plug-ins are re-read at each WindowServer start.
+  - **Not repeatable:** the same sequence in `tools/host/xbox-gui.sh restart` worked once (7.7 s) and failed on the next run. loginwindow then aborts in a loop (`Abort trap`, launchd pauses 30 s), and a hand-started WindowServer came up and exited again without a crash report before any loginwindow connected. Starting it through `/usr/libexec/StartupItemContext` failed on the first run: no WindowServer process.
+  - **Recovery:** each failure was recovered with `sudo reboot` over SSH, desktop back in 155 s and 112 s, no owner needed. Afterwards: 10 MiB Ethernet round trip OK, 6 CPUs registered and 1 running, no panic, `say` returned 0.
+  - **Also seen:** in a normal session WindowServer has no GLEngine or GLD loaded (`vmmap`), only `XenosWinOverlap`.
+  - **Next ideas:**
+    - re-register the on-demand service after WindowServer exits (`/usr/libexec/register_mach_bootstrap_servers /etc/mach_init.d`, in the system bootstrap context) and let loginwindow start WindowServer itself;
+    - or stop the GUI with the `/etc/ttys` console line off before ending WindowServer.
+  - **Fallback:** if no reliable WindowServer restart is found, WindowServer-side changes use a reboot over SSH (R3, about 2 min, unattended), still far cheaper than a stick change.
 - 2026-11-25, Claude: step 0.1 done, read from the installed Tiger binaries (no hardware change). Results in `docs/gpu-tiger-gl-stack.md`. Main finding: CoreGraphics enables the GL compositor only if the first renderer record reports at least `GLCompositorMinimumVRAM` (16 MB) at `+0x30`. Every Xenos GLD so far copies Apple's software renderer record, which reports 0. The AGP requirement (`GLCompositorRequiredClasses` = `IOAGPDevice`) is bypassed by the non-zero `AccelCaps` XenonCoreGraphics already sets. All 63 GLD functions and the 56-byte renderer record layout are listed. Tools: `tools/gpu/macho.py`, `tools/gpu/annotate-ppc.py`. Also on that boot: `main6` booted for the first time (6 CPUs registered, 1 running, WindowServer/Finder/Dock up, all eight kexts loaded, no panic), a 10 MiB Ethernet round trip matched its checksums both ways, and the owner heard the `say` audio check clearly. Next: step 0.2. The smallest Quartz Extreme test, a GLD that changes only the VRAM field, needs only the WindowServer restart from 0.2.
 - 2026-11-25, Claude: plan written from `main` at `9f0c40b`. No step started. The Xbox is shut down; its stick boots `main6` (not yet booted). Phase 0 needs the Xbox on.
 
