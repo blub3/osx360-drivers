@@ -215,6 +215,18 @@ IOReturn XenonCPU::setProperties(OSObject *properties) {
     XESYSLOG("Starting deferred CPU PIR %u", _pir);
     processor_start(machProcessor);
     XESYSLOG("processor_start returned for PIR %u, state %lu", _pir, getCPUState());
+
+    //
+    // The started CPU installs its interrupt handler through Tiger's ml_install_interrupt_handler,
+    // which ends with initialize_screen(kPEAcquireScreen). After login that takes the screen back
+    // from WindowServer, and the boot spinner reappears over the desktop a few seconds later
+    // (measured 2026-11-25). processor_start returns after the CPU is up, before the spinner's
+    // first frame, so hand the screen straight back. This assumes WindowServer owns the screen,
+    // which is the case for every start through IOCPUState after boot.
+    //
+    if (getCPUState() == kIOCPUStateRunning) {
+      getPlatform()->setConsoleInfo(NULL, kPEReleaseScreen);
+    }
     return kIOReturnSuccess;
   }
   return result;

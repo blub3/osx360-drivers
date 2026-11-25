@@ -52,6 +52,18 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
 
+## 2026-11-25: boot spinner over the desktop after a late CPU start; fix `smp6b` (built, not booted)
+
+The owner saw the grey boot spinner turning below the screen centre after the `smp6a` test. Checked in a new `smp6a` boot with screenshots of the Xbox screen (`screencapture`, two frames 0.3 s apart): no spinner after login with one CPU; spinner present from the first CPU started through `IOCPUState` (CPU 2), and with each further start.
+
+Cause: Tiger's `ml_install_interrupt_handler` (`0xADE18`), which `IOCPUInterruptController::enableCPUInterrupt` calls when a CPU starts, ends with `initialize_screen(0, kPEAcquireScreen)` (tail call at `0xADE80`). At boot this does nothing visible. After login it takes the screen back from WindowServer and restarts the boot spinner after a delay. Every start or restart of a secondary after login does this, so the earlier stop/start tests had it too (display off).
+
+Fix: after `processor_start` returns in `XenonCPU::setProperties` (the only late start path), `setConsoleInfo(NULL, kPEReleaseScreen)` hands the screen back before the spinner's first frame. Starts during boot are unchanged. XenonPlatform `ae18c924137bd439f61310685f80f6f2`, no new kernel imports. Profile `smp6b`: as `smp6a` with this XenonPlatform; `SMP6B.ELF` (MD5 `1fb933136ace39663ff2ed8d551d01d3`) + `XS6B.MKE` (MD5 `fe65606e7fc0a9c20232bdc093f5dd2b`).
+
+Pass: no spinner in the screenshots after each CPU start and restart, plus the `smp6-test.sh` checks.
+
+Audio during the `smp6a` test: the owner heard "test after the restart", then "restart" twice. These are the three separate `say` runs at the end of the test, each losing its start (about 1.5 s for runs 2 and 3, more than the 0.5–1 s with `audfix`); the end did not repeat. Not yet explained; a listening round on `smp6b` with the `audfix` sentences will compare.
+
 ## 2026-11-25: SMP stage 2 works, six CPUs (`smp6a`)
 
 **Result: pass, 0 failures.** Boot log: `release routine installed, ... waiting threads at low priority`, `idle loop at low thread priority`, `SMP enabled for thread mask 0x3F, start deferred`; `hw.ncpu` 6, `hw.availcpu` 1 after boot. No screensaver during the run.
