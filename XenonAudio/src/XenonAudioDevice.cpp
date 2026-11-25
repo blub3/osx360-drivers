@@ -9,6 +9,8 @@
 #include "XenonAudioEngine.hpp"
 #include "XenonAudio_Regs.hpp"
 
+#include <IOKit/IOUserClient.h>
+
 OSDefineMetaClassAndStructors(XenonAudioDevice, super);
 
 extern "C" vm_offset_t ml_io_map(vm_offset_t phys_addr, vm_size_t size);
@@ -89,6 +91,16 @@ bool XenonAudioDevice::initHardware(IOService *provider) {
     return false;
   }
 
+  // Optional interrupt-driven updates; falls back to the timer if anything fails.
+  _useInterrupt = (getProperty("XenonAudioInterrupt") == kOSBooleanTrue) && setupInterrupt(provider);
+  _wantInterrupt = _useInterrupt;
+  _ackMask       = kXenonAudioRegControlAck;
+  _testKnobs     = (getProperty("XenonAudioTestKnobs") == kOSBooleanTrue);
+  // Both fixed in timer mode on hardware (2026-11-25): without them the start of a sound is lost
+  // and the end of the buffer repeats. The test switches can still turn them off.
+  _positionFix   = true;
+  _resetOnStart  = true;
+
   // Create audio engines for outputs.
   _audioOutputEngine = createAudioEngine(_sampleBuffer, kXenonSampleBufferLength, "Xbox 360 A/V");
   if (_audioOutputEngine == NULL) {
@@ -122,9 +134,32 @@ IOReturn XenonAudioDevice::startAudio(XenonAudioEngine *audioEngine) {
   }
   XEDBGLOG("Start register 0x%X", reg);
 
+  //
+  // IOAudioEngine assumes playback starts at frame 0 (performAudioEngineStart takes the first time
+  // stamp just before this). Without a reset, the hardware continues at whatever descriptor it
+  // stopped on, so the start of a sound is written behind the play head and lost, and after the
+  // end the stale buffer keeps looping (owner, 2026-11-25). Re-initialize the channel: clear the
+  // buffer, rewrite the descriptors and restart at descriptor 0, then forget the old read pointer
+  // so the first timer tick does not count a wrap.
+  //
+  if (_resetOnStart) {
+    setupSampleDescriptors();
+    _lastReadPtr = 0;
+  }
+
   writeReg32(reg, readReg32(reg) | kXenonAudioRegControlRun);
-  _timerEventSource->enable();
-  _timerEventSource->setTimeoutUS(kXenonAudioTimerUpdateUS);
+  if (_useInterrupt && _wantInterrupt && !_intStorm) {
+    // Make every descriptor but the one before the current valid, then take one interrupt per
+    // descriptor. The hardware can only starve if 31 interrupts in a row are missed.
+    // Start the wrap detection from the current position, so a restart does not count as a wrap.
+    _lastReadPtr = readReg32(kXenonAudioRegState) & kXenonAudioRegStateReadPtrMask;
+    updatePosition(true);
+    writeReg32(kXenonAudioRegControl, (readReg32(kXenonAudioRegControl) & ~kXenonAudioRegControlStatusMask) | _ackMask);
+    _intEventSource->enable();
+    _intEnabled = true;
+  } else {
+    startTimer();
+  }
 
   return kIOReturnSuccess;
 }
@@ -141,6 +176,10 @@ IOReturn XenonAudioDevice::stopAudio(XenonAudioEngine *audioEngine) {
   }
   XEDBGLOG("Stop register 0x%X", reg);
 
+  if (_intEnabled) {
+    _intEventSource->disable();
+    _intEnabled = false;
+  }
   _timerEventSource->disable();
   _timerEventSource->cancelTimeout();
   writeReg32(reg, readReg32(reg) & ~(kXenonAudioRegControlRun));
@@ -159,7 +198,9 @@ UInt32 XenonAudioDevice::getAudioPosition(XenonAudioEngine *audioEngine) {
   UInt32  position;
 
   if (audioEngine == _audioOutputEngine) {
-    reg = kXenonAudioRegControl;
+    // The position is in the state register. The original code read the control register, which
+    // hardly changes, so the engine never erased behind the play head and the buffer looped.
+    reg = _positionFix ? kXenonAudioRegState : kXenonAudioRegControl;
   } else {
     return kIOReturnUnsupported;
   }
@@ -173,8 +214,8 @@ UInt32 XenonAudioDevice::getAudioPosition(XenonAudioEngine *audioEngine) {
 }
 
 //
-// Timer handler.
-// TODO: In the future the interrupt should be used for this, but right now it just creates a storm.
+// Timer handler. The default; interrupt mode (XenonAudioInterrupt) is experimental, see
+// docs/audio-interrupt.md.
 //
 void XenonAudioDevice::handleTimer(IOTimerEventSource *sender) {
   // Get new timestamp if the buffer has looped around.
@@ -192,6 +233,162 @@ void XenonAudioDevice::handleTimer(IOTimerEventSource *sender) {
   }
 
   _timerEventSource->setTimeoutUS(kXenonAudioTimerUpdateUS);
+}
+
+//
+// Starts the polling timer (default mode, and the fallback after an interrupt storm).
+//
+void XenonAudioDevice::startTimer(void) {
+  _timerEventSource->enable();
+  _timerEventSource->setTimeoutUS(kXenonAudioTimerUpdateUS);
+}
+
+static inline UInt32 readTimeBaseLower(void) {
+  UInt32 tb;
+  __asm__ volatile ("mftb %0" : "=r" (tb));
+  return tb;
+}
+
+//
+// Sets up the audio interrupt (PCI bridge IRQ 12, vector 0x44). Stops channel 1 first: firmware
+// leaves it stalled with Run set, and that holds the interrupt line active.
+//
+bool XenonAudioDevice::setupInterrupt(IOService *provider) {
+  UInt32 control1 = readReg32(kXenonAudioRegControl1);
+  UInt32 tb0;
+
+  if (control1 & kXenonAudioRegControlRun) {
+    writeReg32(kXenonAudioRegControl1, control1 & ~kXenonAudioRegControlRun);
+  }
+
+  // Time base ticks per second, for the storm guard (no extra kernel imports).
+  tb0 = readTimeBaseLower();
+  IODelay(10000);
+  _ticksPerSecond = (readTimeBaseLower() - tb0) * 100;
+
+  _intEventSource = IOFilterInterruptEventSource::filterInterruptEventSource(this,
+    OSMemberFunctionCast(IOInterruptEventSource::Action, this, &XenonAudioDevice::handleInterrupt),
+    OSMemberFunctionCast(IOFilterInterruptEventSource::Filter, this, &XenonAudioDevice::filterInterrupt),
+    provider, 0);
+  if ((_intEventSource == NULL) || (workLoop->addEventSource(_intEventSource) != kIOReturnSuccess)) {
+    XESYSLOG("Failed to create audio interrupt, using the timer");
+    OSSafeReleaseNULL(_intEventSource);
+    return false;
+  }
+
+  XESYSLOG("Interrupt-driven position updates enabled (channel 1 control %08X -> %08X, %u ticks/s)",
+           control1, readReg32(kXenonAudioRegControl1), _ticksPerSecond);
+  return true;
+}
+
+//
+// Primary interrupt filter, runs in interrupt context. Acknowledges the descriptor interrupt and
+// counts interrupts for the storm guard.
+//
+bool XenonAudioDevice::filterInterrupt(IOFilterInterruptEventSource *source) {
+  UInt32 now = readTimeBaseLower();
+
+  writeReg32(kXenonAudioRegControl, (readReg32(kXenonAudioRegControl) & ~kXenonAudioRegControlStatusMask) | _ackMask);
+  _intCount++;
+
+  if ((now - _intWindowStart) >= _ticksPerSecond) {
+    _intWindowStart = now;
+    _intWindowCount = 0;
+  }
+  if ((++_intWindowCount > kXenonAudioIntStormPerSecond) && !_intStorm) {
+    // Soft-disable at the controller; the next interrupt masks the line in the bridge.
+    _intStorm = true;
+    getProvider()->disableInterrupt(0);
+  }
+  return true;
+}
+
+//
+// Secondary interrupt handler, runs on the work loop.
+//
+void XenonAudioDevice::handleInterrupt(IOInterruptEventSource *source, int count) {
+  if (_intStorm) {
+    if (_intEnabled) {
+      _intEventSource->disable();
+      _intEnabled = false;
+      XESYSLOG("Audio interrupt storm (%u interrupts), falling back to the timer", _intCount);
+      startTimer();
+    }
+    return;
+  }
+  updatePosition(true);
+}
+
+//
+// Takes a time stamp when the read pointer wraps and keeps the hardware supplied. With
+// keepAllValid, the write pointer ("last valid descriptor") is set to the descriptor before the
+// read pointer; otherwise it moves in steps of a quarter buffer, as the timer always did.
+//
+void XenonAudioDevice::updatePosition(bool keepAllValid) {
+  UInt32 readPtr = readReg32(kXenonAudioRegState) & kXenonAudioRegStateReadPtrMask;
+
+  if (readPtr < _lastReadPtr) {
+    _audioOutputEngine->takeTimeStamp();
+  }
+  _lastReadPtr = readPtr;
+
+  if (keepAllValid) {
+    writeReg32(kXenonAudioRegState, ((readPtr - 1) & kXenonAudioDescMask) << kXenonAudioRegStateWritePtrShift);
+  }
+}
+
+//
+// Test switches for listening comparisons, only with the XenonAudioTestKnobs personality key and
+// only for administrators. Numbers only (no OSBoolean, which no booting kext imports):
+//   XenonAudioAck          acknowledge bits written to control in interrupt mode (0x08 or 0x1C)
+//   XenonAudioPositionFix  1 = report the position from the state register, 0 = original code
+//   XenonAudioResetOnStart 1 = restart the DMA channel at descriptor 0 on every engine start
+//   XenonAudioUseInterrupt 1 = interrupt mode, 0 = polling timer; applies at the next engine start
+// Overrides IORegistryEntry::setProperties().
+//
+IOReturn XenonAudioDevice::setProperties(OSObject *properties) {
+  OSDictionary  *dict = OSDynamicCast(OSDictionary, properties);
+  OSNumber      *number;
+  bool          changed = false;
+
+  if (!_testKnobs || (dict == NULL)) {
+    return super::setProperties(properties);
+  }
+  if (IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator) != kIOReturnSuccess) {
+    return kIOReturnNotPrivileged;
+  }
+
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioAck"));
+  if (number != NULL) {
+    UInt32 mask = number->unsigned32BitValue() & kXenonAudioRegControlAck;
+    if ((mask & 0x08) == 0) {
+      return kIOReturnBadArgument;   // without bit 3 the descriptor interrupt is never cleared
+    }
+    _ackMask = mask;
+    changed = true;
+  }
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioPositionFix"));
+  if (number != NULL) {
+    _positionFix = (number->unsigned32BitValue() != 0);
+    changed = true;
+  }
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioResetOnStart"));
+  if (number != NULL) {
+    _resetOnStart = (number->unsigned32BitValue() != 0);
+    changed = true;
+  }
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioUseInterrupt"));
+  if (number != NULL) {
+    _wantInterrupt = _useInterrupt && (number->unsigned32BitValue() != 0);
+    changed = true;
+  }
+  if (!changed) {
+    return kIOReturnUnsupported;
+  }
+
+  XESYSLOG("Test switches: ack %02X, position fix %u, reset on start %u, interrupt mode %u (now %s)", _ackMask,
+           _positionFix, _resetOnStart, _wantInterrupt, _intEnabled ? "interrupt" : "timer");
+  return kIOReturnSuccess;
 }
 
 //
