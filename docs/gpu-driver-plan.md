@@ -17,6 +17,7 @@ The plan is shared: Claude and ChatGPT/Codex take turns on branch `gpu/xenos-dri
    - Define the pass criteria before a hardware run. Every run also checks SSH, WindowServer/Finder/Dock, Ethernet and audio.
    - Shut the Xbox down over SSH (`sudo shutdown -h now`). Every restart lands in the Aurora dashboard and needs the owner to start XeLL by hand; restart only the GUI (`tools/host/xbox-gui.sh restart`) where possible.
    - Back up `kboot.conf` before changing it and keep it at 64 entries or fewer.
+   - Never enable a GPU interrupt source before vector `0x58` is routed (step 0.5): on thread 0 it panics today.
    - Never add a kernel import that no booting kext already has. No 64-bit division in kernel code (the kernel exports no `__udivdi3`; `kextload -n -t` does not catch it).
    - Merge into `main` only after a passing hardware test and the owner's OK, with a merge commit named "Merge the tested …".
 
@@ -29,7 +30,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | `ee56b82` | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
 | 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | `6808916` | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
-| 0.4 Panic path, panic text, GPU interrupt line | open | | | |
+| 0.4 Panic path, panic text, GPU interrupt line | done | Claude | this commit | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | open | | | |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
 | 1.1 Load, unload, display handback | open | | | |
@@ -65,6 +66,12 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 0.4 done (analysis only, no hardware change), details in `docs/gpu-panic-and-interrupts.md`.
+  - **Panic path in the 10.4.11 kernel:** `Debugger` packs the panic text (up to 2,040 bytes) and calls `PESavePanicInfo`, which calls the platform expert's virtual `savePanicInfo`. In XenonPE (an `IODTPlatformExpert`) that ends in NVRAM code that returns 0, so the text is lost today.
+  - **If a hook returns a length:** the kernel stops the other CPUs, draws the panic dialog, and hangs in `IOPlatformExpert::haltRestart(kPEHangCPU)` (`b .`), with no reboot.
+  - **Plan:** `XenonPE::savePanicInfo` draws the text with a built-in public-domain font into both framebuffers, for a photo, and copies it to the unused RAM at `0x08100000`.
+  - **GPU interrupt:** CPU vector `0x58`, not routed through the PCI bridge. `XenonInterruptController` panics on purpose if thread 0 takes it. The GPU already raises it on another thread, as seen in SMP stage 1a. `CP_INT_CNTL` provides ring, software and error interrupts.
+  - **New rule:** no GPU interrupt source may be enabled before the `gpudev` boot routes `0x58`.
 - 2026-11-25, Claude: correction from the owner. After every restart the Xbox starts the Aurora dashboard, and the owner has to start XeLL by hand. The reboots during step 0.2 ("no owner needed") came back only because the owner did that. A reboot (R3) is therefore never unattended; only R0–R2 are. The restart cost table, the rules, step 0.4 (panic text instead of an automatic reboot) and the risks are updated. The owner heard the step 0.3 `say` check clearly.
 - 2026-11-25, Claude: step 0.3 done, details in `docs/gpu-memory-map.md`.
   - **Probe:** `XenosGPUProbe` (new, hand-loaded from `/Library/OSX360Dev`, not in the package) matches the Xenos PCI device in its own category.
@@ -182,7 +189,7 @@ All checks are R0 over SSH unless marked.
    - Find in the 10.4.11 kernel which platform call a panic ends in. XenonPE overrides no halt or restart function today.
    - Plan a way to keep the panic text: on screen instead of the grey panic screen, or sent over Ethernet. A RAM area kept across a reboot probably does not survive the Aurora dashboard, and every reboot needs the owner to start XeLL anyway.
    - Find the Xenos interrupt line. Free60 Linux and the interrupt controller in `XenonPlatform/src/Interrupts` are the sources.
-5. **Development boot profile `gpudev` (R4, once).** The `main6` kexts without XenonCoreGraphics, plus the platform changes from steps 3 and 4 (panic text, GPU interrupt routing). Step 0.3 found the heap in RAM Tiger does not manage; the firmware should mark it reserved in the device tree, so it is not claimed by anything else. The desktop then runs on XenonPE's CPU refresh until `XenosGPU` is loaded. `main6` stays the stick default until `gpudev` passes the usual checks (SSH, desktop, Ethernet, audio).
+5. **Development boot profile `gpudev` (R4, once).** The `main6` kexts without XenonCoreGraphics, plus the platform changes from steps 3 and 4: the `XenonPE::savePanicInfo` panic-text hook and the routing of GPU vector `0x58` (`docs/gpu-panic-and-interrupts.md`). Step 0.3 found the heap in RAM Tiger does not manage; the firmware should mark it reserved in the device tree, so it is not claimed by anything else. The desktop then runs on XenonPE's CPU refresh until `XenosGPU` is loaded. `main6` stays the stick default until `gpudev` passes the usual checks (SSH, desktop, Ethernet, audio).
 6. **Development loop:**
    - sync the source to the G5 and build there;
    - copy the kext to the Xbox and load it;
