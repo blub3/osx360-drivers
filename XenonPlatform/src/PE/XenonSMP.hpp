@@ -31,6 +31,9 @@ UInt32 XenonSMPLogicalForPIR(UInt32 pir);
 // With lowPriorityPark, waiting threads run at low thread priority (XenonSMPIdleLow).
 bool XenonSMPInstallRelease(UInt32 startCpuAddr, bool lowPriorityPark);
 
+// Single-CPU boot with XenonParkLowPriority: only lowers the priority of the parked threads.
+bool XenonSMPInstallLowPriorityPark(void);
+
 // Called from XenonCPU::startCPU after XNU's cpu_start has filled the reset handler.
 kern_return_t XenonSMPReleaseThread(UInt32 pir, UInt32 startCpuAddr);
 

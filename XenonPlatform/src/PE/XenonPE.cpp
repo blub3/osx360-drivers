@@ -139,6 +139,7 @@ long XenonPE::getGMTTimeOfDay(void) {
 //
 // Optional SMP, see docs/smp-design.md. The XenonPE personality keys XenonSMPThread1..5 select
 // extra hardware threads. Without them, or if any check fails, only thread 0 runs, as before.
+// Without them, XenonParkLowPriority only lowers the priority of the parked threads.
 // Must run before super::start(), which creates the CPU nubs.
 //
 void XenonPE::setupSMP(void) {
@@ -162,6 +163,9 @@ void XenonPE::setupSMP(void) {
     }
   }
   if (requested == 1) {
+    if (getProperty("XenonParkLowPriority") == kOSBooleanTrue) {
+      XenonSMPInstallLowPriorityPark();
+    }
     return;
   }
 

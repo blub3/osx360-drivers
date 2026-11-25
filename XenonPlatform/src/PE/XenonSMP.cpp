@@ -155,6 +155,31 @@ bool XenonSMPInstallRelease(UInt32 startCpuAddr, bool lowPriorityPark) {
   return true;
 }
 
+//
+// Single-CPU boot (no XenonSMPThread keys): lowers the priority of the five threads XeLL parked in
+// OpenBIOS's "b ." at 0x60, which otherwise take issue slots from the running thread on the same
+// core (one busy loop 4.58 s, 2.4 s with them at low priority; docs/platform-log.md). 0x64 gets
+// "b 0x60" first, then 0x60 becomes "or 1,1,1", so a thread spinning there falls into the
+// two-instruction loop. The threads stay parked; nothing else changes.
+//
+#define kPPCBranchBack      0x4BFFFFFC            // b .-4
+
+bool XenonSMPInstallLowPriorityPark(void) {
+  static const UInt32 branchBack = kPPCBranchBack;
+  static const UInt32 lowPriority = kPPCPriorityLow;
+
+  if (sReleaseInstalled || (ml_phys_read(kParkEntry) != kPPCBranchSelf) ||
+      ((ml_phys_read(kParkBase) & 0xFC000003) != 0x48000000) || (ml_phys_read(kParkBase + 8) != kXeLLArgMagic)) {
+    IOLog("XenonSMP: OpenBIOS parking loop not found, waiting threads unchanged\n");
+    return false;
+  }
+  writePhysCode(kReleaseCode, &branchBack, 1);
+  __asm__ volatile ("sync");
+  writePhysCode(kParkEntry, &lowPriority, 1);
+  IOLog("XenonSMP: waiting threads at low priority (single CPU)\n");
+  return true;
+}
+
 kern_return_t XenonSMPReleaseThread(UInt32 pir, UInt32 startCpuAddr) {
   if (!sReleaseInstalled || (pir == 0) || (pir >= kXenonSMPMaxThreads)) {
     return KERN_FAILURE;

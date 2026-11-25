@@ -14,7 +14,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 2. SMC lock hold (audit finding 2): fixed in `smp6c`, see below.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
-5. Stage 2 (all six threads) works with `smp6b` (below), with waiting and idle threads at low priority. Open: the low-priority parking loop for the normal single-CPU boot (one loop 4.58 s → about 2.4 s), and Tiger's scheduler, which does not know which CPUs share a core.
+5. Stage 2 (all six threads) works with `smp6b` (below), with waiting and idle threads at low priority. Open: Tiger's scheduler, which does not know which CPUs share a core. Low-priority parking in the single-CPU boot gains only 2–4% (`park1`, below).
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
@@ -51,6 +51,19 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - **SSH is about 20% faster with two CPUs** than with CPU 1 stopped in the same boot. With one CPU, receiving at line rate already takes 93% of the CPU in the kernel.
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
+
+## 2026-11-25: low-priority parking in the single-CPU boot (`park0`, `park1`)
+
+`XenonParkLowPriority` (XenonPE personality, single-CPU boot only): writes `b 0x60` at `0x07E00064`, then `or 1,1,1` at `0x60`, so the five threads XeLL parks in OpenBIOS's `b .` wait at low thread priority. XenonPlatform `9044523bc11c48eefd17e2dae209cada`, no new kernel imports. Profiles on the `smp6c` mkext, differing only in this key: `park0` (`PARK0.ELF` `1d61b24a570158a3c73825cad87141ad` + `XPK0.MKE` `26513c8169245ec7c0b17ddeceb9c24b`) and `park1` (`PARK1.ELF` `9db4589283a012acf08fdedd6aafb246` + `XPK1.MKE` `cf370e48668b729c032342c1fdc78bae`).
+
+| Profile | One loop (3 runs) | Two loops in parallel | Three `say` runs |
+| --- | --- | --- | --- |
+| `park0`, threads in `b .` | 2.22–2.23 s | 4.45–4.46 s | 4.18, 3.44, 3.46 s |
+| `park1`, threads at low priority | 2.16–2.22 s | 4.27–4.32 s | 4.01, 3.53, 3.51 s |
+
+Both: one CPU, desktop running, Ethernet checksums match, no panic; `park1` logged `waiting threads at low priority (single CPU)`.
+
+**The single-CPU boot was never slow:** a thread spinning on `b .` costs its sibling only 2–4%. The 4.58 s measured on `smp1c`–`audfix` came from the SMP waiting loop, which loads its mailbox word on every turn at normal priority; `XenonSMPIdleLow` removes that, so SMP boots run one loop in 2.38–2.42 s. A single-CPU boot (2.2 s) is still about 8% faster per thread than an SMP boot. The key stays off by default; the gain is small.
 
 ## 2026-11-25: SMC lock fix (audit finding 2), `smp6c`
 
