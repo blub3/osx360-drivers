@@ -33,6 +33,7 @@ Each script checks numeric pass criteria and logs `FAIL` lines and a summary.
 | --- | --- |
 | `repack_platform.py SOURCE.mkext XenonPlatform.kext OUTPUT.mkext [stage1\|check]` | Replaces only XenonPlatform in an mkext and checks that every other entry is byte-identical |
 | `repack_kext.py SOURCE.mkext BUNDLE_ID KEXT_DIR OUTPUT.mkext` | The same for any one kext (uses `repack_platform.py`) |
+| `mkext_edit.py SOURCE.mkext OUTPUT.mkext [--drop ID] [--plist ID=FILE] [--binary ID=FILE]` | Drops kexts and replaces plists or binaries; unchanged kexts keep their compressed bytes, and every entry is checked after the rebuild |
 
 The profile ELF for XeLL is made from an mkext with `xbox360-profile-elf.py` from the `blub3/openbios` repository.
 

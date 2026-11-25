@@ -1,0 +1,70 @@
+# Development boot profile `gpudev` (step 0.5)
+
+Built 2026-11-25. **Not staged and not booted yet.** Booting it needs the owner, because every restart lands in the Aurora dashboard.
+
+## What it is
+
+`gpudev` is the tested `main6` set with only these changes:
+
+| Kext | Change |
+| --- | --- |
+| XenonCoreGraphics | **Left out.** The hand-loaded `XenosGPU` (phase 1) takes the GPU instead. Until then XenonPlatform's CPU refresh draws the desktop (every 500 ms), so the desktop is slower than on `main6`. |
+| XenonFramebufferTest | Same binary. Plist as tested, without `IOGLBundleName` and `IOCFPlugInTypes`, because the GLD and the WindowServer plug-in need XenonCoreGraphics. |
+| XenonPlatform | New build from this branch, same kernel imports as the tested build. Personality as tested (six CPUs registered, `XenonSMPDeferStart`, `XenonSMPIdleLow`, `XenonPmapFastScan`) plus `XenonPanicScreen`, `XenonGPUInterrupt` and `XenonGPUHeap`. |
+| XenonPCI, XenonAudio, XenonEthernet, XenonSATA, XenonSMC, IOGraphicsFamily 1.4.2 | Byte-identical to `XMN6.MKE` |
+
+| File | MD5 | Made from |
+| --- | --- | --- |
+| `GPUDEV.ELF` | `31bcbd83797b49e75f49dbed1427ef2d` | `WINOVR.ELF`, mkext name `XWOV.MKE` → `XGDV.MKE` (2 bytes differ) |
+| `XGDV.MKE` | `cdddf867bda5b42c39323edec16f4363` (331,360 bytes) | `XMN6.MKE` with `tools/host/mkext_edit.py` |
+| XenonPlatform binary | `9b71124e6f00dde001ca378363d16a85` | — |
+| XenonPlatform plist | `e5dbfadb621922c03769f9038bcefca7` | — |
+| XenonFramebufferTest plist | `ae5d263443b5145f141de6cea82e12ae` | — |
+
+The files are kept on the G5 in `~/osx360-build/gpudev/`; build output is not committed. Tiger's offline link check (`kextload -n -t -z`) accepted the new XenonPlatform on the Xbox.
+
+## The three new XenonPlatform features (`XenonPE_Panic.cpp`)
+
+Each is off unless its personality key is true, so `main6` and every other profile behave as before.
+
+### `XenonPanicScreen`
+
+- **What it does:** overrides `savePanicInfo`, unpacks Tiger's packed panic text, and draws it with the kernel's console font (`_iso_font`, looked up at runtime) into the linear and the tiled scanout framebuffers.
+- **Panic record:** a copy goes to a record at `0x08100000` (magic `XPNC`).
+- **Return value:** it returns the length, so the kernel stops the other CPUs and hangs without rebooting (`docs/gpu-panic-and-interrupts.md`).
+- **At boot:** XenonPE logs whether a record from before the boot is still in RAM.
+- **Test without a panic:** the platform functions `XenonPanicScreenTest` and `XenonPanicScreenTestEnd`.
+
+### `XenonGPUInterrupt`
+
+- **What it does:** XenonInterruptController no longer panics when thread 0 takes Xenos vector `0x58`.
+  - If a driver registered the vector (OpenBIOS already gives `xenos@2` `interrupts` = `0x58`), it is dispatched to that driver.
+  - If not, the GPU's CP and RBBM interrupt sources are masked and acknowledged at the GPU, and a counter is increased.
+- **What it does not change:** which thread the GPU targets (today a secondary thread, PIR 2).
+
+### `XenonGPUHeap`
+
+- **What it does:** after checking that `0x08100000`–`0x0FFFFFFF` overlaps none of Tiger's DRAM banks, XenonPE publishes `XenosGPUHeapBase` = `0x08200000` and `XenosGPUHeapSize` = 126 MiB on itself, for `XenosGPU`.
+
+## Staging
+
+- Copy `GPUDEV.ELF` and `XGDV.MKE` to the stick and add `gpudev="uda0:/GPUDEV.ELF"` to `kboot.conf` (13 entries).
+- Back it up as `kboot.conf.before-gpudev.bak`, and keep the checksum snapshots before and after, as for `main6`.
+- `kboot.conf` uses `timeout=0`, so the default boots at once. To boot `gpudev`, the default has to be `gpudev`.
+- **If it does not come up:** put the stick in a PC and set `default=main6` again, or copy `kboot.conf.before-gpudev.bak` back.
+
+## Boot test (with the owner)
+
+Pass criteria, fixed before the boot:
+
+1. **Boot:** desktop with autologin and SSH. `kextstat` lists seven Xenon kexts (no XenonCoreGraphics). `hw.ncpu` 6, `hw.availcpu` 1. No panic.
+2. **`system.log` from XenonPE:**
+   - "GPU heap 0x8200000-0xFFFFFFF (126 MiB) published";
+   - "Panic screen armed" with a non-zero font address and "record mapped";
+   - "No panic record from before this boot";
+   - "GPU vector 0x58 is dispatched to its driver on thread 0".
+3. **Regression:** 10 MiB Ethernet round trip with matching checksums, `say` heard by the owner, and the owner can use the desktop (slow redraw is expected).
+4. **Panic screen test (no reboot):** load `XenosGPUProbe` with `XenosGPUProbePanicScreenTest` set in its plist. The owner sees the test text, readable and the right way round, for 8 s, and then the desktop again.
+5. **Optional, only with the owner's OK:** load the probe with `XenosGPUProbePanic`.
+   - The owner photographs the panic screen, power-cycles the Xbox and starts XeLL.
+   - At the next boot, XenonPE's log line says whether the panic record survived.

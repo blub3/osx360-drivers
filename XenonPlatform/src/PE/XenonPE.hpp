@@ -42,12 +42,18 @@ public:
   const char *excludeList(void);
   bool getMachineName(char *name, int maxLength);
   long getGMTTimeOfDay(void);
+  IOByteCount savePanicInfo(UInt8 *buffer, IOByteCount length);
 
   // GPU functions.
   void prepGraphicsFramebuffer(void);
   void refreshFramebuffer(void);
   void startFramebuffer(void);
   void stopFramebuffer(void);
+
+  // Panic screen and GPU interrupt (XenonPE_Panic.cpp).
+  IOReturn testPanicScreen(bool begin);
+  void silenceGPUInterrupts(void);
+  bool gpuInterruptRouting(void) const { return _gpuInterruptRouting; }
 
   // Patcher functions.
   UInt32 resolveKernelSymbol(const char *symbolName);
@@ -74,6 +80,12 @@ private:
   IOWorkLoop          *_gpuTimerWorkLoop;
   IOTimerEventSource  *_gpuTimerEventSource;
 
+  // Panic screen, panic record and GPU heap.
+  bool                _panicScreen;
+  bool                _gpuInterruptRouting;
+  const UInt8         *_isoFont;
+  IOMemoryMap         *_panicRecordMap;
+
   // Patching/symbol lookups.
   UInt8     *_symTab;
   UInt32    _symTabNumSymbols;
@@ -96,6 +108,9 @@ private:
   // GPU.
   void handleFramebufferTimer(IOTimerEventSource *sender);
   bool mapGPU(void);
+  void setupPanicAndHeap(void);
+  void panicPixel(UInt32 x, UInt32 y, UInt32 width, UInt32 rowWords, UInt32 argb);
+  void drawPanicScreen(const char *title, const char *text);
 
   // Patching/symbol lookups.
   bool findKernelMachHeader(void);

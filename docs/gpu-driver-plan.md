@@ -30,8 +30,8 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | `ee56b82` | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
 | 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | `6808916` | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
-| 0.4 Panic path, panic text, GPU interrupt line | done | Claude | this commit | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
-| 0.5 Development boot profile `gpudev` (R4) | open | | | |
+| 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
+| 0.5 Development boot profile `gpudev` (R4) | in progress | Claude | | Built, not staged or booted; `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
 | 1.1 Load, unload, display handback | open | | | |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
@@ -66,6 +66,15 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 0.5 in progress: `gpudev` is built, not staged and not booted. Details, checksums and the boot test in `docs/gpu-dev-profile.md`.
+  - **XenonPlatform**, three features, each off unless its personality key is set:
+    - `XenonPanicScreen`: the panic text on screen with the kernel's own font, plus a record at `0x08100000`; test functions without a panic.
+    - `XenonGPUInterrupt`: dispatch of vector `0x58` instead of the panic, and silencing at the GPU if nobody handles it.
+    - `XenonGPUHeap`: publishes 126 MiB at `0x08200000`.
+  - **Imports:** the same kernel imports as the tested XenonPlatform. A first version imported `IODelay` and `IOSleep`; both were removed. Tiger's offline link check accepts it.
+  - **Packing:** `XGDV.MKE` = `XMN6.MKE` without XenonCoreGraphics, with XenonFramebufferTest's plist minus `IOGLBundleName` and `IOCFPlugInTypes`, and the new XenonPlatform; the other six kexts are byte-identical. It was made with the new `tools/host/mkext_edit.py`. `GPUDEV.ELF` differs from `WINOVR.ELF` only in the mkext name.
+  - **Probe:** `XenosGPUProbe` got the two test switches, and its RAM test moved to the heap range. Its pattern written at 22:04:45 was fully intact at 22:25:12.
+  - **Next:** stage on the stick and boot with the owner present.
 - 2026-11-25, Claude: step 0.4 done (analysis only, no hardware change), details in `docs/gpu-panic-and-interrupts.md`.
   - **Panic path in the 10.4.11 kernel:** `Debugger` packs the panic text (up to 2,040 bytes) and calls `PESavePanicInfo`, which calls the platform expert's virtual `savePanicInfo`. In XenonPE (an `IODTPlatformExpert`) that ends in NVRAM code that returns 0, so the text is lost today.
   - **If a hook returns a length:** the kernel stops the other CPUs, draws the panic dialog, and hangs in `IOPlatformExpert::haltRestart(kPEHangCPU)` (`b .`), with no reboot.

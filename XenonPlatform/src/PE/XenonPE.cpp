@@ -42,6 +42,7 @@ bool XenonPE::start(IOService *provider) {
   }
 
   setupSMP();
+  setupPanicAndHeap();
 
   setChipSetType(kChipSetTypeMol);
   setMachineType(kMolStdMachineType);
@@ -86,6 +87,10 @@ IOReturn XenonPE::callPlatformFunction(const OSSymbol *functionName, bool waitFo
   } else if (functionName->isEqualTo(kXenonFuncPlatformStopFB)) {
     stopFramebuffer();
     return kIOReturnSuccess;
+  } else if (functionName->isEqualTo("XenonPanicScreenTest")) {
+    return testPanicScreen(true);
+  } else if (functionName->isEqualTo("XenonPanicScreenTestEnd")) {
+    return testPanicScreen(false);
   }
 
   return super::callPlatformFunction(functionName, waitForFunction, param1, param2, param3, param4);

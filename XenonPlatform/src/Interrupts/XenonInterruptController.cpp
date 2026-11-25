@@ -30,6 +30,14 @@ XenonInterruptController *gXenonInterruptController = NULL;
 // Unexpected vectors taken by secondary threads, acknowledged and dropped.
 static volatile UInt32 sXenonSecondaryStrayVectors = 0;
 
+// GPU vector 0x58 on thread 0 (XenonPE personality XenonGPUInterrupt). Without it, thread 0 panics on
+// 0x58 as before. With it, 0x58 goes to the driver registered on the Xenos nub (OpenBIOS gives xenos@2
+// "interrupts" = 0x58); if none is registered, the GPU interrupt sources are masked and acknowledged
+// at the GPU, because this controller cannot mask 0x58 (it is not a PCI bridge interrupt).
+static XenonPE         *sXenonPE = NULL;
+static bool            sXenonGPURouting = false;
+static volatile UInt32 sXenonGPUUnclaimed = 0;
+
 //
 // Ends an interrupt on a secondary thread. EOI with auto-update reopened the block (priority 0
 // afterwards), so the Xenos vector, which is held toward PIR 2, fired continuously: about
@@ -66,6 +74,11 @@ bool XenonInterruptController::start(IOService *provider) {
   if (xenonPE == NULL) {
     XESYSLOG("Current platform is not Xenon");
     return false;
+  }
+  sXenonPE = xenonPE;
+  sXenonGPURouting = xenonPE->gpuInterruptRouting();
+  if (sXenonGPURouting) {
+    XESYSLOG("GPU vector 0x%X is dispatched to its driver on thread 0", kXenonVectorXenos);
   }
 
   // Fill out interrupt map table.
@@ -251,7 +264,13 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
 
   switch (vectorIndex) {
     case kXenonVectorXenos:
-      panic("Got Xenons here!\n");
+      if (!sXenonGPURouting) {
+        panic("Got Xenons here!\n");
+      }
+      if (!vectors[vectorIndex].interruptRegistered) {
+        sXenonGPUUnclaimed++;
+        sXenonPE->silenceGPUInterrupts();
+      }
       break;
 
     case kXenonVectorIOC:
@@ -267,7 +286,7 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
       break;
   }
 
-  if (pciIrq == kXenonVectorInvalid) {
+  if (pciIrq == kXenonVectorInvalid && vectorIndex != kXenonVectorXenos) {
     printf("Got another one here 0x%X\n", vectorIndex);
   }
 

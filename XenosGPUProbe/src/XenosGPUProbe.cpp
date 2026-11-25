@@ -11,17 +11,22 @@
 //  It tries contiguous allocations of 16, 32, 64 and 128 MiB, checks that each one is a single
 //  physical run below 512 MiB, and keeps the 64 MiB block until the probe is unloaded.
 //
-//  It also tests the RAM between OpenBIOS's hash table and Tiger's second DRAM bank
-//  (0x08100000-0x0FFFFFFF): the device tree marks it available, but OpenBIOS gives Tiger only
-//  0x00000000-0x01FFFFFF and 0x10000000-0x1EFFFFFF. The probe records what is there, writes a
+//  It also tests the GPU heap in RAM Tiger does not manage (0x08200000-0x0FFFFFFF; the device tree
+//  marks 0x08100000-0x0FFFFFFF available, but OpenBIOS gives Tiger only 0x00000000-0x01FFFFFF and
+//  0x10000000-0x1EFFFFFF, and XenonPE keeps a panic record at 0x08100000). The probe records what is there, writes a
 //  pattern to every 256th byte through an uncached mapping, reads it back, and checks it again at
 //  unload to see whether anything else writes there. Nothing outside that range is written.
+//
+//  Two switches in the personality, both off: XenosGPUProbePanicScreenTest draws XenonPE's panic
+//  screen for 8 s without a panic (profile gpudev). XenosGPUProbePanic panics on purpose to test the
+//  real panic screen; the console then hangs and needs the owner (power cycle, XeLL from Aurora).
 //
 
 #include <IOKit/IOService.h>
 #include <IOKit/IOLib.h>
 #include <IOKit/IOBufferMemoryDescriptor.h>
 #include <IOKit/IODeviceTreeSupport.h>
+#include <IOKit/IOPlatformExpert.h>
 #include <IOKit/pci/IOPCIDevice.h>
 #include <pexpert/pexpert.h>
 #include <pexpert/ppc/boot.h>
@@ -29,8 +34,8 @@
 static const UInt32 kMiB = 1024 * 1024;
 static const UInt32 kGPUAddressLimit = 0x20000000;  // Xenos addresses the 512 MiB of system RAM.
 static const UInt32 kKeepMiB = 64;
-static const UInt32 kHoleBase = 0x08100000;     // After OpenBIOS's hash table at 0x08000000.
-static const UInt32 kHoleSize = 0x07F00000;     // Up to Tiger's second bank at 0x10000000.
+static const UInt32 kHoleBase = 0x08200000;     // GPU heap; 0x08100000-0x081FFFFF holds XenonPE's panic record.
+static const UInt32 kHoleSize = 0x07E00000;     // Up to Tiger's second bank at 0x10000000.
 static const UInt32 kHoleStride = 256;
 
 class XenosGPUProbe : public IOService {
@@ -284,6 +289,30 @@ bool XenosGPUProbe::start(IOService *provider) {
   IOLog("XenosGPUProbe: keeping %lu MiB until unload: %s\n", (unsigned long)kKeepMiB,
         _kept != NULL ? "yes" : "no");
   testHole();
+
+  if (getProperty("XenosGPUProbePanicScreenTest") == kOSBooleanTrue) {
+    const OSSymbol *begin = OSSymbol::withCString("XenonPanicScreenTest");
+    const OSSymbol *end = OSSymbol::withCString("XenonPanicScreenTestEnd");
+    IOReturn result = kIOReturnNoMemory;
+    if (begin != NULL && end != NULL) {
+      result = getPlatform()->callPlatformFunction(begin, true, NULL, NULL, NULL, NULL);
+    }
+    IOLog("XenosGPUProbe: panic screen test: 0x%08lx\n", (unsigned long)result);
+    if (result == kIOReturnSuccess) {
+      IOSleep(8000);
+      getPlatform()->callPlatformFunction(end, true, NULL, NULL, NULL, NULL);
+      IOLog("XenosGPUProbe: panic screen test ended\n");
+    }
+    if (begin != NULL) {
+      begin->release();
+    }
+    if (end != NULL) {
+      end->release();
+    }
+  }
+  if (getProperty("XenosGPUProbePanic") == kOSBooleanTrue) {
+    panic("XenosGPUProbe: deliberate panic to test the XenonPE panic screen");
+  }
 
   registerService();
   return true;
