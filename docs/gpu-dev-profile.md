@@ -1,6 +1,6 @@
 # Development boot profile `gpudev` (step 0.5)
 
-Built 2026-11-25. **Not staged and not booted yet.** Booting it needs the owner, because every restart lands in the Aurora dashboard.
+Built and staged 2026-11-25 as the stick's default, then the Xbox was shut down. **Not booted yet.** Booting it needs the owner, because every restart lands in the Aurora dashboard.
 
 ## What it is
 
@@ -52,6 +52,13 @@ Each is off unless its personality key is true, so `main6` and every other profi
 - Back it up as `kboot.conf.before-gpudev.bak`, and keep the checksum snapshots before and after, as for `main6`.
 - `kboot.conf` uses `timeout=0`, so the default boots at once. To boot `gpudev`, the default has to be `gpudev`.
 - **If it does not come up:** put the stick in a PC and set `default=main6` again, or copy `kboot.conf.before-gpudev.bak` back.
+
+**Staged 2026-11-25:**
+
+- **Before staging:** the stick was unchanged since `main6`.
+- **Copied:** `GPUDEV.ELF` and `XGDV.MKE`, both with matching checksums.
+- **`kboot.conf`:** saved as `kboot.conf.before-gpudev.bak` (MD5 `a41e29c7d49247c7b8d26ca5b10ede11`, `default=main6`). The new `kboot.conf` (MD5 `96bcae00c60045605711670df3d57ed7`) adds `gpudev` as the first entry and the default; 13 entries.
+- **Check:** the snapshots before and after (`session-baseline/2026-11-23/osx360boot.{before,after}-gpudev.md5`) differ only in these four files.
 
 ## Boot test (with the owner)
 

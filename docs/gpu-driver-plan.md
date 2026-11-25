@@ -31,7 +31,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | `6808916` | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
-| 0.5 Development boot profile `gpudev` (R4) | in progress | Claude | | Built, not staged or booted; `docs/gpu-dev-profile.md` |
+| 0.5 Development boot profile `gpudev` (R4) | in progress | Claude | | Built and staged as default, not booted; `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
 | 1.1 Load, unload, display handback | open | | | |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
@@ -66,6 +66,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: `gpudev` staged as the stick's default (13 entries, backup `kboot.conf.before-gpudev.bak` with `default=main6`; only the four expected files changed). The Xbox was shut down over SSH at the owner's request; the owner boots it. Next: the boot test in `docs/gpu-dev-profile.md`. If `gpudev` does not come up, set `default=main6` on the stick from a PC.
 - 2026-11-25, Claude: step 0.5 in progress: `gpudev` is built, not staged and not booted. Details, checksums and the boot test in `docs/gpu-dev-profile.md`.
   - **XenonPlatform**, three features, each off unless its personality key is set:
     - `XenonPanicScreen`: the panic text on screen with the kernel's own font, plus a record at `0x08100000`; test functions without a panic.
