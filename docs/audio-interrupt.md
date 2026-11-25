@@ -105,8 +105,22 @@ Booted with `audrst` (three CPUs, desktop running, no panic; `XenonAudioTestKnob
 
 **The start of a sound is still lost, about 0.5–1 s,** but only the first sound after silence. Round E rules out the engine start: the engine and the DMA had been playing zeros for 2 s, and the start was still lost. Round F shows that once sound is playing, everything after it is complete. This fits an HDMI sink (TV or receiver) that mutes on digital silence and unmutes late; not confirmed. Checks: whether other sources on the same TV input lose their start, and whether a tiny non-zero signal (±1 LSB dither) in silence keeps the sound.
 
-## Reset on start and position fix by default (`audfix`, built, not booted)
+## Reset on start and position fix by default (`audfix`)
 
 XenonAudio `1b5beed26cd550f414b1e2cb61ea1d32`: reset on start and the position fix are always on, timer mode, with the repository's `Info.plist` (no `XenonAudioInterrupt`, no `XenonAudioTestKnobs`). No new kernel imports against `audrst`. Profile `audfix`: `smp3a` (three CPUs) with this XenonAudio; `AUDFIX.ELF` (MD5 `9797c14a4ea9182ef782126e760eec88`) + `XAFX.MKE` (MD5 `4dbdaedd95f2bf26b7b201879b166b49`); the other 8 kexts are byte-identical to `smp3a`.
 
 Pass criteria: the regression checks (SSH, WindowServer/Finder/Dock, Ethernet checksums, no panic); five timed `say` runs of "Audio test after the restart." at 3.0–5.0 s each; the owner hears continuous speech clean and complete, with no repeated end. The lost start after silence is a known open issue and does not fail this test.
+
+### Hardware test (2026-11-25)
+
+**Result: pass, 0 failures.**
+
+| Check | Result |
+| --- | --- |
+| Boot | Rebooted over SSH into `audfix`, desktop up after about 2 minutes; `hw.availcpu` 3; WindowServer, Finder, Dock running; no test-switch or interrupt keys in the registry |
+| 10 MiB Ethernet up and down | Checksums match |
+| Five `say` runs | 4.01, 3.29, 3.29, 3.29, 3.29 s |
+| Listening (owner): the sentence three times, then "Hello." and the sentence twice in one `say` | Clean, no repeated end; only the start after silence is cut (known issue) |
+| Panic log | None, before and after |
+
+Open: the start lost after silence (suspected HDMI sink muting on digital silence; checks above), and interrupt mode.
