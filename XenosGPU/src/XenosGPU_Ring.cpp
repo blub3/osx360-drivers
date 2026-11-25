@@ -10,6 +10,8 @@
 
 #include "XenosGPU.hpp"
 #include "../../XenonCoreGraphics/src/XenosFirmware.hpp"
+#include <IOKit/IOPlatformExpert.h>
+#include <IOKit/IODeviceMemory.h>
 
 #define kCacheLine            128
 
@@ -80,7 +82,67 @@ void XenosGPU::ringConstant(UInt32 reg, UInt32 value) {
   ring(value);
 }
 
+//
+// GPU memory for the ring, the marker and the vertex buffers. By default it comes from the GPU heap
+// XenonPE publishes (XenosGPUHeapBase, RAM Tiger does not manage, docs/gpu-memory-map.md), mapped
+// uncached: XenonCoreGraphics, which ran stably, always had its ring below 32 MiB, while runtime
+// allocations from Tiger land at 0x1A000000 and above, where presenting stalled the GPU after about
+// 1 s (2026-11-25). The personality key XenosGPUTigerMemory selects the old allocations for comparison.
+// No bzero or memcpy on the uncached mapping: they use dcbz, which faults there.
+//
+static const UInt32 kHeapRing      = 0x0000;
+static const UInt32 kHeapMarker    = 0x8000;
+static const UInt32 kHeapTexCoords = 0x9000;
+static const UInt32 kHeapQuad      = 0xA000;
+static const UInt32 kHeapUsed      = 0x10000;
+
+static void copyWords(volatile UInt8 *dst, const void *src, UInt32 length) {
+  const UInt32 *words = (const UInt32 *)src;
+  for (UInt32 i = 0; i < length / 4; i++) {
+    ((volatile UInt32 *)dst)[i] = words[i];
+  }
+}
+
+IOReturn XenosGPU::allocateHeapBuffers(void) {
+  OSNumber *base = OSDynamicCast(OSNumber, getPlatform()->getProperty("XenosGPUHeapBase"));
+  OSNumber *size = OSDynamicCast(OSNumber, getPlatform()->getProperty("XenosGPUHeapSize"));
+  if (base == NULL || size == NULL || size->unsigned32BitValue() < kHeapUsed) {
+    IOLog("XenosGPU: no GPU heap published (boot profile gpudev publishes it)\n");
+    return kIOReturnNoResources;
+  }
+  IOPhysicalAddress phys = base->unsigned32BitValue();
+  IODeviceMemory *memory = IODeviceMemory::withRange(phys, kHeapUsed);
+  if (memory != NULL) {
+    _heapMap = memory->map(kIOMapInhibitCache);
+    memory->release();
+  }
+  if (_heapMap == NULL) {
+    return kIOReturnNoMemory;
+  }
+  volatile UInt8 *virt = (volatile UInt8 *)_heapMap->getVirtualAddress();
+  _ring = virt + kHeapRing;
+  _ringPhys = phys + kHeapRing;
+  _marker = (volatile UInt32 *)(virt + kHeapMarker);
+  _markerPhys = phys + kHeapMarker;
+  copyWords(virt + kHeapTexCoords, sTexCoords, sizeof(sTexCoords));
+  _texCoordsPhys = phys + kHeapTexCoords;
+  copyWords(virt + kHeapQuad, sQuad, sizeof(sQuad));
+  _quadPhys = phys + kHeapQuad;
+  for (UInt32 i = 0; i < kRingBytes / 4; i++) {
+    ((volatile UInt32 *)_ring)[i] = 0;
+  }
+  asm volatile("sync" ::: "memory");
+  IOLog("XenosGPU: GPU heap: ring at 0x%08lx, marker 0x%08lx, vertices 0x%08lx/0x%08lx (uncached)\n",
+        (unsigned long)_ringPhys, (unsigned long)_markerPhys, (unsigned long)_texCoordsPhys,
+        (unsigned long)_quadPhys);
+  return kIOReturnSuccess;
+}
+
 IOReturn XenosGPU::allocateBuffers(void) {
+  _useHeap = (getProperty("XenosGPUTigerMemory") != kOSBooleanTrue);
+  if (_useHeap) {
+    return allocateHeapBuffers();
+  }
   _texCoordsDesc = contiguousPage(sTexCoords, sizeof(sTexCoords), &_texCoordsPhys);
   _quadDesc = contiguousPage(sQuad, sizeof(sQuad), &_quadPhys);
   IOPhysicalAddress markerPhys = 0;
@@ -88,6 +150,8 @@ IOReturn XenosGPU::allocateBuffers(void) {
   if (_texCoordsDesc == NULL || _quadDesc == NULL || _markerDesc == NULL) {
     return kIOReturnNoMemory;
   }
+  _marker = (volatile UInt32 *)_markerDesc->getBytesNoCopy();
+  _markerPhys = markerPhys;
 
   // The CP needs the ring aligned to its size. Allocate twice the size and align the physical base.
   _ringDesc = IOBufferMemoryDescriptor::withOptions(kIOMemoryPhysicallyContiguous,
@@ -112,11 +176,17 @@ IOReturn XenosGPU::allocateBuffers(void) {
   }
   bzero((void *)_ring, kRingBytes);
   flushRange(_ring, kRingBytes);
-  IOLog("XenosGPU: ring at 0x%08lx (%lu bytes)\n", (unsigned long)_ringPhys, (unsigned long)kRingBytes);
+  IOLog("XenosGPU: Tiger memory: ring at 0x%08lx (%lu bytes)\n", (unsigned long)_ringPhys,
+        (unsigned long)kRingBytes);
   return kIOReturnSuccess;
 }
 
 void XenosGPU::releaseBuffers(void) {
+  if (_heapMap != NULL) {
+    _heapMap->release();
+    _heapMap = NULL;
+  }
+  _marker = NULL;
   if (_ringDesc != NULL) {
     _ringDesc->release();
     _ringDesc = NULL;
@@ -183,7 +253,10 @@ bool XenosGPU::waitForRingDrain(void) {
 }
 
 void XenosGPU::submit(void) {
-  flushRange(_ring, kRingBytes);
+  if (!_useHeap) {
+    flushRange(_ring, kRingBytes);
+  }
+  asm volatile("sync" ::: "memory");
   writeReg(kXenosRegCpRbWritePtr, _ringWrite);
 }
 
@@ -191,11 +264,12 @@ bool XenosGPU::runMarker(const char *phase) {
   if (!ringDrained()) {
     return false;
   }
-  IOByteCount length = 0;
-  IOPhysicalAddress phys = _markerDesc->getPhysicalSegment(0, &length);
-  volatile UInt32 *slot = (volatile UInt32 *)_markerDesc->getBytesNoCopy();
+  IOPhysicalAddress phys = _markerPhys;
+  volatile UInt32 *slot = _marker;
   *slot = kMarkerInitial;
-  flushLine(slot);
+  if (!_useHeap) {
+    flushLine(slot);
+  }
   ringPacket3(CP_MEM_WRITE, 2);
   ring((UInt32)phys | kMarkerSwap8In32);
   ring(kMarkerExpected);
@@ -203,7 +277,9 @@ bool XenosGPU::runMarker(const char *phase) {
 
   UInt32 seen = kMarkerInitial, polls;
   for (polls = 0; polls < kMarkerPolls; polls++) {
-    flushLine(slot);
+    if (!_useHeap) {
+      flushLine(slot);
+    }
     seen = *slot;
     if (seen != kMarkerInitial) {
       break;

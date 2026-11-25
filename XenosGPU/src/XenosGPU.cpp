@@ -32,6 +32,9 @@ bool XenosGPU::start(IOService *provider) {
   _mmioMap = NULL;
   _ringDesc = _markerDesc = _texCoordsDesc = _quadDesc = NULL;
   _ring = NULL;
+  _marker = NULL;
+  _heapMap = NULL;
+  _useHeap = false;
   _workLoop = NULL;
   _timer = NULL;
   _presenting = _platformStopped = false;
@@ -41,7 +44,8 @@ bool XenosGPU::start(IOService *provider) {
   if (!super::start(provider)) {
     return false;
   }
-  IOLog("XenosGPU: start (step 1.1: GPU presentation)\n");
+  _presentMS = (getProperty("XenosGPUSlowPresent") == kOSBooleanTrue) ? 50 : kPresentIntervalMS;
+  IOLog("XenosGPU: start (step 1.1: GPU presentation every %lu ms)\n", (unsigned long)_presentMS);
 
   IODeviceMemory *mmio = IODeviceMemory::withRange(kXenosMmioBase, kXenosMmioSize);
   if (mmio != NULL) {
@@ -89,9 +93,13 @@ bool XenosGPU::start(IOService *provider) {
   IOReturn status = callPlatform(kXenonFuncPlatformStopFB);
   _platformStopped = (status == kIOReturnSuccess);
   IOLog("XenosGPU: CPU framebuffer refresh stopped: 0x%08lx\n", (unsigned long)status);
+  IOLog("XenosGPU: interrupts at start: CP_INT_CNTL=0x%08lx CP_INT_STATUS=0x%08lx RBBM_INT_CNTL=0x%08lx "
+        "RBBM_INT_STATUS=0x%08lx MASTER_INT_SIGNAL=0x%08lx\n", (unsigned long)readReg(0x1F2 * 4),
+        (unsigned long)readReg(0x1F3 * 4), (unsigned long)readReg(0x3B4 * 4),
+        (unsigned long)readReg(0x3B5 * 4), (unsigned long)readReg(0x3B7 * 4));
   _presenting = true;
   _timer->enable();
-  _timer->setTimeoutMS(kPresentIntervalMS);
+  _timer->setTimeoutMS(_presentMS);
   registerService();
   return true;
 }
@@ -170,10 +178,15 @@ void XenosGPU::present(IOTimerEventSource *sender) {
             (unsigned long)readReg(kXenosRegCpRbReadPtr), (unsigned long)readReg(kXenosRegCpRbWritePtr),
             (unsigned long)_ringWrite, (unsigned long)readReg(kXenosRegRbbmStatus),
             (unsigned long)readReg(kXenosRegCpMeStatus), (unsigned long)readReg(0x47F * 4));
+      // Interrupt registers: XenonPE silences unclaimed GPU vector 0x58 by writing CP/RBBM_INT_CNTL.
+      IOLog("XenosGPU: stall interrupts: CP_INT_CNTL=0x%08lx CP_INT_STATUS=0x%08lx RBBM_INT_CNTL=0x%08lx "
+            "RBBM_INT_STATUS=0x%08lx MASTER_INT_SIGNAL=0x%08lx\n", (unsigned long)readReg(0x1F2 * 4),
+            (unsigned long)readReg(0x1F3 * 4), (unsigned long)readReg(0x3B4 * 4),
+            (unsigned long)readReg(0x3B5 * 4), (unsigned long)readReg(0x3B7 * 4));
     }
-    sender->setTimeoutMS(kPresentIntervalMS);
+    sender->setTimeoutMS(_presentMS);
     return;
   }
   _busyRun = 0;
-  sender->setTimeoutMS(kPresentIntervalMS);
+  sender->setTimeoutMS(_presentMS);
 }

@@ -60,6 +60,10 @@ private:
   IOPhysicalAddress         _ringPhys;
   UInt32                    _ringWrite;
   IOBufferMemoryDescriptor  *_markerDesc;
+  volatile UInt32           *_marker;
+  IOPhysicalAddress         _markerPhys;
+  IOMemoryMap               *_heapMap;
+  bool                      _useHeap;
   IOBufferMemoryDescriptor  *_texCoordsDesc;
   IOPhysicalAddress         _texCoordsPhys;
   IOBufferMemoryDescriptor  *_quadDesc;
@@ -71,6 +75,7 @@ private:
   bool                      _presenting;
   bool                      _platformStopped;
   UInt32                    _frames;
+  UInt32                    _presentMS;
   UInt32                    _busyTicks;
   UInt32                    _busyRun;
   bool                      _stallLogged;
@@ -93,6 +98,7 @@ private:
 
   // XenosGPU_Ring.cpp
   IOReturn allocateBuffers(void);
+  IOReturn allocateHeapBuffers(void);
   void releaseBuffers(void);
   IOReturn loadFirmware(void);
   void haltCommandProcessor(void);
