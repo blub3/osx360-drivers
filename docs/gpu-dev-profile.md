@@ -1,6 +1,6 @@
 # Development boot profile `gpudev` (step 0.5)
 
-Built and staged 2026-11-25 as the stick's default, then the Xbox was shut down. **Not booted yet.** Booting it needs the owner, because every restart lands in the Aurora dashboard.
+Built and staged 2026-11-25 as the stick's default; **booted and tested the same evening** (results at the end). Booting it needs the owner, because every restart lands in the Aurora dashboard.
 
 ## What it is
 
@@ -75,3 +75,15 @@ Pass criteria, fixed before the boot:
 5. **Optional, only with the owner's OK:** load the probe with `XenosGPUProbePanic`.
    - The owner photographs the panic screen, power-cycles the Xbox and starts XeLL.
    - At the next boot, XenonPE's log line says whether the panic record survived.
+
+## Boot test results (2026-11-25, 22:31 boot)
+
+| Check | Result |
+| --- | --- |
+| 1. Boot | Pass. Desktop with autologin; the owner confirmed it is very slow, as expected. SSH works. Seven Xenon kexts, no XenonCoreGraphics. `hw.ncpu` 6, `hw.availcpu` 1. No panic. |
+| 2. XenonPE log | Pass. "GPU heap 0x8200000-0xFFFFFFF (126 MiB) published", "Panic screen armed: font 0x36e51c, record mapped at 0x8100000" (the kernel's `_iso_font` address), "No panic record from before this boot", "GPU vector 0x58 is dispatched to its driver on thread 0". |
+| 3. Regression | Ethernet: pass. 10 MiB with matching checksums both ways, 7.0 s up and 3.5 s down over SSH, slower than `main6` because of the CPU refresh. `say` returned 0; the owner's confirmation of the audio is pending. Idle CPU load is about 24% system time, from the CPU framebuffer refresh. |
+| 4. Panic screen test | Pass. `XenonPanicScreenTest` from 22:35:14 to 22:35:23; the owner read the text, readable and the right way round, so the font's bit order is correct. Then the desktop came back and the probe unloaded. `kextload` returns before the probe's 8 s wait ends, so the probe can only be unloaded afterwards. |
+| 5. Deliberate panic | Not done (optional, needs the owner's OK and a power cycle). |
+
+**RAM after a shutdown:** the probe's heap pattern from before the shutdown was gone (0 of 516,096 words intact). A powered-off Xbox keeps nothing in RAM. A panic record could at most survive a restart, which is untested.
