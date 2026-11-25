@@ -52,7 +52,25 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
 
-## 2026-11-25: boot spinner over the desktop after a late CPU start; fix `smp6b` (built, not booted)
+## 2026-11-25: `smp6b` on hardware, spinner fixed, six CPUs pass again
+
+**Result: pass, 0 failures.** `smp6b` booted (six CPUs registered, one running).
+
+- **Spinner:** two screenshots 0.3 s apart after login, after each of the five CPU starts, after two restarts, and again after the full test. The area below the screen centre was still and identical, pixel for pixel, to the screenshot without a spinner every time.
+- **`smp6-test.sh`:**
+
+| Check | Result |
+| --- | --- |
+| One loop, 1 / 3 / 6 CPUs | 2.42 / 2.38 / 2.41 s |
+| Three loops, 3 / 6 CPUs | 2.39–2.40 s / 2.42, 3.45, 3.45 s |
+| Six loops, 6 CPUs | 3.52–3.54 s, also after the restarts |
+| Loops per 10 s, 1 / 3 / 6 CPUs | 4.1 / 12.5 / 17.0 |
+| CPUs 1–5 running | 773–964 decrementer ticks in 5 s, 0 external interrupts |
+| Stop and start each of CPUs 5–1 | `hw.availcpu` 5 and 0 ticks while stopped, 6 and ticks again after start, clocks 0–1 s apart |
+| Ethernet, desktop, panic log | Checksums match, WindowServer/Finder/Dock running, none |
+| Three `say` runs | 3.90, 3.19, 3.19 s |
+
+## 2026-11-25: boot spinner over the desktop after a late CPU start; fix `smp6b` (build)
 
 The owner saw the grey boot spinner turning below the screen centre after the `smp6a` test. Checked in a new `smp6a` boot with screenshots of the Xbox screen (`screencapture`, two frames 0.3 s apart): no spinner after login with one CPU; spinner present from the first CPU started through `IOCPUState` (CPU 2), and with each further start.
 
