@@ -70,7 +70,7 @@ Newest first.
   - **`sudo killall loginwindow`:** WindowServer exits within 1 s. The new loginwindow (root) waits forever in `CGSServerPort` → `_CGSGetCoreGraphicsServerVersion` (`sample`): the on-demand restart does not happen.
   - **WindowServer started by hand:** `sudo nohup …/WindowServer -daemon &` brought the desktop back in 6.2 s. The new WindowServer loaded `XenosWinOverlap.plugin` again and completed its startup fences, so plug-ins are re-read at each WindowServer start.
   - **Not repeatable:** the same sequence in `tools/host/xbox-gui.sh restart` worked once (7.7 s) and failed on the next run. loginwindow then aborts in a loop (`Abort trap`, launchd pauses 30 s), and a hand-started WindowServer came up and exited again without a crash report before any loginwindow connected. Starting it through `/usr/libexec/StartupItemContext` failed on the first run: no WindowServer process.
-  - **Recovery:** each failure was recovered with `sudo reboot` over SSH, desktop back in 155 s and 112 s, no owner needed. Afterwards: 10 MiB Ethernet round trip OK, 6 CPUs registered and 1 running, no panic, `say` returned 0.
+  - **Recovery:** each failure was recovered with `sudo reboot` over SSH, desktop back in 155 s and 112 s, no owner needed. Afterwards: 10 MiB Ethernet round trip OK, 6 CPUs registered and 1 running, no panic, and the owner heard the `say` check clearly.
   - **Also seen:** in a normal session WindowServer has no GLEngine or GLD loaded (`vmmap`), only `XenosWinOverlap`.
   - **Next ideas:**
     - re-register the on-demand service after WindowServer exits (`/usr/libexec/register_mach_bootstrap_servers /etc/mach_init.d`, in the system bootstrap context) and let loginwindow start WindowServer itself;
