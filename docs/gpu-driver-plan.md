@@ -27,7 +27,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | Step | State | By | Commit | Result |
 | --- | --- | --- | --- | --- |
 | 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | `ee56b82` | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
-| 0.2 WindowServer restart over SSH | done | Claude | this commit | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
+| 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | open | | | |
 | 0.4 Panic path, panic reboot, GPU interrupt line | open | | | |
 | 0.5 Development boot profile `gpudev` (R4) | open | | | |
@@ -74,7 +74,7 @@ Newest first.
     - `stop`, 30 s with no WindowServer or loginwindow, then `start`: desktop after 8.4 s. Usable for unloading kexts in step 0.3.
     - Each new WindowServer loaded `XenosWinOverlap.plugin` again ("XenosWinOverlap start" in `system.log`), so the plug-in named in `IOCFPlugInTypes` is read at every WindowServer start. Whether a changed property is picked up can only be tested once a driver sets it (step 1.1). Re-reading `IOGLBundleName` is checked in step 4.2, because WindowServer loads no GLD today.
   - **Never `killall loginwindow`:** it races with launchd's respawn and was not repeatable. After a hand-started WindowServer has been ended that way, the service name is dead, loginwindow aborts in a loop and only a reboot helps. That happened once more during this step and was recovered with `sudo reboot` (desktop after 126 s).
-  - **Regression checks afterwards:** 10 MiB Ethernet round trip matched its checksums, 6 CPUs registered and 1 running, no panic, `say` returned 0.
+  - **Regression checks afterwards:** 10 MiB Ethernet round trip matched its checksums, 6 CPUs registered and 1 running, no panic, and the owner heard the `say` check clearly.
 - 2026-11-25, Claude: step 0.2 in progress, stopped here.
   - **How Tiger runs the GUI:** WindowServer runs as user `windowserver`, child of `launchd`, and is a mach_init on-demand service (`com.apple.windowserver`, `/etc/mach_init.d/WindowServer.plist`). loginwindow comes from the console line in `/etc/ttys`. Autologin is on (user 501).
   - **`sudo killall loginwindow`:** WindowServer exits within 1 s. The new loginwindow (root) waits forever in `CGSServerPort` → `_CGSGetCoreGraphicsServerVersion` (`sample`): the on-demand restart does not happen.
