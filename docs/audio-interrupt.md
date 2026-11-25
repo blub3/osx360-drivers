@@ -51,3 +51,22 @@ During the probe session CPU 1 (PIR 2) stopped: 0 decrementer ticks and 0 interr
 - Interrupt: on vector `0x44`, write channel 0's Control low byte with `0x1C` (Run kept) to acknowledge, then do what the timer does (time stamp on wrap, write pointer).
 - Storm guard: if the interrupt rate goes far above one per descriptor, disable it and fall back to the timer.
 - Fix `getAudioPosition`, which reads Control instead of State.
+
+## First hardware test: profile `audirq` (2026-11-25)
+
+`smp3a` (three CPUs) with XenonAudio `ce363791e581ae0b81259206442ace42` and `XenonAudioInterrupt`. Profile `audirq`: `AUDIRQ.ELF` (MD5 `3bd89f2ba26d15c457ec3a1670a1238b`) + `XAIQ.MKE` (MD5 `cd103198239fabd37244035d54c7eaa2`).
+
+**Result: fail.** No storm, hang or panic, but **the owner heard crackles, dropouts and gaps.**
+
+| Check | Result | Criterion |
+| --- | --- | --- |
+| Boot log | Interrupt mode enabled, channel 1 control `1D08001C` → `1C000003` | Pass |
+| CPU 0 external interrupts, playing minus idle | +121 per second | 50–250: pass |
+| Decrementer ticks, all CPUs, playing | 1,652/s against 819/s idle | At most twice idle (1,638): fail by 14/s |
+| Five `say` runs ("Audio test after the restart.", 1.81 s of audio) | 3.29–3.30 s each (3.99 s with the timer build) | 3.0–5.0 s: pass |
+| After playback | 90 external interrupts per second on CPU 0 | No storm: pass |
+| Listening (owner) | Crackles, dropouts and gaps | **Fail** |
+
+Compared with the timer build on the same system, playback added 833 decrementer ticks per second instead of about 5,750.
+
+Suspects: the `0x1C` acknowledge written every descriptor (only bit 3 is known to be the descriptor status), and the position fix, which lets Tiger's engine erase behind the real position. Next: profile `audknb` with test switches (`XenonAudioTestKnobs`, `tools/audio/xenon-audio-set`) to compare acknowledge `0x08`/`0x1C`, position fix on/off and timer/interrupt mode in one boot.

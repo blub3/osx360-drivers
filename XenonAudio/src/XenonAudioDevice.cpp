@@ -9,6 +9,8 @@
 #include "XenonAudioEngine.hpp"
 #include "XenonAudio_Regs.hpp"
 
+#include <IOKit/IOUserClient.h>
+
 OSDefineMetaClassAndStructors(XenonAudioDevice, super);
 
 extern "C" vm_offset_t ml_io_map(vm_offset_t phys_addr, vm_size_t size);
@@ -91,6 +93,10 @@ bool XenonAudioDevice::initHardware(IOService *provider) {
 
   // Optional interrupt-driven updates; falls back to the timer if anything fails.
   _useInterrupt = (getProperty("XenonAudioInterrupt") == kOSBooleanTrue) && setupInterrupt(provider);
+  _wantInterrupt = _useInterrupt;
+  _positionFix   = _useInterrupt;
+  _ackMask       = kXenonAudioRegControlAck;
+  _testKnobs     = (getProperty("XenonAudioTestKnobs") == kOSBooleanTrue);
 
   // Create audio engines for outputs.
   _audioOutputEngine = createAudioEngine(_sampleBuffer, kXenonSampleBufferLength, "Xbox 360 A/V");
@@ -126,13 +132,13 @@ IOReturn XenonAudioDevice::startAudio(XenonAudioEngine *audioEngine) {
   XEDBGLOG("Start register 0x%X", reg);
 
   writeReg32(reg, readReg32(reg) | kXenonAudioRegControlRun);
-  if (_useInterrupt && !_intStorm) {
+  if (_useInterrupt && _wantInterrupt && !_intStorm) {
     // Make every descriptor but the one before the current valid, then take one interrupt per
     // descriptor. The hardware can only starve if 31 interrupts in a row are missed.
     // Start the wrap detection from the current position, so a restart does not count as a wrap.
     _lastReadPtr = readReg32(kXenonAudioRegState) & kXenonAudioRegStateReadPtrMask;
     updatePosition(true);
-    writeReg32(kXenonAudioRegControl, (readReg32(kXenonAudioRegControl) & ~kXenonAudioRegControlStatusMask) | kXenonAudioRegControlAck);
+    writeReg32(kXenonAudioRegControl, (readReg32(kXenonAudioRegControl) & ~kXenonAudioRegControlStatusMask) | _ackMask);
     _intEventSource->enable();
     _intEnabled = true;
   } else {
@@ -178,7 +184,7 @@ UInt32 XenonAudioDevice::getAudioPosition(XenonAudioEngine *audioEngine) {
   if (audioEngine == _audioOutputEngine) {
     // The original code reads the control register here; the position is in the state register.
     // The fix is limited to interrupt mode until it has been tested on its own.
-    reg = _useInterrupt ? kXenonAudioRegState : kXenonAudioRegControl;
+    reg = _positionFix ? kXenonAudioRegState : kXenonAudioRegControl;
   } else {
     return kIOReturnUnsupported;
   }
@@ -266,7 +272,7 @@ bool XenonAudioDevice::setupInterrupt(IOService *provider) {
 bool XenonAudioDevice::filterInterrupt(IOFilterInterruptEventSource *source) {
   UInt32 now = readTimeBaseLower();
 
-  writeReg32(kXenonAudioRegControl, (readReg32(kXenonAudioRegControl) & ~kXenonAudioRegControlStatusMask) | kXenonAudioRegControlAck);
+  writeReg32(kXenonAudioRegControl, (readReg32(kXenonAudioRegControl) & ~kXenonAudioRegControlStatusMask) | _ackMask);
   _intCount++;
 
   if ((now - _intWindowStart) >= _ticksPerSecond) {
@@ -313,6 +319,54 @@ void XenonAudioDevice::updatePosition(bool keepAllValid) {
   if (keepAllValid) {
     writeReg32(kXenonAudioRegState, ((readPtr - 1) & kXenonAudioDescMask) << kXenonAudioRegStateWritePtrShift);
   }
+}
+
+//
+// Test switches for listening comparisons, only with the XenonAudioTestKnobs personality key and
+// only for administrators. Numbers only (no OSBoolean, which no booting kext imports):
+//   XenonAudioAck          acknowledge bits written to control in interrupt mode (0x08 or 0x1C)
+//   XenonAudioPositionFix  1 = report the position from the state register, 0 = original code
+//   XenonAudioUseInterrupt 1 = interrupt mode, 0 = polling timer; applies at the next engine start
+// Overrides IORegistryEntry::setProperties().
+//
+IOReturn XenonAudioDevice::setProperties(OSObject *properties) {
+  OSDictionary  *dict = OSDynamicCast(OSDictionary, properties);
+  OSNumber      *number;
+  bool          changed = false;
+
+  if (!_testKnobs || (dict == NULL)) {
+    return super::setProperties(properties);
+  }
+  if (IOUserClient::clientHasPrivilege(current_task(), kIOClientPrivilegeAdministrator) != kIOReturnSuccess) {
+    return kIOReturnNotPrivileged;
+  }
+
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioAck"));
+  if (number != NULL) {
+    UInt32 mask = number->unsigned32BitValue() & kXenonAudioRegControlAck;
+    if ((mask & 0x08) == 0) {
+      return kIOReturnBadArgument;   // without bit 3 the descriptor interrupt is never cleared
+    }
+    _ackMask = mask;
+    changed = true;
+  }
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioPositionFix"));
+  if (number != NULL) {
+    _positionFix = (number->unsigned32BitValue() != 0);
+    changed = true;
+  }
+  number = OSDynamicCast(OSNumber, dict->getObject("XenonAudioUseInterrupt"));
+  if (number != NULL) {
+    _wantInterrupt = _useInterrupt && (number->unsigned32BitValue() != 0);
+    changed = true;
+  }
+  if (!changed) {
+    return kIOReturnUnsupported;
+  }
+
+  XESYSLOG("Test switches: ack %02X, position fix %u, interrupt mode %u (now %s)", _ackMask, _positionFix,
+           _wantInterrupt, _intEnabled ? "interrupt" : "timer");
+  return kIOReturnSuccess;
 }
 
 //

@@ -38,6 +38,9 @@ public:
   // IOAudioDevice overrides.
   bool initHardware(IOService *provider);
 
+  // Test switches (XenonAudioTestKnobs personality key only), see setProperties().
+  IOReturn setProperties(OSObject *properties);
+
   // Audio device functions.
   IOReturn startAudio(XenonAudioEngine *audioEngine);
   IOReturn stopAudio(XenonAudioEngine *audioEngine);
@@ -60,6 +63,12 @@ private:
   UInt32                        _intWindowCount;
   UInt32                        _ticksPerSecond;
   volatile UInt32               _intCount;
+
+  // Test switches. Defaults: acknowledge 0x1C, position fix and interrupt mode as configured.
+  bool                          _testKnobs;
+  bool                          _wantInterrupt;
+  volatile bool                 _positionFix;
+  volatile UInt32               _ackMask;
 
   // Descriptor and sample buffers.
   UInt32                      *_descBuffer;
