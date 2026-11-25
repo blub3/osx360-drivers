@@ -10,7 +10,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Boot `smp3a` (stage 1b, three CPUs): `hw.ncpu` 3, timer ticks and no interrupt storm on CPUs 1 and 2, three busy processes in parallel, stop and restart each secondary, clock spread, Ethernet.
+1. Multi-hour uptime test with three CPUs (`smp3a`), and the owner's check of audio, mouse and keyboard.
 2. Fix the SMC lock hold (audit finding 2) in a separate build.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
@@ -51,6 +51,21 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - **SSH is about 20% faster with two CPUs** than with CPU 1 stopped in the same boot. With one CPU, receiving at line rate already takes 93% of the CPU in the kernel.
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
+
+## 2026-11-25: SMP stage 1b works, three CPUs (`smp3a`)
+
+**Result: pass, 0 failures** (multi-hour uptime with three CPUs still open).
+
+| Check | Result |
+| --- | --- |
+| Boot log | `SMP enabled for thread mask 0x15`, `released PIR 2`, `released PIR 4` |
+| `hw.ncpu` / `hw.availcpu` | 3 / 3 |
+| CPU 1 / CPU 2 over 5 s | 2,055 / 810 decrementer ticks, 0 external interrupts per second |
+| One busy process | 4.58–4.59 s |
+| Three busy processes in parallel | 4.63–4.67 s each, after the restarts 4.62–4.64 s |
+| Stop CPU 2, then CPU 1 | `hw.availcpu` 2, the stopped CPU takes 0 ticks |
+| Start again | `hw.availcpu` 3, ticks resume, clocks 0–1 s apart across 60 processes, Ethernet checksums match |
+| WindowServer, Finder, Dock; panic log | Running; none |
 
 ## 2026-11-25: stage 1b profile `smp3a` (staged, not booted)
 

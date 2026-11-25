@@ -80,8 +80,10 @@ Lessons from the hardware tests:
 - On a secondary, end each interrupt with a plain EOI and restore priority `0x74`. EOI with auto-update reopened the block and caused an interrupt storm of about 294,000 per second.
 - Tiger's `IOCPU::setProperties` only stops CPUs, so `XenonCPU` overrides it to start a deferred CPU.
 
-Two-hour uptime test passed on 2026-11-25. `smppark` (built, not yet booted) adds stopping and restarting a secondary CPU through `IOCPUState` and the interrupt barrier from `docs/smp-driver-audit.md`.
+Two-hour uptime test with two CPUs passed on 2026-11-25. `smppk2` adds stopping and restarting a secondary CPU through `IOCPUState`, with the time base kept, and the interrupt barrier from `docs/smp-driver-audit.md`.
+
+Stage 1b works on hardware (`smp3a`, 2026-11-25): PIR 0, 2 and 4 run as three CPUs with the same binary, three busy processes run in parallel at single-process speed, and each secondary can be stopped and started again.
 
 Stopping and restarting a secondary CPU works on hardware (`smppk2`, with the time base fix). In the same boot, unencrypted Ethernet runs at the 100 Mbit/s line rate with one or two CPUs, and SSH is about 20% faster with two.
 
-Open: SMC lock hold (audit finding 2); stage 1b (`smp3a`, staged); stage 2.
+Open: multi-hour uptime with three CPUs; SMC lock hold (audit finding 2); stage 2.
