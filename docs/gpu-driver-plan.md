@@ -34,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load, unload, display handback | in progress | Claude | this commit | Presenting stalls the GPU after about 1 s (resolve just past ring dword `0x400`); libxenon reset does not recover it; suspect: ring in high memory; see log |
+| 1.1 Load, unload, display handback | in progress | Claude | `520626e` | Presenting stalls the GPU in the resolve of frame 71–73 at any rate, ring in Tiger memory or the heap; only a reboot clears it; see log |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -67,6 +67,13 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 1.1, two more tests (`520626e`), each after a shutdown and restart by the owner.
+  - **Ring in the GPU heap:** `XenosGPU` takes its ring, marker and vertex buffers from the heap at `0x08200000` (uncached; `XenosGPUTigerMemory` selects the old Tiger allocations). Both markers passed, then the GPU **stalled after 73 frames again**, at the same `rptr=0x0428` and `RBBM_STATUS=0xEAA50110`. The ring's physical address is not the cause.
+  - **50 ms presentation** (`XenosGPUSlowPresent`): stall after 71 frames (about 3.5 s, `rptr=0x0410`, the resolve of frame 71). **The stall is count-based**, about 71–73 frames at any rate.
+  - **Interrupts are not involved:** `CP_INT_CNTL` and `RBBM_INT_CNTL` were 0 at start and at the stall, and the only pending source was `RBBM_INT_STATUS` `0x00080000` (GUI idle) with `MASTER_INT_SIGNAL` 1.
+  - **The one success** (2,089 frames at 22:47) came 16 minutes after boot and 6 minutes after a GUI restart (`xbox-gui.sh` at 22:41). All failures were on a fresh boot without a GUI restart, or a reload right after a session. XenonCoreGraphics, with the same per-frame commands, runs for hours from boot.
+  - **Next experiment:** fresh boot, `xbox-gui.sh restart`, then `XenosGPU` for 60 s.
+  - **Other candidates:** differences between XenonCoreGraphics' start at boot and a runtime start: the 1 s delay before its first frame, the `IOCFPlugInTypes` plug-in and the GLD that are absent on `gpudev`, and the display state WindowServer sets at its first start.
 - 2026-11-25, Claude: step 1.1, after the owner's power cycle (`gpudev` booted at 23:00).
   - **libxenon 3D reset:** `XenosGPU` now resets the 3D blocks the way libxenon's `Xe_pReset` does (`RBBM_SOFT_RESET` = `0x8064`, then 0, then `0x11800`, then 0, repeated until `RBBM_STATUS` bit 31 is clear, at most 100 rounds), then resets the CP as before. It does not hang the console.
   - **Load on a fresh, idle GPU** (`RBBM_STATUS` `0x00040110`): the reset finished in 1 round, `0x00E0` read `0x10`, both markers passed. The GPU **stalled after 73 frames** (about 1.1 s; ring not drained at unload).
