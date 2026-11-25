@@ -34,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load, unload, display handback | in progress | Claude | `560c59e` | First session after boot works (4,127 frames, clean unload); a second session stalls at frame 71; see log |
+| 1.1 Load, unload, display handback | in progress | Claude | `78abf83` | First session after boot works (4,127 frames, clean unload); a second session stalls at about frame 72; quiesce build installed, not run; see log |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -67,6 +67,12 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26 00:05, Claude: stopped for the day at the owner's request; the Xbox was shut down over SSH. **Where to continue:**
+  1. Boot `gpudev` (the stick's default).
+  2. `tools/host/gpu-dev.sh XenosGPU load --wait 20`, then `unload`. The installed build `78abf83` quiesces before halting the CP; check the "quiesce:" and "command processor halted, RBBM_STATUS" lines.
+  3. Load and unload again; the 20 cycles are the pass criterion.
+
+  If the second session still stalls at about frame 72, compare XenonCoreGraphics' start at boot with ours step by step. Every GPU stall needs a reboot (the owner has to start XeLL), so test only with the owner present. While `XenosGPU` is not loaded, `gpudev` redraws through the CPU, the desktop is slow and audio glitchy; `main6` is the profile for normal use.
 - 2026-11-25/26, Claude: step 1.1, register comparison and two follow-up tests.
   - **Diagnostics:** `XenosGPU` dumps 109 GPU registers at every load (named a2xx CP, RBBM and MH registers, plus those XeLL and libxenon set; no data ports). A page-crossing check pads the ring with NOPs to dword `0x420` and checks a marker there.
   - **Session 0 vs session 1 after a fresh boot:** the page-crossing marker passed in both, and session 1 still stalled at frame 72 (now at `rptr=0x081F`, because of the padding). **So the stall is count-based (about 72 resolves), not tied to the ring position.**
