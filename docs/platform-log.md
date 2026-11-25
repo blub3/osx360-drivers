@@ -10,7 +10,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
-1. Two-hour uptime test with six CPUs (`smp6b`); the two-hour test with three CPUs passed.
+1. Two-hour uptime tests passed with three CPUs and with six CPUs (`smp6c`, below).
 2. SMC lock hold (audit finding 2): fixed in `smp6c`, see below.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
@@ -20,7 +20,7 @@ Gate everything behind a personality flag, because the firmware cannot pass boot
 
 Rules learned: never import a kernel symbol in XenonPlatform that `pmapfast` does not already import. Tiger's offline link check accepts such builds, but they fail at boot. Resolve extra kernel functions at runtime with `resolveKernelSymbolExact`.
 
-The boot stick defaults to `smp6b`; `audfix` is the three-CPU fallback and `pmapdef` the single-CPU reference. At the owner's request (2026-11-25) `kboot.conf` was cut from 64 entries (XeLL's limit) to 7: `smp6b`, `audfix`, `pmapdef`, `gpuwinoverlap`, `openbios`, `framebuffer`, `hdminative`. The 56 other GPU entries, `smp3a` and Claude's older test files went to the owner's PC (`stick-archive/2026-11-25-entries`, 137 files with MD5 manifest and restore notes); the stick booted `smp6b` afterwards. `kboot.conf.before-cleanup.bak` on the stick is the old file and needs the archived files back. Old test profiles were moved off the stick to the owner's PC (`stick-archive/2026-11-25`). Keep `kboot.conf` at 64 entries or fewer (XeLL limit). SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
+The boot stick defaults to `main6` (built from `main` after the SMP and GPU merges, six CPUs registered, started with `xenon-cpu-start`; staged 2026-11-25, not yet booted), with `main1` as its single-CPU variant. `smp6c` is the tested six-CPU fallback, `audfix` the three-CPU fallback and `pmapdef` the single-CPU reference. Backup: `kboot.conf.before-main.bak` (default `smp6c`). At the owner's request (2026-11-25) `kboot.conf` was cut from 64 entries (XeLL's limit) to 7: `smp6b`, `audfix`, `pmapdef`, `gpuwinoverlap`, `openbios`, `framebuffer`, `hdminative`. The 56 other GPU entries, `smp3a` and Claude's older test files went to the owner's PC (`stick-archive/2026-11-25-entries`, 137 files with MD5 manifest and restore notes); the stick booted `smp6b` afterwards. `kboot.conf.before-cleanup.bak` on the stick is the old file and needs the archived files back. Old test profiles were moved off the stick to the owner's PC (`stick-archive/2026-11-25`). Keep `kboot.conf` at 64 entries or fewer (XeLL limit). SMP driver audit: `docs/smp-driver-audit.md`. The owner decides when to restore `gpuwinoverlap`.
 
 ## Build notes
 
@@ -34,6 +34,25 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 ```
 
 - Firmware passes no boot-args and the console has no working NVRAM. Test builds enable a feature with a personality property in the test mkext, for example `XenonPmapStats`.
+
+## 2026-11-25: SMP two-hour uptime test with six CPUs
+
+Profile `smp6c` (SMC lock fix, `XenonSMPDeferStart`, waiting and idle threads at low priority). Script `tools/host/uptime6.sh`: it starts CPUs 1–5 with `xenon-cpu-start` (all returned `0x0`), then sends a heartbeat every minute and runs a load and Ethernet check every 10 minutes. Display off, no user activity.
+
+**Result: pass, 0 failures.** 2 h 1 min (16:25:58–18:26:45, uptime 2 h at the end).
+
+| Check | Result |
+| --- | --- |
+| Heartbeats | 115, none missed |
+| `hw.availcpu`, WindowServer, Finder, Dock | 6, running at every heartbeat |
+| 10 MiB Ethernet up and down, 13 checks | Checksums match every time |
+| CPU 1–5 external interrupts | 0–4 per second |
+| CPU 1–5 decrementer ticks | 131–532 per second |
+| One busy process | 2.49–2.86 s |
+| Six busy processes in parallel | 3.79–3.81 s each without the screensaver, 4.23–4.59 s with it |
+| Panic log | None |
+
+The screensaver started after about 20 minutes (from the third check on, load average about 1.0) and took CPU time from the six loops. Six loops on six hardware threads take about 1.5 × one loop, because the threads of a core share it.
 
 ## 2026-11-25: `smppk2` on hardware; Ethernet with one and two CPUs in the same boot
 
