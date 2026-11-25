@@ -2,6 +2,8 @@
 
 Written by Claude for the next GPU work (ChatGPT/Codex). As of 2026-11-25, `main` holds the platform work (SMP, audio, SMC) and the tested GPU drivers in one tree. Continue GPU work on a new branch from `main`, or merge `main` into your branch first.
 
+**GPU work now follows [`docs/gpu-driver-plan.md`](gpu-driver-plan.md) on branch `gpu/xenos-driver`.** Claude and ChatGPT/Codex take turns on that branch, never at the same time. Start with its "Taking over" section and status table.
+
 ## What is in `main` now
 
 | Merge | Content |

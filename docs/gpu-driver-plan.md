@@ -1,0 +1,235 @@
+# Xenos GPU driver plan
+
+Plan for a complete Xenos graphics driver on Mac OS X 10.4.11 (Xbox 360 Slim), written 2026-11-25 from `main` at `9f0c40b`. Goal: Quartz Extreme, then OpenGL for applications, with as few reboots as possible.
+
+The plan is shared: Claude and ChatGPT/Codex take turns on branch `gpu/xenos-driver`, never at the same time. The owner decides whose turn it is.
+
+## Taking over
+
+1. Fetch `blub3/osx360-drivers`, check out `gpu/xenos-driver`, and merge `main` into it if `main` has moved.
+2. Read the status table and the newest log entry below, then `docs/handoff-gpu.md` (rules and boot stick) and `docs/platform-log.md` (platform state).
+3. Continue at the first step that is not done. A step marked `in progress` was interrupted: its log entry says what is left.
+4. Work on one step at a time. When it is finished or you stop:
+   - update its row;
+   - add a log entry (newest first) with the hardware result in numbers, or the reason it stopped;
+   - commit and push.
+5. Rules:
+   - Define the pass criteria before a hardware run. Every run also checks SSH, WindowServer/Finder/Dock, Ethernet and audio.
+   - Shut the Xbox down over SSH (`sudo shutdown -h now`).
+   - Back up `kboot.conf` before changing it and keep it at 64 entries or fewer.
+   - Never add a kernel import that no booting kext already has.
+   - Merge into `main` only after a passing hardware test and the owner's OK, with a merge commit named "Merge the tested …".
+
+## Status
+
+States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or ChatGPT; "Commit" is the commit that finished the step.
+
+| Step | State | By | Commit | Result |
+| --- | --- | --- | --- | --- |
+| 0.1 Tiger GL stack and Quartz Extreme requirements | open | | | |
+| 0.2 WindowServer restart over SSH | open | | | |
+| 0.3 Runtime kext loading, 64 MiB contiguous memory | open | | | |
+| 0.4 Panic path, panic reboot, GPU interrupt line | open | | | |
+| 0.5 Development boot profile `gpudev` (R4) | open | | | |
+| 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
+| 1.1 Load, unload, display handback | open | | | |
+| 1.2 Debug client, fence page, GPU interrupt | open | | | |
+| 1.3 GPU memory manager | open | | | |
+| 1.4 Command submission with address check | open | | | |
+| 1.5 Hang recovery | open | | | |
+| 1.6 Display: linear scanout or damage copy, flips, modes | open | | | |
+| 2.1 `libxenos` | open | | | |
+| 2.2 Earlier milestones as user-space tests | open | | | |
+| 2.3 Host tools: PM4 decoder, shader tools, replay | open | | | |
+| 2.4 EDRAM manager, 1080p with depth | open | | | |
+| 2.5 2D operations | open | | | |
+| 3.1 Copy and fill plug-in on `libxenos` | open | | | |
+| 3.2 2D pass: pixel-exact and faster than software | open | | | |
+| 4.1 GLD interface (logging GLD) | open | | | |
+| 4.2 Hybrid GLD, Quartz Extreme switch | open | | | |
+| 4.3 Compositor operations on the GPU | open | | | |
+| 4.4 IOAccelSurface for app GL windows | open | | | |
+| 4.5 Quartz Extreme pass (milestone 7) | open | | | |
+| 5.1 Fixed-function shaders | open | | | |
+| 5.2 Vertex data | open | | | |
+| 5.3 Textures and framebuffer objects | open | | | |
+| 5.4 Raster state, queries, readback | open | | | |
+| 5.5 ARB programs, GLSL | open | | | |
+| 5.6 Software fallback per draw call | open | | | |
+| 5.7 Conformance, multiple contexts, Core Image | open | | | |
+| 6.1 `XenosGPU` in the mkext, plists in the repository | open | | | |
+| 6.2 Desktop smoke test (milestone 8) | open | | | |
+| 6.3 Merge into `main` | open | | | |
+
+## Log
+
+Newest first.
+
+- 2026-11-25, Claude: plan written from `main` at `9f0c40b`. No step started. The Xbox is shut down; its stick boots `main6` (not yet booted). Phase 0 needs the Xbox on.
+
+## Where the GPU work stands
+
+What works on hardware (details: `docs/gpu-milestones.md`):
+
+- Command ring, fences, clears, triangles, textures and their filtering, blending, depth, stencil, scissor, render-to-texture, VBlank flips.
+- User clients with several Tiger processes, CGL and AGL rendering in a test process, Tiger finding the Xenos renderer and its GLD.
+- A WindowServer copy-region plug-in that moves one window area through the GPU.
+- The desktop: Tiger draws into a linear 8 MiB framebuffer. Every 15 ms `XenosController::handleTimer` draws the whole framebuffer as a texture and resolves it into the tiled scanout buffer. Without XenonCoreGraphics, `XenonPE::refreshFramebuffer` does the same conversion on the CPU every 500 ms.
+
+Why it is slow to develop, and why Quartz Extreme is still off:
+
+- **Every test lives in the kernel.** XenonCoreGraphics has 28 user client selectors (`XenosQuadProtocol.h`), one for each test: quad, blended batch, stencil batch, mipmap batch and so on. Each one renders into a fixed 32 × 32 target and checks its own pixels in the kernel. Every new test therefore needed a new kext, a new mkext, a new boot entry and a cold boot: **56 GPU boot entries** were on the stick before the cleanup. Several of those boots failed (unresolved `proc_selfpid`, a ring stall at startup, a WindowServer crash from an empty plug-in slot), and some needed the owner at the console.
+- **No generic path.** A user program cannot send its own commands or allocate GPU memory. The GLD can therefore only call the test selectors.
+- **The GLD reports a software renderer** (`accelerated=0`), so WindowServer never turns Quartz Extreme on. The GPU window copy takes about 1.1 s for 7,252 pixels in 32 × 32 tiles, with the CPU writing the result to the screen, which is slower than software.
+- No GPU interrupts (everything is polled by timers), no GPU hang recovery, and no memory manager.
+
+The plan below replaces the test selectors with a small, generic kernel driver and moves all rendering logic to user space, where a change needs no reboot.
+
+## Restart cost
+
+| Kind | What it costs | When it is needed |
+| --- | --- | --- |
+| R0 | Nothing: run a program over SSH | User-space library, tests, GLD in a test process |
+| R1 | WindowServer restart, about 30 s, no owner needed | GLD or plug-in used by WindowServer changes |
+| R2 | `kextunload` + `kextload`, seconds | Kernel driver loaded by hand (not in the mkext) |
+| R3 | `sudo reboot`, about 2–3 min, no owner needed | Boot-resident code changes, or recovery after a crash |
+| R4 | Stick change + reboot | OpenBIOS or mkext changes |
+| R5 | Owner power-cycles the Xbox | Hang or panic (grey screen) |
+
+**Rules that keep restarts rare:**
+
+- During development, the new GPU kernel driver is **not in the mkext**. It is loaded by hand from a folder outside `/System/Library/Extensions`, so Tiger never loads it at boot. A bad build can at most crash the running system, and the next boot is clean.
+- Every kernel feature is generic. Tests, shaders and rendering logic are user-space programs. The kernel checks no pixels.
+- Registry properties that WindowServer reads (`IOGLBundleName`, `IOCFPlugInTypes`, `IOAccelTypes`) are set by the running driver, not by personalities packed into the mkext.
+- Turn R5 into R3: after a panic or GPU hang the Xbox should reboot by itself into the known-good default profile and keep the panic text (step 0.4).
+- Test on the host where possible: command-stream and shader decoding, and shader assembly, run on the PC.
+
+**Expected boot-stick changes:** 1–2 in phase 0, none in phases 1–5, 1–2 in phase 6.
+
+## Target design
+
+Kernel driver `XenosGPU` (new bundle ID; it replaces XenonCoreGraphics in phase 6):
+
+- **GPU memory:** a contiguous heap (64–128 MiB), allocations as handles and owned by a client, mapped cacheable into the client's task with explicit cache flushes, and freed when the client exits. No cache-inhibited user mappings: Tiger's `memcpy` and `bzero` use `dcbz`.
+- **Command submission:** clients build PM4 command buffers in their own GPU memory. The kernel ring holds only `CP_INDIRECT_BUFFER` packets and fence writes. The kernel checks that every address in a buffer belongs to the client. A root-only development mode skips the check.
+- **Fences:** a timestamp written by the GPU into a page mapped read-only into every client, and a wait call that uses the GPU interrupt.
+- **Hang recovery:** a watchdog on ring progress, a soft reset (`RBBM_SOFT_RESET`) with ring and firmware reinit, an error returned to the client, and the display back on the software path.
+- **Display:** scanout address and format, page flip at VBlank, 720p/1080p switching together with XenonFramebufferTest, and handing the display back to XenonPE on unload (`kXenonFuncPlatformStartFB`, which already exists).
+- **IOAccelerator:** the surface client WindowServer uses (`IOAccelSurfaceConnect.h`: create, shape, lock, read, flush), plus a private client for the GLD and the 2D plug-in.
+- **Debug client (root only):** reads and writes registers and GPU memory, so most hardware questions are answered by a program, not a new kext.
+- **SMP:** all state behind one lock or command gate. Interrupts arrive on CPU 0. Test with six CPUs.
+
+User space:
+
+- `libxenos`: GPU memory, a PM4 command builder, state blocks, loading shader binaries, fences, an EDRAM manager. The tests, the GLD and the 2D plug-in all use it.
+- **GLD bundle:** starts as a wrapper around Apple's software renderer (`GLDriver.bundle`; `gpu/lab/gpu-compositor-retry` already forwards every call to it) and takes over operations one at a time.
+- **2D plug-in:** the WindowServer copy and fill plug-in, rebuilt on `libxenos`.
+
+Host tools (`tools/gpu/`):
+
+- a PM4 decoder built from the register headers already in the tree (`a2xx.xml.h`, `adreno_pm4.xml.h`);
+- a shader assembler and disassembler built on `instr-a2xx.h`;
+- a record-and-replay format for command streams captured on Tiger.
+
+## Phase 0: check the unknowns, build the development boot
+
+All checks are R0 over SSH unless marked.
+
+1. **Tiger's GL stack:**
+   - List the GLDs installed on the Xbox; the ATI R300 GLD is a reference for a similar GPU.
+   - List the exports of GLEngine and the GLDs.
+   - Find what WindowServer checks before enabling Quartz Extreme: accelerated flag, video memory size, texture rectangle, `AccelCaps`.
+
+   Result: a short requirements note.
+2. **Restart WindowServer without rebooting.** Find a reliable way over SSH, for example `killall loginwindow`, or keeping the GUI down through the console line in `/etc/ttys`. Check that WindowServer reads `IOGLBundleName`, `IOCFPlugInTypes` and `IOAccelTypes` again when it starts. Time one restart.
+3. **Runtime loading:**
+   - Load a probe kext that matches the Xenos PCI device while WindowServer runs.
+   - Unload it with the GUI down.
+   - Allocate 64 MiB of physically contiguous memory after a long uptime.
+
+   If the allocation fails, OpenBIOS reserves the heap instead (that is then part of the boot change in step 5).
+4. **Panic and hang path:**
+   - Find in the 10.4.11 kernel which platform call a panic ends in. XenonPE overrides no halt or restart function today.
+   - Plan a hook that copies the panic text to a RAM area kept across a soft reboot, then asks the SMC to reboot without locks.
+   - Find the Xenos interrupt line. Free60 Linux and the interrupt controller in `XenonPlatform/src/Interrupts` are the sources.
+5. **Development boot profile `gpudev` (R4, once).** The `main6` kexts without XenonCoreGraphics, plus the platform changes from steps 3 and 4 (panic reboot, GPU interrupt routing, the heap if needed). The desktop then runs on XenonPE's CPU refresh until `XenosGPU` is loaded. `main6` stays the stick default until `gpudev` passes the usual checks (SSH, desktop, Ethernet, audio).
+6. **Development loop:**
+   - sync the source to the G5 and build there;
+   - copy the kext to the Xbox and load it;
+   - run the tests;
+   - collect `system.log`.
+
+   One script, `tools/host/gpu-dev.sh`, does all of it, including the import check against the booting kexts (the import rule applies from the first build, so phase 6 has no surprises).
+
+## Phase 1: kernel core (R2 for each change)
+
+1. Load and unload: take the GPU from XenonPE, bring the ring up with the checked reset from 0.0.5d46, and give the display back on unload. Pass: 20 load and unload cycles with the desktop up.
+2. Debug client, fence page and the GPU interrupt. Pass: a fence wait by interrupt, plus a VBlank count that matches 60 Hz.
+3. GPU memory manager. Pass: allocate, map, free and exit with memory still held, without leaks (heap counters back at their start values).
+4. Command submission with the address check, and the FIFO queue across clients. Pass: the existing clear, triangle and texture tests as user programs, run from several processes at once, fences in order.
+5. Hang recovery. Pass: a deliberately bad command buffer resets the GPU, the client gets an error, the desktop keeps running, and the next submission works.
+6. Display: check whether the display controller can scan out a linear surface (debug client, no rebuild).
+   - If it can, the desktop needs no copy at all.
+   - If not, copy only the changed areas instead of the whole screen every 15 ms.
+
+   Then page flips at VBlank and 720p/1080p switching. Pass: lower CPU and GPU load on an idle desktop, both modes work.
+
+## Phase 2: user-space library and tests (R0)
+
+1. `libxenos`.
+2. Port every earlier GPU milestone to a user-space test: clears, triangles, textures, filtering, blending, depth, stencil, scissor, render-to-texture, flips. All of them in one regression run of a few minutes, instead of one cold boot each.
+3. Host tools: PM4 decoder, shader assembler and disassembler, capture and replay.
+4. EDRAM manager: full-screen 1080p render targets with depth, through tiling (10 MiB EDRAM; 1080p colour alone is about 8 MiB).
+5. 2D operations: fill, copy, blit with format conversion, alpha compositing.
+
+## Phase 3: 2D acceleration in WindowServer (R1)
+
+1. Rebuild the copy and fill plug-in on `libxenos`. Copies and fills run entirely on the GPU in the framebuffer: no 32 × 32 tiles, no CPU copy of the result. Implement every plug-in slot (the beam-position slot crashed WindowServer before). Set `IOCFPlugInTypes` from the driver at runtime.
+2. Pass: window moves and fills match the software result pixel for pixel, and are faster than software. Measure it.
+
+This gives a faster desktop even before Quartz Extreme, and is the fallback if phase 4 takes long.
+
+## Phase 4: Quartz Extreme (R0 for test programs, R1 for WindowServer; milestone 7)
+
+1. **GLD interface.** A logging GLD forwards every call to the software renderer and logs it, with its arguments, first in test programs and then in WindowServer. Compare with the installed ATI GLD. Result: a header with the GLD calls and structures WindowServer actually uses.
+2. **Hybrid GLD.**
+   - Still forward all drawing to the software renderer, but report an accelerated renderer with its video memory.
+   - The driver sets `IOGLBundleName` at runtime.
+   - Find out whether WindowServer turns Quartz Extreme on and which GL operations its compositor uses.
+
+   Everything stays correct, because the software renderer still draws.
+3. **Take over the compositor's operations, one at a time:** rectangle textures and their upload (client storage), textured quads with blending, scissor, clears, then presenting the frame (resolve into the scanout buffer, flip at VBlank). In a check mode the GLD draws each frame both ways and logs differences.
+4. **App GL windows:** complete the IOAccelSurface client so WindowServer can composite them.
+5. **Pass:**
+   - System Profiler reports Quartz Extreme.
+   - Moving, overlapping and resizing windows works, as do the Dock effects and Exposé.
+   - Frame times are measured.
+   - No differences in check mode.
+
+## Phase 5: OpenGL for applications (mostly R0)
+
+1. Fixed-function pipeline as generated shaders (transform, lighting, texture generation, texture combine, fog, alpha test), with a shader cache.
+2. Vertex data: immediate mode, vertex arrays, VBOs, index buffers, format and byte-order conversion.
+3. Textures: formats and tiling, mipmaps, cube maps, DXT compression (native on Xenos), rectangle textures, render-to-texture, framebuffer objects.
+4. Raster state: depth, stencil, blending, polygon offset, lines and points, occlusion queries, `glReadPixels`, `glCopyTexImage`.
+5. Programmable shaders: ARB vertex and fragment programs translated to Xenos shaders. GLSL depends on what GLEngine passes to the GLD (found out in 4.1).
+6. Everything unsupported goes to the software renderer for that draw call, so applications keep working.
+7. Conformance: GL demos, Apple's OpenGL samples and a test subset that builds on Tiger, compared image by image with the software renderer. Then several contexts, shared objects, multi-threaded apps with six CPUs, and Core Image and Core Video.
+
+## Phase 6: integration (R4, once or twice; milestone 8)
+
+1. `XenosGPU` replaces XenonCoreGraphics in the mkext. Install the GLD and plug-ins in `/System/Library/Extensions`. Put all properties into the repository plists (no more pack-time plist changes). Remove the old test selectors.
+2. Desktop smoke test with acceleration on:
+   - windows: move, overlap, resize;
+   - 720p and 1080p switching;
+   - six CPUs;
+   - a two-hour uptime test with GL load;
+   - Ethernet and audio regression checks.
+3. Merge into `main` after a passing test and the owner's OK.
+
+## Risks
+
+- The GLD interface is undocumented; phase 4.1 may take longer than planned. The 2D plug-in from phase 3 gives a faster desktop either way.
+- WindowServer may require something Xenos does not offer in the way Tiger expects. Phase 0.1 should find this before the larger work starts.
+- The EDRAM size makes full-screen depth buffers need tiling. That costs time in phase 2.4, but the WindowServer compositor needs no depth.
+- If the panic reboot (step 0.4) cannot be made to work, crashes still need the owner at the console. Phases 1 and 3 then need the most care: bad command buffers are caught by the address check and the hang recovery.
