@@ -23,6 +23,7 @@ Logs and test data go to `$XBOX_TEST_OUT`, by default `~/xbox-test-logs`.
 | `audio-measure.sh` | Timer interrupt cost of XenonAudio, idle and while `say` plays |
 | `audio-irq-test.sh` | Checks of the interrupt-driven audio build (profile `audirq`) |
 | `audio-round.sh <label> <ack> <posfix> <interrupt>` | One listening round with the XenonAudio test switches |
+| `gpu-dev.sh KEXT [build\|install\|load\|unload\|cycle\|log] [--key NAME] [--wait S] [--gui-down] [--strict]` | Development loop for hand-loaded kexts: builds on the G5, rejects compiler helper imports (`___udivdi3` and so on, which the kernel does not export) and lists imports outside `tools/gpu/main6-boot-imports.txt` (fatal with `--strict`), installs in `/Library/OSX360Dev`, loads with optional personality keys, collects the kernel log, unloads (with the GUI down if asked). No reboot |
 | `xbox-gui.sh status\|stop\|start\|restart` | Stops, starts or restarts WindowServer and the autologin session without a reboot (about 9 s); never use `killall loginwindow` instead |
 
 Each script checks numeric pass criteria and logs `FAIL` lines and a summary.

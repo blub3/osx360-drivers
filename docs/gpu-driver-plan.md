@@ -31,8 +31,8 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | `6808916` | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
-| 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
-| 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
+| 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
+| 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | this commit | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
 | 1.1 Load, unload, display handback | open | | | |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
@@ -66,6 +66,18 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 0.6 done; phase 0 is complete.
+  - **The script:** `tools/host/gpu-dev.sh KEXT [build|install|load|unload|cycle|log]`.
+    - It syncs the tree to the G5, builds and checks the kernel imports.
+    - Any `___` compiler helper fails the check: the Tiger kernel exports none of `__udivdi3`, `__divdi3`, `__umoddi3`, the 64-bit shifts or the float conversions.
+    - Imports outside `tools/gpu/main6-boot-imports.txt` (1,419 symbols, the union of the `main6` boot kexts) are listed, and are fatal with `--strict`.
+    - It installs in `/Library/OSX360Dev`, can set personality keys for one load (`--key`, the plist is restored afterwards), loads, waits, unloads (with `--gui-down` around the unload), and shows the kext's kernel log lines since that load.
+  - **Tested with `XenosGPUProbe` on `gpudev`:**
+    - full cycle in 12.8 s;
+    - `build --strict` exits 1 on the probe's three non-`main6` imports;
+    - a cycle with `--key XenosGPUProbeStopRefresh --gui-down` paused and resumed the refresh, restored the plist, and brought the desktop back (19.8 s on `gpudev`).
+  - **Also seen:** on `gpudev` only XenonFramebufferTest is attached to the GPU next to the probe.
+  - **Next:** step 1.1, `XenosGPU` load and unload with GPU presentation.
 - 2026-11-25, Claude: `gpudev` audio.
   - **Result:** the owner heard the boot check glitchy. A `say` with XenonPE's CPU refresh paused (new probe switch `XenosGPUProbeStopRefresh`) was clean; one with it running was glitchy.
   - **Cause:** `refreshFramebuffer` keeps interrupts off on CPU 0 while it converts the whole screen, every 500 ms.
