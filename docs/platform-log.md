@@ -14,7 +14,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 2. Fix the SMC lock hold (audit finding 2) in a separate build.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
-5. Stage 2 (all six threads): profile `smp6a` with a low-priority idle loop is built, see below.
+5. Stage 2 (all six threads) works with `smp6a` (below). Next: two-hour uptime test with six CPUs; the low-priority parking loop for the normal single-CPU boot.
 
 Gate everything behind a personality flag, because the firmware cannot pass boot-args. Keep the import rule below.
 
@@ -52,7 +52,36 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
 
-## 2026-11-25: stage 2 profile `smp6a` (built, not booted)
+## 2026-11-25: SMP stage 2 works, six CPUs (`smp6a`)
+
+**Result: pass, 0 failures.** Boot log: `release routine installed, ... waiting threads at low priority`, `idle loop at low thread priority`, `SMP enabled for thread mask 0x3F, start deferred`; `hw.ncpu` 6, `hw.availcpu` 1 after boot. No screensaver during the run.
+
+Same busy loop as in all earlier tests (`perl`, 2.5 million additions):
+
+| Running CPUs | 1 loop | 3 loops in parallel | 6 loops in parallel | Loops per 10 s |
+| --- | --- | --- | --- | --- |
+| 3 (`audfix`, before: waiting threads and idle at normal priority) | 4.58 s | 4.60–4.62 s | 9.14–9.27 s | 6.5 |
+| 1 (`smp6a`, five threads waiting at low priority) | 2.76 s | | | 3.6 |
+| 3, one per core (`smp6a`) | 2.38 s | 2.39 s each | | 12.6 |
+| 6 (`smp6a`) | 2.43 s | 2.43, 3.45, 3.45 s | 3.52–3.55 s | 16.9 |
+
+- **The waiting threads cost the running ones a lot.** With the other threads waiting at low priority, one loop takes 2.76 s on a single CPU instead of 4.58 s. The threads XeLL and OpenBIOS park spin at normal priority and take about 40% of each core, also in the normal single-CPU boot.
+- **Six CPUs add about 35% throughput** over three (16.9 against 12.6 loops per 10 s), and 2.6 times the three-CPU result before this change.
+- **Tiger's scheduler does not know which CPUs share a core.** Three loops on six CPUs put two on one core (3.45 s each) instead of one per core (2.39 s).
+
+| Check | Result |
+| --- | --- |
+| CPUs 1–5 running | 733–1,213 decrementer ticks in 5 s, 0 external interrupts |
+| Stop and start each of CPUs 5–1 | `hw.availcpu` 5 and 0 ticks while stopped, 6 and ticks again after start, clocks 0 s apart |
+| Six loops after the restarts | 3.52–3.54 s |
+| 10 MiB Ethernet up and down | Checksums match, before and after the restarts |
+| WindowServer, Finder, Dock | Running throughout |
+| Three `say` runs | 3.78, 3.19, 3.19 s |
+| Panic log | None |
+
+The test tool's start and stop lines in the log show the last line of its status listing, not the started CPU; `hw.availcpu` and the tick counts confirm each step.
+
+## 2026-11-25: stage 2 profile `smp6a` (build)
 
 All six hardware threads, PIR n as logical CPU n, started deferred (`XenonSMPThread1`..`5`, `XenonSMPDeferStart`), with the new `XenonSMPIdleLow`:
 
