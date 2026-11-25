@@ -26,7 +26,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 | Step | State | By | Commit | Result |
 | --- | --- | --- | --- | --- |
-| 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | this commit | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
+| 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | `ee56b82` | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
 | 0.2 WindowServer restart over SSH | open | | | |
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | open | | | |
 | 0.4 Panic path, panic reboot, GPU interrupt line | open | | | |
@@ -65,7 +65,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
-- 2026-11-25, Claude: step 0.1 done, read from the installed Tiger binaries (no hardware change). Results in `docs/gpu-tiger-gl-stack.md`. Main finding: CoreGraphics enables the GL compositor only if the first renderer record reports at least `GLCompositorMinimumVRAM` (16 MB) at `+0x30`. Every Xenos GLD so far copies Apple's software renderer record, which reports 0. The AGP requirement (`GLCompositorRequiredClasses` = `IOAGPDevice`) is bypassed by the non-zero `AccelCaps` XenonCoreGraphics already sets. All 63 GLD functions and the 56-byte renderer record layout are listed. Tools: `tools/gpu/macho.py`, `tools/gpu/annotate-ppc.py`. Also on that boot: `main6` booted for the first time (6 CPUs registered, 1 running, WindowServer/Finder/Dock up, all eight kexts loaded, no panic), a 10 MiB Ethernet round trip matched its checksums both ways, and `say` returned 0 (audio not yet confirmed by ear). Next: step 0.2. The smallest Quartz Extreme test, a GLD that changes only the VRAM field, needs only the WindowServer restart from 0.2.
+- 2026-11-25, Claude: step 0.1 done, read from the installed Tiger binaries (no hardware change). Results in `docs/gpu-tiger-gl-stack.md`. Main finding: CoreGraphics enables the GL compositor only if the first renderer record reports at least `GLCompositorMinimumVRAM` (16 MB) at `+0x30`. Every Xenos GLD so far copies Apple's software renderer record, which reports 0. The AGP requirement (`GLCompositorRequiredClasses` = `IOAGPDevice`) is bypassed by the non-zero `AccelCaps` XenonCoreGraphics already sets. All 63 GLD functions and the 56-byte renderer record layout are listed. Tools: `tools/gpu/macho.py`, `tools/gpu/annotate-ppc.py`. Also on that boot: `main6` booted for the first time (6 CPUs registered, 1 running, WindowServer/Finder/Dock up, all eight kexts loaded, no panic), a 10 MiB Ethernet round trip matched its checksums both ways, and the owner heard the `say` audio check clearly. Next: step 0.2. The smallest Quartz Extreme test, a GLD that changes only the VRAM field, needs only the WindowServer restart from 0.2.
 - 2026-11-25, Claude: plan written from `main` at `9f0c40b`. No step started. The Xbox is shut down; its stick boots `main6` (not yet booted). Phase 0 needs the Xbox on.
 
 ## Where the GPU work stands
