@@ -32,8 +32,8 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | `6808916` | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
-| 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | this commit | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load, unload, display handback | open | | | |
+| 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
+| 1.1 Load, unload, display handback | in progress | Claude | `da34871` | First load presents with the GPU; reloads hang the 3D pipeline (partial reset); see log |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -66,6 +66,14 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 1.1 in progress, stopped here.
+  - **The driver:** `XenosGPU` (`da34871`, hand-loaded, `--strict` imports pass) uses XenonCoreGraphics' ring start-up, firmware load and display state. It stops XenonPE's CPU refresh and presents the desktop with the GPU every 15 ms.
+  - **First load: pass.** Both `MEM_WRITE` markers passed, the CP started on attempt 1, 2,089 frames in 32 s (about 65 per second) with no busy tick. At unload the ring was drained, the CP halted and the CPU refresh restarted. Idle CPU was 88% free, against 72% with the CPU refresh.
+  - **Second load: fail.** The GPU stopped completing frames after 71 frames (about 1 s; 170 ticks waited, ring not drained at unload).
+  - **Every load after that:** the micro-engine init and the first marker pass, but the marker after the display state never arrives, on all 3 attempts. `RBBM_STATUS` stays busy, for example `0xF3250110`: `GUI_ACTIVE`, `RB`, `SQ`, `PA`, `SC`, `SX`, `CP_NRT` and `MH_BUSY`. 0 of 20 cycles passed.
+  - **Diagnosis:** the start-up reset (`RBBM_SOFT_RESET` = 1) resets only the CP. The 3D blocks stay hung, so the display state's `CP_WAIT_REG_EQ` on `RBBM_STATUS` never completes. XenonCoreGraphics only ever started once per boot.
+  - **State:** no panic; the desktop stays up on the CPU refresh.
+  - **Next:** a full soft reset (kgsl does `RBBM_SOFT_RESET` = `0xFFFFFFFF`, 30 ms, then 0 on Adreno 2xx), with `RBBM_STATUS` logged before and after and the display surface address rewritten afterwards. Then also a full reset at unload, and the 20 cycles again. Whether the full reset touches the display is not known yet.
 - 2026-11-25, Claude: step 0.6 done; phase 0 is complete.
   - **The script:** `tools/host/gpu-dev.sh KEXT [build|install|load|unload|cycle|log]`.
     - It syncs the tree to the G5, builds and checks the kernel imports.
