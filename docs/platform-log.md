@@ -11,7 +11,7 @@ Task 2: SMP, branches `claude/smp` in both repos (OpenBIOS from `codex/usb2-ssd-
 **Stage 1a works, including start during boot** (`smp1c`, commit `c6155da`): `XenonSMPThread2` starts PIR 2 as CPU 1. `XenonSMPDeferStart` instead registers it stopped, to be started later with `sudo ./xenon-cpu-start 1` (`tools/smp`, installed in the Xbox home folder).
 
 1. Two-hour uptime test with six CPUs (`smp6b`); the two-hour test with three CPUs passed.
-2. Fix the SMC lock hold (audit finding 2) in a separate build.
+2. SMC lock hold (audit finding 2): fixed in `smp6c`, see below.
 3. Optional: the same Ethernet measurement on a single-CPU boot (`pmapdef`), to compare with an SMP kernel that has CPU 1 stopped.
 4. The display error the owner saw at two-CPU shutdown is still unexplained. Tiger's shutdown does not stop CPUs (`halt_all_cpus` calls `PEHaltRestart` directly), so it is not the empty `quiesceCPU`.
 5. Stage 2 (all six threads) works with `smp6b` (below), with waiting and idle threads at low priority. Open: the low-priority parking loop for the normal single-CPU boot (one loop 4.58 s → about 2.4 s), and Tiger's scheduler, which does not know which CPUs share a core.
@@ -51,6 +51,12 @@ make -C XenonPlatform OSX_VERSION=tiger DARLING_SHELL= AS=/usr/bin/as \
 - **SSH is about 20% faster with two CPUs** than with CPU 1 stopped in the same boot. With one CPU, receiving at line rate already takes 93% of the CPU in the kernel.
 - The earlier finding (about 5.4–5.9 MiB/s with two CPUs against 7.3–9.3 with one) compared different boots and builds, with different transfer methods. It is not reproduced here. A same-method run on a single-CPU boot (`pmapdef`) would show whether a kernel booted with one CPU is faster than an SMP kernel with CPU 1 stopped.
 - CPU 1 takes 22–35 external interrupts per second during transfers (IPIs).
+
+## 2026-11-25: SMC lock fix (audit finding 2), `smp6c`
+
+`XenonSMC::writeMessage` waited up to 10 s for the SMC's FIFO with `_lock` held and interrupts off; with several CPUs the SMC interrupt filter and other writers spun on the lock meanwhile. The wait now runs without the lock and with interrupts on; the lock is taken only to check the FIFO again and write the message. XenonSMC `27d3948f97e9e7b2ebe6eb9a293b1648`: no new kernel imports, same exported symbols as the booting XenonSMC (built from the same source otherwise). Profile `smp6c`: `smp6b` with only XenonSMC replaced; `SMP6C.ELF` (MD5 `434e033eed063acef0a7c73ee9d53db0`) + `XS6C.MKE` (MD5 `52b208e68e6ff19ed54c7b1deb6146a2`). The stick defaults to `smp6c` (8 entries); `kboot.conf.before-smp6c.bak` selects `smp6b`.
+
+**Result: pass, 0 failures.** Booted, desktop up, clock equal to the PC's to the second (time from the SMC). `smp6-test.sh`: one loop 2.42 / 2.38 / 2.42 s with 1 / 3 / 6 CPUs, six loops 3.52–3.54 s (16.95 loops per 10 s), every secondary stopped and started again (clocks 0–1 s apart), Ethernet checksums, desktop, three `say` runs 3.79 / 3.19 / 3.19 s, no panic. A busy SMC cannot be provoked from user space, so the changed wait itself was exercised only by normal traffic (boot LED animation, audio unmute, reboot).
 
 ## 2026-11-25: `smp6b` on hardware, spinner fixed, six CPUs pass again
 
