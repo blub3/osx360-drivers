@@ -15,7 +15,7 @@ The plan is shared: Claude and ChatGPT/Codex take turns on branch `gpu/xenos-dri
    - commit and push.
 5. Rules:
    - Define the pass criteria before a hardware run. Every run also checks SSH, WindowServer/Finder/Dock, Ethernet and audio.
-   - Shut the Xbox down over SSH (`sudo shutdown -h now`).
+   - Shut the Xbox down over SSH (`sudo shutdown -h now`). Every restart lands in the Aurora dashboard and needs the owner to start XeLL by hand; restart only the GUI (`tools/host/xbox-gui.sh restart`) where possible.
    - Back up `kboot.conf` before changing it and keep it at 64 entries or fewer.
    - Never add a kernel import that no booting kext already has. No 64-bit division in kernel code (the kernel exports no `__udivdi3`; `kextload -n -t` does not catch it).
    - Merge into `main` only after a passing hardware test and the owner's OK, with a merge commit named "Merge the tested …".
@@ -28,8 +28,8 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | --- | --- | --- | --- | --- |
 | 0.1 Tiger GL stack and Quartz Extreme requirements | done | Claude | `ee56b82` | `docs/gpu-tiger-gl-stack.md`: Quartz Extreme needs ≥ 16 MB in the renderer record's video memory field; Xenos GLDs report 0 |
 | 0.2 WindowServer restart over SSH | done | Claude | `443e1f3` | `tools/host/xbox-gui.sh restart`: desktop back in 8.5–9.1 s, 5 of 5; never use `killall loginwindow` |
-| 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | this commit | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
-| 0.4 Panic path, panic reboot, GPU interrupt line | open | | | |
+| 0.3 Runtime kext loading, 64 MiB contiguous memory | done | Claude | `6808916` | Hand loading and unloading work; only 16 MiB contiguous; unused RAM `0x08100000`–`0x0FFFFFFF` (127 MiB) as heap, `docs/gpu-memory-map.md` |
+| 0.4 Panic path, panic text, GPU interrupt line | open | | | |
 | 0.5 Development boot profile `gpudev` (R4) | open | | | |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | open | | | |
 | 1.1 Load, unload, display handback | open | | | |
@@ -65,6 +65,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: correction from the owner. After every restart the Xbox starts the Aurora dashboard, and the owner has to start XeLL by hand. The reboots during step 0.2 ("no owner needed") came back only because the owner did that. A reboot (R3) is therefore never unattended; only R0–R2 are. The restart cost table, the rules, step 0.4 (panic text instead of an automatic reboot) and the risks are updated. The owner heard the step 0.3 `say` check clearly.
 - 2026-11-25, Claude: step 0.3 done, details in `docs/gpu-memory-map.md`.
   - **Probe:** `XenosGPUProbe` (new, hand-loaded from `/Library/OSX360Dev`, not in the package) matches the Xenos PCI device in its own category.
   - **Runtime loading works:** `kextload` succeeded with the desktop up, and the probe attached next to XenonFramebufferTest, XenosController and XenosDisplayAccelerator. `kextunload` succeeded with the desktop up and with the GUI down (`xbox-gui.sh stop`), and it loaded again afterwards. The first build failed to load on `___udivdi3` even though `kextload -n -t` accepted it, so 64-bit division in kernel code is now in the rules.
@@ -87,12 +88,12 @@ Newest first.
   - **`sudo killall loginwindow`:** WindowServer exits within 1 s. The new loginwindow (root) waits forever in `CGSServerPort` → `_CGSGetCoreGraphicsServerVersion` (`sample`): the on-demand restart does not happen.
   - **WindowServer started by hand:** `sudo nohup …/WindowServer -daemon &` brought the desktop back in 6.2 s. The new WindowServer loaded `XenosWinOverlap.plugin` again and completed its startup fences, so plug-ins are re-read at each WindowServer start.
   - **Not repeatable:** the same sequence in `tools/host/xbox-gui.sh restart` worked once (7.7 s) and failed on the next run. loginwindow then aborts in a loop (`Abort trap`, launchd pauses 30 s), and a hand-started WindowServer came up and exited again without a crash report before any loginwindow connected. Starting it through `/usr/libexec/StartupItemContext` failed on the first run: no WindowServer process.
-  - **Recovery:** each failure was recovered with `sudo reboot` over SSH, desktop back in 155 s and 112 s, no owner needed. Afterwards: 10 MiB Ethernet round trip OK, 6 CPUs registered and 1 running, no panic, and the owner heard the `say` check clearly.
+  - **Recovery:** each failure was recovered with `sudo reboot` over SSH, desktop back in 155 s and 112 s. (Correction: the owner started XeLL from the Aurora dashboard after each reboot; a reboot is never unattended.) Afterwards: 10 MiB Ethernet round trip OK, 6 CPUs registered and 1 running, no panic, and the owner heard the `say` check clearly.
   - **Also seen:** in a normal session WindowServer has no GLEngine or GLD loaded (`vmmap`), only `XenosWinOverlap`.
   - **Next ideas:**
     - re-register the on-demand service after WindowServer exits (`/usr/libexec/register_mach_bootstrap_servers /etc/mach_init.d`, in the system bootstrap context) and let loginwindow start WindowServer itself;
     - or stop the GUI with the `/etc/ttys` console line off before ending WindowServer.
-  - **Fallback:** if no reliable WindowServer restart is found, WindowServer-side changes use a reboot over SSH (R3, about 2 min, unattended), still far cheaper than a stick change.
+  - **Fallback:** if no reliable WindowServer restart is found, WindowServer-side changes use a reboot over SSH (R3, about 2 min, with the owner starting XeLL), still cheaper than a stick change.
 - 2026-11-25, Claude: step 0.1 done, read from the installed Tiger binaries (no hardware change). Results in `docs/gpu-tiger-gl-stack.md`. Main finding: CoreGraphics enables the GL compositor only if the first renderer record reports at least `GLCompositorMinimumVRAM` (16 MB) at `+0x30`. Every Xenos GLD so far copies Apple's software renderer record, which reports 0. The AGP requirement (`GLCompositorRequiredClasses` = `IOAGPDevice`) is bypassed by the non-zero `AccelCaps` XenonCoreGraphics already sets. All 63 GLD functions and the 56-byte renderer record layout are listed. Tools: `tools/gpu/macho.py`, `tools/gpu/annotate-ppc.py`. Also on that boot: `main6` booted for the first time (6 CPUs registered, 1 running, WindowServer/Finder/Dock up, all eight kexts loaded, no panic), a 10 MiB Ethernet round trip matched its checksums both ways, and the owner heard the `say` audio check clearly. Next: step 0.2. The smallest Quartz Extreme test, a GLD that changes only the VRAM field, needs only the WindowServer restart from 0.2.
 - 2026-11-25, Claude: plan written from `main` at `9f0c40b`. No step started. The Xbox is shut down; its stick boots `main6` (not yet booted). Phase 0 needs the Xbox on.
 
@@ -121,16 +122,16 @@ The plan below replaces the test selectors with a small, generic kernel driver a
 | R0 | Nothing: run a program over SSH | User-space library, tests, GLD in a test process |
 | R1 | WindowServer restart, about 9 s (`tools/host/xbox-gui.sh restart`), no owner needed | GLD or plug-in used by WindowServer changes |
 | R2 | `kextunload` + `kextload`, seconds | Kernel driver loaded by hand (not in the mkext) |
-| R3 | `sudo reboot`, about 2–3 min, no owner needed | Boot-resident code changes, or recovery after a crash |
+| R3 | `sudo reboot`, about 2–3 min; **the owner must start XeLL from the Aurora dashboard** | Boot-resident code changes, or recovery after a crash |
 | R4 | Stick change + reboot | OpenBIOS or mkext changes |
-| R5 | Owner power-cycles the Xbox | Hang or panic (grey screen) |
+| R5 | Owner power-cycles the Xbox and starts XeLL from Aurora | Hang or panic (grey screen) |
 
 **Rules that keep restarts rare:**
 
 - During development, the new GPU kernel driver is **not in the mkext**. It is loaded by hand from a folder outside `/System/Library/Extensions`, so Tiger never loads it at boot. A bad build can at most crash the running system, and the next boot is clean.
 - Every kernel feature is generic. Tests, shaders and rendering logic are user-space programs. The kernel checks no pixels.
 - Registry properties that WindowServer reads (`IOGLBundleName`, `IOCFPlugInTypes`, `IOAccelTypes`) are set by the running driver, not by personalities packed into the mkext.
-- Turn R5 into R3: after a panic or GPU hang the Xbox should reboot by itself into the known-good default profile and keep the panic text (step 0.4).
+- **Every reboot needs the owner:** after any restart the Xbox comes up in the Aurora dashboard, and the owner has to start XeLL by hand. Only R0–R2 run without the owner, so development runs there. Crashes are avoided rather than recovered: the address check stops bad command buffers before they reach the GPU, the driver recovers GPU hangs itself, and a panic should at least leave its text (step 0.4).
 - Test on the host where possible: command-stream and shader decoding, and shader assembly, run on the PC.
 
 **Expected boot-stick changes:** 1–2 in phase 0, none in phases 1–5, 1–2 in phase 6.
@@ -179,9 +180,9 @@ All checks are R0 over SSH unless marked.
    If the allocation fails, OpenBIOS reserves the heap instead (that is then part of the boot change in step 5).
 4. **Panic and hang path:**
    - Find in the 10.4.11 kernel which platform call a panic ends in. XenonPE overrides no halt or restart function today.
-   - Plan a hook that copies the panic text to a RAM area kept across a soft reboot, then asks the SMC to reboot without locks.
+   - Plan a way to keep the panic text: on screen instead of the grey panic screen, or sent over Ethernet. A RAM area kept across a reboot probably does not survive the Aurora dashboard, and every reboot needs the owner to start XeLL anyway.
    - Find the Xenos interrupt line. Free60 Linux and the interrupt controller in `XenonPlatform/src/Interrupts` are the sources.
-5. **Development boot profile `gpudev` (R4, once).** The `main6` kexts without XenonCoreGraphics, plus the platform changes from steps 3 and 4 (panic reboot, GPU interrupt routing). Step 0.3 found the heap in RAM Tiger does not manage; the firmware should mark it reserved in the device tree, so it is not claimed by anything else. The desktop then runs on XenonPE's CPU refresh until `XenosGPU` is loaded. `main6` stays the stick default until `gpudev` passes the usual checks (SSH, desktop, Ethernet, audio).
+5. **Development boot profile `gpudev` (R4, once).** The `main6` kexts without XenonCoreGraphics, plus the platform changes from steps 3 and 4 (panic text, GPU interrupt routing). Step 0.3 found the heap in RAM Tiger does not manage; the firmware should mark it reserved in the device tree, so it is not claimed by anything else. The desktop then runs on XenonPE's CPU refresh until `XenosGPU` is loaded. `main6` stays the stick default until `gpudev` passes the usual checks (SSH, desktop, Ethernet, audio).
 6. **Development loop:**
    - sync the source to the G5 and build there;
    - copy the kext to the Xbox and load it;
@@ -261,4 +262,4 @@ This gives a faster desktop even before Quartz Extreme, and is the fallback if p
 - The GLD interface is undocumented; phase 4.1 may take longer than planned. The 2D plug-in from phase 3 gives a faster desktop either way.
 - WindowServer may require something Xenos does not offer in the way Tiger expects. Phase 0.1 should find this before the larger work starts.
 - The EDRAM size makes full-screen depth buffers need tiling. That costs time in phase 2.4, but the WindowServer compositor needs no depth.
-- If the panic reboot (step 0.4) cannot be made to work, crashes still need the owner at the console. Phases 1 and 3 then need the most care: bad command buffers are caught by the address check and the hang recovery.
+- Every crash needs the owner (power cycle, then XeLL from Aurora). Phases 1 and 3 need the most care: bad command buffers are caught by the address check and the hang recovery.

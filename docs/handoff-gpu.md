@@ -44,7 +44,7 @@ Decide whether these belong in the repository plists. Claude did not change GPU 
 
 - **Kernel imports:** never add a kernel symbol import that no kext in the booting mkext already imports; Tiger's offline link check accepts it but the boot fails. Resolve extra kernel functions at runtime (`resolveKernelSymbolExact` in XenonPlatform).
 - **No boot-args, no NVRAM, no `panic.log`:** switch features with personality keys in the profile's mkext. A panic shows the grey screen and leaves nothing behind; log important state before risky steps.
-- Shut the Xbox down over SSH (`sudo shutdown -h now`).
+- Shut the Xbox down over SSH (`sudo shutdown -h now`). Every restart lands in the Aurora dashboard and needs the owner to start XeLL by hand; restart only the GUI (`tools/host/xbox-gui.sh restart`) where possible.
 
 ## Build and test
 

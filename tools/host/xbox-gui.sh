@@ -14,7 +14,8 @@
 # with that respawn and was not reliable. With the console line off nothing respawns; WindowServer is
 # started first (it waits until loginwindow connects), then the console line goes back on.
 # Tested 2026-11-25 on main6: 5 restarts in a row, desktop back after 8.5-9.1 s each.
-# Open applications are quit without saving. If the desktop does not come back: ssh xbox sudo reboot.
+# Open applications are quit without saving. If the desktop does not come back: ssh xbox sudo reboot,
+# then the owner has to start XeLL from the Aurora dashboard (a reboot is never unattended).
 S="-o IgnoreUnknown=UseKeychain -o BatchMode=yes -o ConnectTimeout=10"
 cmd=${1:-status}
 
