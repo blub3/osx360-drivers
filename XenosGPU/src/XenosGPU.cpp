@@ -35,7 +35,8 @@ bool XenosGPU::start(IOService *provider) {
   _workLoop = NULL;
   _timer = NULL;
   _presenting = _platformStopped = false;
-  _frames = _busyTicks = 0;
+  _frames = _busyTicks = _busyRun = 0;
+  _stallLogged = false;
 
   if (!super::start(provider)) {
     return false;
@@ -158,8 +159,21 @@ void XenosGPU::present(IOTimerEventSource *sender) {
   if (ringDrained()) {
     emitPresent();
     _frames++;
+    _stallLogged = false;
   } else {
     _busyTicks++;
+    // Log the first stall of each run: ring pointers and status after 10 busy ticks (150 ms).
+    if (++_busyRun == 10 && !_stallLogged) {
+      _stallLogged = true;
+      IOLog("XenosGPU: stall after %lu frames: rptr=0x%04lx wptr=0x%04lx sw=0x%04lx RBBM_STATUS=0x%08lx "
+            "CP_ME_STATUS=0x%08lx CP_STAT=0x%08lx\n", (unsigned long)_frames,
+            (unsigned long)readReg(kXenosRegCpRbReadPtr), (unsigned long)readReg(kXenosRegCpRbWritePtr),
+            (unsigned long)_ringWrite, (unsigned long)readReg(kXenosRegRbbmStatus),
+            (unsigned long)readReg(kXenosRegCpMeStatus), (unsigned long)readReg(0x47F * 4));
+    }
+    sender->setTimeoutMS(kPresentIntervalMS);
+    return;
   }
+  _busyRun = 0;
   sender->setTimeoutMS(kPresentIntervalMS);
 }

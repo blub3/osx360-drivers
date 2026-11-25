@@ -374,8 +374,39 @@ void XenosGPU::initDisplayState(void) {
   ring(0x140F8000); ring(0x00000000); ring(0xE2000000);
 }
 
+//
+// Resets the 3D blocks the way libxenon's Xe_pReset does (drivers/xenos/xe.c): write 0x8064, then
+// 0x11800, to RBBM_SOFT_RESET, each followed by zero, until RBBM_STATUS (0x1740) shows GUI_ACTIVE
+// clear. These values leave out bit 0 (CP) and bits 3 and 4. Writing all ones hangs the whole console
+// (2026-11-25). Bounded to 100 rounds. Returns false if the pipeline stays busy.
+//
+bool XenosGPU::resetGraphicsBlocks(const char *when) {
+  UInt32 before = readReg(kXenosRegRbbmStatus);
+  UInt32 rounds;
+  for (rounds = 0; rounds < 100; rounds++) {
+    if (rounds > 0 && !(readReg(kXenosRegRbbmStatus) & 0x80000000)) {
+      break;
+    }
+    writeReg(kXenosRegRbbmSoftReset, 0x8064);
+    (void)readReg(kXenosRegRbbmSoftReset);
+    writeReg(kXenosRegRbbmSoftReset, 0);
+    writeReg(kXenosRegRbbmSoftReset, 0x11800);
+    (void)readReg(kXenosRegRbbmSoftReset);
+    writeReg(kXenosRegRbbmSoftReset, 0);
+    IODelay(1000);
+  }
+  UInt32 after = readReg(kXenosRegRbbmStatus);
+  UInt32 config = readReg(kXenosRegConfigControl);
+  IOLog("XenosGPU: 3D block reset %s: RBBM_STATUS 0x%08lx -> 0x%08lx after %lu rounds, 0x00E0 = 0x%08lx\n",
+        when, (unsigned long)before, (unsigned long)after, (unsigned long)rounds, (unsigned long)config);
+  return !(after & 0x80000000);
+}
+
 const char *XenosGPU::startCommandProcessor(void) {
   haltCommandProcessor();
+  if (!resetGraphicsBlocks("at start")) {
+    return "3d-reset";
+  }
   writeReg(kXenosRegRbbmSoftReset, 1);
   (void)readReg(kXenosRegRbbmSoftReset);
   IODelay(1000);

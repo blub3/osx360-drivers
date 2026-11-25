@@ -72,6 +72,8 @@ private:
   bool                      _platformStopped;
   UInt32                    _frames;
   UInt32                    _busyTicks;
+  UInt32                    _busyRun;
+  bool                      _stallLogged;
 
   inline void writeReg(UInt32 offset, UInt32 value) { OSWriteBigInt32(_mmio, offset, value); }
   inline UInt32 readReg(UInt32 offset) { return OSReadBigInt32(_mmio, offset); }
@@ -94,6 +96,7 @@ private:
   void releaseBuffers(void);
   IOReturn loadFirmware(void);
   void haltCommandProcessor(void);
+  bool resetGraphicsBlocks(const char *when);
   bool ringDrained(void);
   bool waitForRingDrain(void);
   void submit(void);

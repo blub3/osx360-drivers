@@ -34,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load, unload, display handback | in progress | Claude | `da34871` | First load presents with the GPU; reloads hang the 3D pipeline; a full `RBBM_SOFT_RESET` hangs the console; see log |
+| 1.1 Load, unload, display handback | in progress | Claude | this commit | Presenting stalls the GPU after about 1 s (resolve just past ring dword `0x400`); libxenon reset does not recover it; suspect: ring in high memory; see log |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -67,6 +67,14 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25, Claude: step 1.1, after the owner's power cycle (`gpudev` booted at 23:00).
+  - **libxenon 3D reset:** `XenosGPU` now resets the 3D blocks the way libxenon's `Xe_pReset` does (`RBBM_SOFT_RESET` = `0x8064`, then 0, then `0x11800`, then 0, repeated until `RBBM_STATUS` bit 31 is clear, at most 100 rounds), then resets the CP as before. It does not hang the console.
+  - **Load on a fresh, idle GPU** (`RBBM_STATUS` `0x00040110`): the reset finished in 1 round, `0x00E0` read `0x10`, both markers passed. The GPU **stalled after 73 frames** (about 1.1 s; ring not drained at unload).
+  - **Next load on the stalled GPU:** the reset cleared some bits (`0xEAA50110` → `0xE0250110`) but not `GUI_ACTIVE`, `RB_CNTX`, `MH` or `CP_NRT`, even after 100 rounds on each of 3 attempts. **A stalled GPU is not recoverable by software we know of; only a reboot clears it.**
+  - **Where it stalls:** `rptr=0x0428`, `wptr=0x042A`, inside the resolve of frame 73, just past the ring's first 4 KiB (`0x400` dwords). The earlier failure stopped at about `0x412`. ChatGPT's tracker also records a ring stall at `0x03DF`.
+  - **Leading hypothesis:** XenonCoreGraphics, which ran stably for hours, always gets its ring at `0x01780000` (Tiger's bank 0, below 32 MiB; `system.log` of every `main6` boot). `XenosGPU`, loaded at runtime, got rings at `0x1AA78000`–`0x1BA38000` (bank 1). OpenBIOS limits bank 0 with the comment "This reduces freezes, but they still may occur".
+  - **Next experiment:** put the ring and vertex buffers into the GPU heap at `0x08200000` (low memory outside Tiger), on a fresh boot. Alternatively, present every 50 ms instead of 15 ms, to tell a time-based stall from a ring-position one.
+  - **Also new:** a stall log line, with ring pointers, `RBBM_STATUS`, `CP_ME_STATUS` and `CP_STAT` after 150 ms without progress.
 - 2026-11-25, Claude: step 1.1, full reset test: **console hang.**
   - **What I tried:** `XenosGPU` changed to reset every RBBM block at start and stop: halt the CP, `RBBM_SOFT_RESET` (`0x00F0`) = `0xFFFFFFFF`, `IOSleep(30)`, then 0, logging `RBBM_STATUS` and the display surface before and after.
   - **Result:** it was loaded once, on the GPU still hung from the earlier cycles. The Xbox stopped answering during the load, before any log line reached the host: no ping, "No route to host". The owner saw a frozen or black screen, not the panic screen, so it was a hard hang (a CPU access to the GPU or bus that never completes), not a kernel panic. The Xbox needed a power cycle and XeLL.
