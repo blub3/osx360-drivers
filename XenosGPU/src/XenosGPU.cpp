@@ -36,6 +36,8 @@ bool XenosGPU::start(IOService *provider) {
   _heapMap = NULL;
   _useHeap = false;
   _libxenonInit = (getProperty("XenosGPULibxenonInit") == kOSBooleanTrue);
+  _pageCheck = (getProperty("XenosGPUNoPageCheck") != kOSBooleanTrue);
+  _psEvent = (getProperty("XenosGPUPsEvent") == kOSBooleanTrue);
   _workLoop = NULL;
   _timer = NULL;
   _presenting = _platformStopped = false;
@@ -75,6 +77,7 @@ bool XenosGPU::start(IOService *provider) {
     return false;
   }
 
+  dumpRegisters("at load");
   if (startGPU() != kIOReturnSuccess) {
     IOLog("XenosGPU: GPU start failed, the CPU refresh keeps the display\n");
     releaseBuffers();
@@ -108,6 +111,12 @@ bool XenosGPU::start(IOService *provider) {
 void XenosGPU::stop(IOService *provider) {
   IOLog("XenosGPU: stop after %lu frames (%lu ticks waited for a busy ring)\n",
         (unsigned long)_frames, (unsigned long)_busyTicks);
+  if (_mmio != NULL) {
+    IOLog("XenosGPU: events at stop: PS_EVENT_ADDR=0x%08lx PS_EVENT_DATA=0x%08lx VS_EVENT_ADDR=0x%08lx "
+          "CF_EVENT_ADDR=0x%08lx scratch word=0x%08lx\n", (unsigned long)readReg(0x1818),
+          (unsigned long)readReg(0x181C), (unsigned long)readReg(0x1804), (unsigned long)readReg(0x182C),
+          (unsigned long)(_marker != NULL ? _marker[0x100 / 4] : 0));
+  }
   _presenting = false;
   if (_timer != NULL) {
     _timer->cancelTimeout();
@@ -118,8 +127,11 @@ void XenosGPU::stop(IOService *provider) {
   }
   if (_mmio != NULL && _ring != NULL) {
     bool drained = waitForRingDrain();
+    bool idle = drained && quiesce();
     haltCommandProcessor();
-    IOLog("XenosGPU: ring %s, command processor halted\n", drained ? "drained" : "NOT drained");
+    IOLog("XenosGPU: ring %s, GPU %s, command processor halted, RBBM_STATUS 0x%08lx\n",
+          drained ? "drained" : "NOT drained", idle ? "idle" : "NOT idle",
+          (unsigned long)readReg(kXenosRegRbbmStatus));
   }
   if (_platformStopped) {
     IOReturn status = callPlatform(kXenonFuncPlatformStartFB);

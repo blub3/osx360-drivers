@@ -65,6 +65,8 @@ private:
   IOMemoryMap               *_heapMap;
   bool                      _useHeap;
   bool                      _libxenonInit;
+  bool                      _pageCheck;
+  bool                      _psEvent;
   IOBufferMemoryDescriptor  *_texCoordsDesc;
   IOPhysicalAddress         _texCoordsPhys;
   IOBufferMemoryDescriptor  *_quadDesc;
@@ -103,6 +105,8 @@ private:
   void releaseBuffers(void);
   IOReturn loadFirmware(void);
   void haltCommandProcessor(void);
+  bool quiesce(void);
+  void dumpRegisters(const char *when);
   void libxenonCPRegisters(void);
   void libxenonMasterInit(void);
   bool waitEdramIdle(UInt32 *value);

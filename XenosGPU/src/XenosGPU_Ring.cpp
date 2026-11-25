@@ -540,6 +540,63 @@ void XenosGPU::libxenonMasterInit(void) {
         (unsigned long)second);
 }
 
+//
+// Register dump for comparing the GPU state a session starts from (2026-11-25: a first session after
+// boot runs, every later one stalls at frame 71). Only registers named in the a2xx headers, the ones
+// XeLL and libxenon set, and five EDRAM registers libxenon uses; no data ports or write-only
+// registers (PFP/ME RAM data, state debug data, INT_ACK, MMU invalidate).
+//
+static const UInt16 kDumpRegisters[] = {
+  0x0004, 0x00E0, 0x00E4, 0x00E8, 0x00EC, 0x00F0, 0x00F4, 0x0100, 0x0104, 0x0108,
+  0x010C, 0x0110, 0x0118, 0x011C, 0x01A8, 0x0300, 0x0700, 0x0704, 0x070C, 0x0710,
+  0x0714, 0x0718, 0x0720, 0x0754, 0x0758, 0x075C, 0x0760, 0x0764, 0x0770, 0x0774,
+  0x07B0, 0x07C8, 0x07CC, 0x07D8, 0x07DC, 0x07F0, 0x07F4, 0x07F8, 0x07FC, 0x0E50,
+  0x0E6C, 0x0E70, 0x0E74, 0x0E84, 0x0ECC, 0x0ED0, 0x0ED4, 0x0EDC, 0x1100, 0x110C,
+  0x1110, 0x1134, 0x1138, 0x113C, 0x1148, 0x1160, 0x1164, 0x1168, 0x116C, 0x11FC,
+  0x15E0, 0x15E4, 0x15E8, 0x15EC, 0x15F0, 0x15F4, 0x15F8, 0x15FC, 0x1740, 0x1800,
+  0x1804, 0x1808, 0x180C, 0x1810, 0x1814, 0x1818, 0x181C, 0x1820, 0x1824, 0x1828,
+  0x182C, 0x1830, 0x1834, 0x1838, 0x1848, 0x184C, 0x1850, 0x2054, 0x2154, 0x28A4,
+  0x28A8, 0x28AC, 0x2900, 0x2908, 0x3214, 0x3294, 0x3300, 0x3400, 0x3408, 0x340C,
+  0x3C08, 0x3C10, 0x3C40, 0x3C44, 0x3C48, 0x3C4C, 0x6110, 0x8018, 0x87E4
+};
+
+void XenosGPU::dumpRegisters(const char *when) {
+  const UInt32 count = sizeof(kDumpRegisters) / sizeof(kDumpRegisters[0]);
+  for (UInt32 i = 0; i < count; i += 8) {
+    char line[256];
+    UInt32 used = 0;
+    for (UInt32 j = i; j < count && j < i + 8 && used < sizeof(line) - 24; j++) {
+      used += snprintf(line + used, sizeof(line) - used, " %04x=%08lx", (unsigned)kDumpRegisters[j],
+                       (unsigned long)readReg(kDumpRegisters[j]));
+    }
+    IOLog("XenosGPU: regs %s%s\n", when, line);
+  }
+}
+
+//
+// Before halting the CP at unload: a drained ring only means the CP has read every packet; the last
+// resolve can still be running. Halting the CP then left the GPU busy (RBBM_STATUS 0x80050110 at the
+// next load) or made the next session stall at frame 71-73 (2026-11-25). Wait for idle on the GPU
+// (CP_WAIT_FOR_IDLE, then a marker), then for GUI_ACTIVE to clear (at most 500 ms).
+//
+bool XenosGPU::quiesce(void) {
+  ringPacket3(CP_WAIT_FOR_IDLE, 1);
+  ring(0);
+  submit();
+  bool marker = waitForRingDrain() && runMarker("stop");
+  UInt32 status = 0, polls;
+  for (polls = 0; polls < 50000; polls++) {
+    status = readReg(kXenosRegRbbmStatus);
+    if (!(status & 0x80000000)) {
+      break;
+    }
+    IODelay(10);
+  }
+  IOLog("XenosGPU: quiesce: marker %s, RBBM_STATUS 0x%08lx after %lu polls\n", marker ? "ok" : "FAIL",
+        (unsigned long)status, (unsigned long)polls);
+  return marker && !(status & 0x80000000);
+}
+
 const char *XenosGPU::startCommandProcessor(void) {
   haltCommandProcessor();
   if (!resetGraphicsBlocks("at start")) {
@@ -580,6 +637,14 @@ const char *XenosGPU::startCommandProcessor(void) {
     return "start";
   }
   IODelay(1000);
+  // Pixel shader event write-back. XeLL leaves CP_ME_PS_EVENT_ADDR/DATA (0x1818/0x181C) set
+  // (0x01B7C002 / 0x6D); after a XenosGPU session they read 0, and every following session stalled at
+  // frame 71-73 (register comparison, 2026-11-25). Tested: the write does not stick (0 again at unload)
+  // and the next start found the GPU busy, so it is off unless XenosGPUPsEvent is set.
+  if (_psEvent) {
+    writeReg(0x1818, (_markerPhys + 0x100) | kMarkerSwap8In32);
+    writeReg(0x181C, 0x50534556);   // "PSEV"
+  }
   if (_libxenonInit) {
     libxenonCPRegisters();
     libxenonMasterInit();
@@ -592,6 +657,17 @@ const char *XenosGPU::startCommandProcessor(void) {
   }
   if (!runMarker("command-processor")) {
     return "command-processor-marker";
+  }
+  // Page-crossing check: both stalls came just past ring dword 0x400 (4 KiB). Pad with type-2 NOP
+  // packets to dword 0x420, then check a marker there, before any drawing.
+  if (_pageCheck) {
+    while (_ringWrite < 0x420) {
+      ring(0x80000000);
+    }
+    submit();
+    if (!waitForRingDrain() || !runMarker("page-cross")) {
+      return "page-cross-marker";
+    }
   }
   initDisplayState();
   submit();

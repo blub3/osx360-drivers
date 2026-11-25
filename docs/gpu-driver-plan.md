@@ -67,6 +67,16 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-25/26, Claude: step 1.1, register comparison and two follow-up tests.
+  - **Diagnostics:** `XenosGPU` dumps 109 GPU registers at every load (named a2xx CP, RBBM and MH registers, plus those XeLL and libxenon set; no data ports). A page-crossing check pads the ring with NOPs to dword `0x420` and checks a marker there.
+  - **Session 0 vs session 1 after a fresh boot:** the page-crossing marker passed in both, and session 1 still stalled at frame 72 (now at `rptr=0x081F`, because of the padding). **So the stall is count-based (about 72 resolves), not tied to the ring position.**
+  - **Register differences** at load, session 0 (XeLL's state) against session 1:
+    - `CP_RB_BASE`/`CP_RB_CNTL` (`0x00020309`, with rptr write-back) and scratch write-back (`0x0770` = `0x20037`, `0x0774` = `0x01B7B000`), which were ours during session 0 too, so not the cause;
+    - **`CP_ME_PS_EVENT_ADDR`/`DATA`** (`0x1818`/`0x181C`): `0x01B7C002`/`0x6D` from XeLL, 0 after a session;
+    - `SQ_INST_STORE_MANAGMENT` (`0x3408`) `0x10800` against `0x180`;
+    - status registers (`CP_CSQ_*_STAT`, `CP_MEQ_STAT`, `CP_STAT`).
+  - **PS event test:** setting `CP_ME_PS_EVENT_ADDR` to a heap scratch word at start did not stick (0 again at unload, scratch untouched), and the next load found the GPU busy (`RBBM_STATUS` `0x80050110`: `GUI_ACTIVE`, `CP_NRT`, `MH`), so the start aborted in the 3D reset. Now opt-in only (`XenosGPUPsEvent`).
+  - **New lead:** the stop halts the CP as soon as the ring is read (`rptr` = `wptr`), while the last resolve can still be running. Next build quiesces first (`CP_WAIT_FOR_IDLE`, a marker, then waits for `GUI_ACTIVE` to clear) and logs `RBBM_STATUS` after the halt.
 - 2026-11-25, Claude: step 1.1, libxenon init registers.
   - **What I tried:** after a fresh boot, `XenosGPU` wrote libxenon's `Xe_pSetup`/`Xe_pResetCP`/`Xe_pMasterInit` registers on every start.
   - **Result:** session 0 passed (1,447 frames in 20 s); session 1 stalled after 71 frames again (`rptr=0x0410`). **These registers are not the cause.**
