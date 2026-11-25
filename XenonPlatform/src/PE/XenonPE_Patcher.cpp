@@ -185,11 +185,14 @@ typedef int (*xnu_copyout_func)(const void *kaddr, user_addr_t udaddr, size_t le
 static xnu_copyin_func  sCopyinFunc = NULL;
 static xnu_copyout_func sCopyoutFunc = NULL;
 
-// Avoids a link-time OSIncrementAtomic import. Single CPU only, like the rest of the patcher.
+// Counters and the one-time install use a simple lock, which also works with several CPUs.
+// It avoids a link-time OSIncrementAtomic import. Allocated when the hook is enabled.
+static IOSimpleLock *sFlushPatchLock = NULL;
+
 static inline void flushPatchCount(volatile SInt32 *counter) {
-  boolean_t ints = ml_set_interrupts_enabled(false);
+  IOInterruptState state = IOSimpleLockLockDisableInterrupt(sFlushPatchLock);
   (*counter)++;
-  ml_set_interrupts_enabled(ints);
+  IOSimpleLockUnlockEnableInterrupt(sFlushPatchLock, state);
 }
 static volatile SInt32  sFlushPatchWords = 0;
 static volatile SInt32  sFlushPatchFailures = 0;
@@ -310,14 +313,14 @@ static void installFlushPatch(UInt32 ppcCallsAddr, UInt32 commPagePtrAddr) {
 //
 static inline void installPendingFlushPatch(void) {
   if (sFlushPatchCommPagePtr != 0) {
-    boolean_t ints = ml_set_interrupts_enabled(false);
+    IOInterruptState state = IOSimpleLockLockDisableInterrupt(sFlushPatchLock);
     UInt32 commPagePtr = sFlushPatchCommPagePtr;
 
     sFlushPatchCommPagePtr = 0;
     if (commPagePtr != 0) {
       installFlushPatch(sFlushPatchPpcCalls, commPagePtr);
     }
-    ml_set_interrupts_enabled(ints);
+    IOSimpleLockUnlockEnableInterrupt(sFlushPatchLock, state);
   }
 }
 
@@ -341,7 +344,8 @@ static volatile UInt32      sPmapPatchLogCount = 0;
 //
 // Emulate64 counter. Firmware replaces the three-word diag check at this offset with nops.
 // r30 is dead there and the sequence leaves cr0 alone. The counter covers every illegal
-// instruction entering the emulator, so it is an upper bound on dcbz traps.
+// instruction entering the emulator, so it is an upper bound on dcbz traps. With several CPUs
+// the increment is not atomic, so the count becomes approximate (it can only undercount).
 // 0x5210 is in the unused part of the low-memory diag work area.
 //
 #define kXenonEmulate64DiagOffset   0x5C
@@ -573,10 +577,9 @@ UInt32 XenonPE::resolveKernelSymbol(const char *symbolName) {
 
 void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_t prot, unsigned int flags, boolean_t wired) {
   //
-  // Invoke original function.
+  // Patch userspace pages before the mapping is entered, so another CPU cannot run
+  // unpatched dcbz through the new mapping. The page contents are final at this point.
   //
-  reinterpret_cast<void(*)(void*, vm_map_offset_t, ppnum_t, vm_prot_t, unsigned int, boolean_t)>(_callbackPE->_orgPmapEnter)(pmap, va, pa, prot, flags, wired);
-
   //
   // Perform instruction patching in userspace physical pages.
   //
@@ -651,6 +654,11 @@ void XenonPE::wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_
       IOSimpleLockUnlockEnableInterrupt(sPmapStatsLock, state);
     }
   }
+
+  //
+  // Invoke original function.
+  //
+  reinterpret_cast<void(*)(void*, vm_map_offset_t, ppnum_t, vm_prot_t, unsigned int, boolean_t)>(_callbackPE->_orgPmapEnter)(pmap, va, pa, prot, flags, wired);
 }
 
 void XenonPE::wrapDebugger(const char *str) {
@@ -807,7 +815,10 @@ bool XenonPE::initPatcher(void) {
     sCopyinFunc  = (xnu_copyin_func) resolveKernelSymbolExact("_copyin");
     sCopyoutFunc = (xnu_copyout_func) resolveKernelSymbolExact("_copyout");
 
-    if ((ppcCallsAddr != 0) && (commPagePtrAddr != 0) && (sCopyinFunc != NULL) && (sCopyoutFunc != NULL)) {
+    sFlushPatchLock = IOSimpleLockAlloc();
+
+    if ((ppcCallsAddr != 0) && (commPagePtrAddr != 0) && (sCopyinFunc != NULL) && (sCopyoutFunc != NULL) &&
+        (sFlushPatchLock != NULL)) {
       sFlushPatchSkipEntry   = getProperty("XenonPmapFlushNoEntry") == kOSBooleanTrue;
       sFlushPatchCheckOnly   = getProperty("XenonPmapFlushCheckOnly") == kOSBooleanTrue;
       sFlushPatchPpcCalls    = ppcCallsAddr;

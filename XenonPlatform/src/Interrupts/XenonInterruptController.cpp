@@ -11,8 +11,37 @@
 
 #include "XenonPE.hpp"
 #include "XenonInterruptController.hpp"
+#include "XenonSMP.hpp"
 
 OSDefineMetaClassAndStructors(XenonInterruptController, super);
+
+XenonInterruptController *gXenonInterruptController = NULL;
+
+// IPI vector used for all XNU signals (libxenon uses the same one).
+#define kXenonIPIVector   kXenonVectorIPI1
+
+//
+// Secondary threads only take IPIs. Priority 0 accepts every vector and 0x7C blocks all
+// (libxenon), so 0x74 lets only the IPI vector 0x78 through. With priority 0, PIR 2 received the
+// Xenos vector 0x58 and hit the panic below (stage 1a, 2026-11-24).
+//
+#define kXenonSecondaryPriority   0x74
+
+// Unexpected vectors taken by secondary threads, acknowledged and dropped.
+static volatile UInt32 sXenonSecondaryStrayVectors = 0;
+
+//
+// Ends an interrupt on a secondary thread. EOI with auto-update reopened the block (priority 0
+// afterwards), so the Xenos vector, which is held toward PIR 2, fired continuously: about
+// 294,000 external interrupts per second on CPU 1 and no decrementer ticks (2026-11-24). Use a
+// plain EOI and put the IPI-only priority back explicitly.
+//
+#define kXenonSecondaryEOI(pir)                                         \
+  do {                                                                    \
+    writeICReg64((pir), kXenonICRegEndOfInterrupt, 0);                    \
+    writeICReg64((pir), kXenonICRegPriority, kXenonSecondaryPriority);    \
+    readICReg64((pir), kXenonICRegPriority);                              \
+  } while (0)
 
 //
 // CPU IRQ to PCI bridge IRQ mapping (filled at startup).
@@ -147,12 +176,19 @@ bool XenonInterruptController::start(IOService *provider) {
     return false;
   }
 
+  // Secondary CPUs configure their own blocks through this pointer during their start.
+  gXenonInterruptController = this;
   registerService();
 
-  // Register this as the platform interrupt controller.
+  //
+  // Register this as the platform interrupt controller, once per CPU. registerInterrupt
+  // returns only after every CPU has enabled its external interrupt handler.
+  //
   getPlatform()->setCPUInterruptProperties(provider);
-  provider->registerInterrupt(0, this, getInterruptHandlerAddress(), 0);
-  provider->enableInterrupt(0);
+  for (UInt32 cpu = 0; cpu < XenonSMPLogicalCount(); cpu++) {
+    provider->registerInterrupt(cpu, this, getInterruptHandlerAddress(), 0);
+    provider->enableInterrupt(cpu);
+  }
 
   getPlatform()->registerInterruptController(interruptControllerName, this);
 
@@ -176,15 +212,42 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
   IOInterruptVector *vector;
   UInt8             vectorIndex;
   UInt8             pciIrq;
+  UInt32            pir = XenonSMPCurrentPIR();
 
   //
-  // Get/ack pending IRQ and reset priority.
+  // Get/ack pending IRQ and reset priority, in the block of the thread taking the interrupt.
   //
-  vectorIndex = readICReg64(0, kXenonICRegInterruptAck) & kXenonICRegInterruptAckMask;
+  vectorIndex = readICReg64(pir, kXenonICRegInterruptAck) & kXenonICRegInterruptAckMask;
   pciIrq = sXenonCPUInterruptMap[vectorIndex];
-  writeICReg64(0, kXenonICRegPriority, 0x7C);
+  writeICReg64(pir, kXenonICRegPriority, 0x7C);
   eieio();
-  readICReg64(0, kXenonICRegPriority);
+  readICReg64(pir, kXenonICRegPriority);
+
+  //
+  // Inter-processor interrupt: hand it to XNU's IPI handler.
+  //
+  if (vectorIndex == kXenonIPIVector) {
+    if (gXenonIPIHandler != NULL) {
+      gXenonIPIHandler();
+    }
+    if (pir != 0) {
+      kXenonSecondaryEOI(pir);
+    } else {
+      writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
+      writeICReg64(pir, kXenonICRegEndOfInterruptAutoUpd, 0);
+      readICReg64(pir, kXenonICRegPriority);
+    }
+    return kIOReturnSuccess;
+  }
+
+  //
+  // Device interrupts are routed to thread 0 only. Drop anything else a secondary receives.
+  //
+  if (pir != 0) {
+    sXenonSecondaryStrayVectors++;
+    kXenonSecondaryEOI(pir);
+    return kIOReturnSuccess;
+  }
 
   switch (vectorIndex) {
     case kXenonVectorXenos:
@@ -226,12 +289,18 @@ IOReturn XenonInterruptController::handleInterrupt(void *refCon, IOService *nub,
     disableVectorHard(vectorIndex, vector);
   }
 
+  //
+  // Tiger's enableInterrupt, possibly on the other CPU, waits for interruptActive = 0 and then
+  // reads interruptDisabledHard. The flag and the bridge mask write must be complete first, or
+  // the source could stay masked.
+  //
+  sync();
   vector->interruptActive = 0;
 
   // EOI it.
-  writeICReg64(0, kXenonICRegEndOfInterrupt, 0);
-  writeICReg64(0, kXenonICRegEndOfInterruptAutoUpd, 0);
-  readICReg64(0, kXenonICRegPriority);
+  writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
+  writeICReg64(pir, kXenonICRegEndOfInterruptAutoUpd, 0);
+  readICReg64(pir, kXenonICRegPriority);
   return kIOReturnSuccess;
 }
 
@@ -284,4 +353,44 @@ void XenonInterruptController::enableVector(IOInterruptVectorNumber vectorNumber
   // Configure interrupt to route to CPU0 only.
   irqState = kXenonPCIBridgeRegIntEnabled | (1 << kXenonPCIBridgeRegIntTargetCPUShift) | 0x80 | (vectorNumber >> kXenonPCIBridgeRegIntCPUIRQShift);
   writeBridgeReg32(kXenonPCIBridgeRegIntBase + (pciIrq * sizeof(UInt32)), irqState);
+}
+
+//
+// Configures a secondary thread's register block like libxenon's wakeup_cpus: spurious vector,
+// logical ID (one bit per thread) and a priority that admits only IPIs. Thread 0's block is set
+// up in start().
+//
+void XenonInterruptController::initCPUBlock(UInt32 pir) {
+  writeICReg64(pir, kXenonICRegSpuriousVector, 0x7C);
+  writeICReg64(pir, kXenonICRegPriority, kXenonSecondaryPriority);
+  writeICReg64(pir, kXenonICRegLogicalID, 1ULL << pir);
+  eieio();
+
+  // Purge anything pending, with a bound so a bad block cannot hang the CPU here.
+  for (UInt32 i = 0; i < 128; i++) {
+    if (readICReg64(pir, kXenonICRegInterruptAck) == 0x7C) {
+      break;
+    }
+    writeICReg64(pir, kXenonICRegEndOfInterrupt, 0);
+  }
+  eieio();
+}
+
+//
+// Blocks every vector on a thread that is about to park (priority 0x7C, as libxenon).
+// initCPUBlock opens it again when the thread is started.
+//
+void XenonInterruptController::parkCPUBlock(UInt32 pir) {
+  writeICReg64(pir, kXenonICRegPriority, 0x7C);
+  readICReg64(pir, kXenonICRegPriority);
+  eieio();
+}
+
+//
+// Raises the IPI vector on the target thread. The write goes to the sender's block.
+//
+void XenonInterruptController::sendIPI(UInt32 fromPIR, UInt32 toPIR) {
+  writeICReg64(fromPIR, kXenonICRegIPIGeneration,
+               ((UInt64) (1U << toPIR) << kXenonICIPITargetShift) | kXenonIPIVector);
+  eieio();
 }

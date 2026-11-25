@@ -113,17 +113,28 @@ void XenonSMC::handleInterrupt(IOInterruptEventSource *intEventSource, int count
 IOReturn XenonSMC::writeMessage(XenonSMCMessage *message, UInt32 timeout) {
   IOInterruptState  ints;
 
-  ints = IOSimpleLockLockDisableInterrupt(_lock);
-
-  // Wait for SMC to be ready.
-  while ((readLittleReg32(kXenonSMCRegFifoOutStatus) & kXenonSMCRegFifoOutStatusReady) == 0) {
-    if (timeout == 0) {
-      IOSimpleLockUnlockEnableInterrupt(_lock, ints);
-      XEDBGLOG("Timed out waiting for SMC");
-      return kIOReturnTimeout;
+  //
+  // Wait for the SMC without holding _lock (up to kXenonSMCTimeout, 10 s). Holding it here kept
+  // interrupts off on this CPU for the whole wait, and with more than one CPU the SMC interrupt
+  // filter and other writers spun on the lock meanwhile (docs/smp-driver-audit.md, finding 2).
+  // The lock is taken only to claim the FIFO and write the message. Another CPU may have claimed
+  // the FIFO between the unlocked check and the lock, so it is checked again under the lock.
+  //
+  for (;;) {
+    while ((readLittleReg32(kXenonSMCRegFifoOutStatus) & kXenonSMCRegFifoOutStatusReady) == 0) {
+      if (timeout == 0) {
+        XEDBGLOG("Timed out waiting for SMC");
+        return kIOReturnTimeout;
+      }
+      timeout--;
+      IODelay(1);
     }
-    timeout--;
-    IODelay(1);
+
+    ints = IOSimpleLockLockDisableInterrupt(_lock);
+    if ((readLittleReg32(kXenonSMCRegFifoOutStatus) & kXenonSMCRegFifoOutStatusReady) != 0) {
+      break;
+    }
+    IOSimpleLockUnlockEnableInterrupt(_lock, ints);
   }
 
   // Signal SMC and write it to the FIFO.

@@ -101,6 +101,9 @@ private:
   bool findKernelMachHeader(void);
   bool initPatcher(void);
 
+  // SMP.
+  void setupSMP(void);
+
   // Function hooks.
   static void wrapDebugger(const char *str);
   static void wrapPmapEnter(void* pmap, vm_map_offset_t va, ppnum_t pa, vm_prot_t prot,

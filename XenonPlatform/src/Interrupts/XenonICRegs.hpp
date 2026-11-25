@@ -24,7 +24,9 @@
 // Current interrupt priority level
 #define kXenonICRegPriority                   0x08
 //
+// On write, (target thread mask << 16) | vector raises an IPI. Written in the sender's block.
 #define kXenonICRegIPIGeneration              0x10
+#define kXenonICIPITargetShift                16
 // On read, gets the highest priority pending interrupt and acks it
 #define kXenonICRegInterruptAck               0x50
 #define kXenonICRegInterruptAckMask           0x7F
