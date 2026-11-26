@@ -712,11 +712,55 @@ const char *XenosGPU::startCommandProcessor(void) {
   return NULL;
 }
 
+//
+// Once per boot. After a XenosGPU session (or the libxenon 3D reset) the GPU's 3D pipeline stalls
+// after about 72 resolves in any later session, and only a reboot (XeLL's initialization) clears it
+// (2026-11-25/26, docs/gpu-driver-plan.md, step 1.1). So the first start in a boot leaves a mark in
+// the GPU heap (magic and time base); a later load in the same boot sees it and keeps the CPU refresh
+// instead of stalling the GPU. A power-off clears the RAM, and after a restart the time base starts
+// again near zero, so the next boot starts normally. XenosGPUAllowRestart overrides this.
+//
+static const UInt32 kHeapBootMark = 0xF000;
+static const UInt32 kBootMarkMagic = 0x58475055;  // "XGPU"
+
+bool XenosGPU::claimBoot(void) {
+  if (!_useHeap || _heapMap == NULL) {
+    return true;   // Tiger memory (XenosGPUTigerMemory): no mark.
+  }
+  volatile UInt32 *mark = (volatile UInt32 *)((volatile UInt8 *)_heapMap->getVirtualAddress() + kHeapBootMark);
+  UInt32 tbu, tbl, tbu2;
+  do {
+    __asm__ volatile ("mftbu %0" : "=r" (tbu));
+    __asm__ volatile ("mftb %0" : "=r" (tbl));
+    __asm__ volatile ("mftbu %0" : "=r" (tbu2));
+  } while (tbu != tbu2);
+  bool earlier = (mark[0] == kBootMarkMagic) &&
+                 (mark[1] < tbu || (mark[1] == tbu && mark[2] < tbl));
+  if (earlier && getProperty("XenosGPUAllowRestart") != kOSBooleanTrue) {
+    IOLog("XenosGPU: the GPU was already started in this boot (time base 0x%08lx%08lx, now 0x%08lx%08lx); "
+          "a second start stalls it, so the CPU refresh keeps the display until the next boot\n",
+          (unsigned long)mark[1], (unsigned long)mark[2], (unsigned long)tbu, (unsigned long)tbl);
+    return false;
+  }
+  if (earlier) {
+    IOLog("XenosGPU: second start in this boot allowed by XenosGPUAllowRestart\n");
+  }
+  mark[1] = tbu;
+  mark[2] = tbl;
+  asm volatile("sync" ::: "memory");
+  mark[0] = kBootMarkMagic;
+  asm volatile("sync" ::: "memory");
+  return true;
+}
+
 IOReturn XenosGPU::startGPU(void) {
   IOReturn status = allocateBuffers();
   if (status != kIOReturnSuccess) {
     IOLog("XenosGPU: buffers: 0x%08lx\n", (unsigned long)status);
     return status;
+  }
+  if (!claimBoot()) {
+    return kIOReturnBusy;
   }
   for (UInt32 attempt = 1; attempt <= kStartupAttempts; attempt++) {
     const char *failure = startCommandProcessor();

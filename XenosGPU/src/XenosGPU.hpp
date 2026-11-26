@@ -120,6 +120,7 @@ private:
   void initDisplayState(void);
   const char *startCommandProcessor(void);
   IOReturn startGPU(void);
+  bool claimBoot(void);
 
   // XenosGPU.cpp
   void present(IOTimerEventSource *sender);

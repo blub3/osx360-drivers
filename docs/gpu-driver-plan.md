@@ -34,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load, unload, display handback | in progress | Claude | `78abf83` | First session after boot works (4,127 frames, clean unload); a second session stalls at about frame 72; quiesce build installed, not run; see log |
+| 1.1 Load once per boot, present, display handback | in progress | Claude | `2da01e8` | First session after boot works (4,127 frames); a second start in the same boot stalls the GPU, so `XenosGPU` starts once per boot (guard tested); long session and audio check pending |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -67,6 +67,10 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26, Claude: **decision with the owner: `XenosGPU` starts the GPU once per boot.**
+  - **The guard:** the first start in a boot writes a mark (magic `XGPU` plus the time base) at heap offset `0xF000`, and a later load in the same boot declines before touching the GPU. A power-off clears the RAM; after a restart the time base starts again near zero. `XenosGPUAllowRestart` overrides it.
+  - **Tested on the stalled GPU:** the first load failed at the 3D reset as expected and wrote the mark; the second declined ("the GPU was already started in this boot"). The desktop stayed up, no panic.
+  - **Plan changes:** step 1.1's pass criterion is now one long session with clean audio, a clean unload and a declining second load. The plan's restart table, phase 1 and step 1.5 are updated.
 - 2026-11-26, Claude: step 1.1, two more tests after fresh boots.
   - **Quiesce at unload** (`78abf83`): session 0 ran 1,462 frames. The stop marker arrived and the GPU was idle before and after the halt (`RBBM_STATUS` `0x00040110`), yet session 1 stalled at frame 72 (`rptr=0x081F`). A clean, idle stop is not enough.
   - **XeLL's values** of the registers libxenon's `Xe_pInit1` writes, unchanged between sessions: `0x01A8` = 0, `0x0E6C` = `0x00F00F0C` (libxenon `0xC0F0000`), `0x3300` = `0x3A22`, `0x3400` = `0x40400`, `0x340C` = 0 (libxenon `0x1003F1F`), `0x00F4` = `0x1E`.
@@ -236,7 +240,7 @@ The plan below replaces the test selectors with a small, generic kernel driver a
 | --- | --- | --- |
 | R0 | Nothing: run a program over SSH | User-space library, tests, GLD in a test process |
 | R1 | WindowServer restart, about 9 s (`tools/host/xbox-gui.sh restart`), no owner needed | GLD or plug-in used by WindowServer changes |
-| R2 | `kextunload` + `kextload`, seconds | Kernel driver loaded by hand (not in the mkext) |
+| R2 | `kextunload` + `kextload`, seconds | Kexts loaded by hand that do not start the GPU (probes, user-client experiments). `XenosGPU` itself starts the GPU only once per boot, so a change to its core costs a reboot (R3) |
 | R3 | `sudo reboot`, about 2–3 min; **the owner must start XeLL from the Aurora dashboard** | Boot-resident code changes, or recovery after a crash |
 | R4 | Stick change + reboot | OpenBIOS or mkext changes |
 | R5 | Owner power-cycles the Xbox and starts XeLL from Aurora | Hang or panic (grey screen) |
@@ -253,12 +257,12 @@ The plan below replaces the test selectors with a small, generic kernel driver a
 
 ## Target design
 
-Kernel driver `XenosGPU` (new bundle ID; it replaces XenonCoreGraphics in phase 6):
+Kernel driver `XenosGPU` (new bundle ID; it replaces XenonCoreGraphics in phase 6). **It starts the GPU once per boot** (decided 2026-11-26): after a session, or after the 3D block reset, a second start in the same boot stalls the GPU's 3D pipeline after about 72 resolves, and only a reboot clears it (step 1.1 log). So `XenosGPU` stays loaded for the whole boot, keeps its kernel interface small and stable, and the development loop runs in user space (debug client, tests, GLD, 2D plug-in), which can be restarted freely. A change to `XenosGPU`'s core costs a reboot.
 
 - **GPU memory:** a contiguous heap (64–128 MiB; candidate: the 127 MiB at `0x08100000`–`0x0FFFFFFF` that Tiger does not manage, `docs/gpu-memory-map.md`), allocations as handles and owned by a client, mapped cacheable into the client's task with explicit cache flushes, and freed when the client exits. No cache-inhibited user mappings: Tiger's `memcpy` and `bzero` use `dcbz`.
 - **Command submission:** clients build PM4 command buffers in their own GPU memory. The kernel ring holds only `CP_INDIRECT_BUFFER` packets and fence writes. The kernel checks that every address in a buffer belongs to the client. A root-only development mode skips the check.
 - **Fences:** a timestamp written by the GPU into a page mapped read-only into every client, and a wait call that uses the GPU interrupt.
-- **Hang recovery:** a watchdog on ring progress, a soft reset (`RBBM_SOFT_RESET`) with ring and firmware reinit, an error returned to the client, and the display back on the software path.
+- **Hang recovery:** a watchdog on ring progress, an error returned to the client, and the display back on the CPU refresh. The 3D pipeline cannot be recovered without a reboot with the resets known so far (step 1.1 log), so the address check that keeps bad command buffers away from the GPU matters more than the recovery.
 - **Display:** scanout address and format, page flip at VBlank, 720p/1080p switching together with XenonFramebufferTest, and handing the display back to XenonPE on unload (`kXenonFuncPlatformStartFB`, which already exists).
 - **IOAccelerator:** the surface client WindowServer uses (`IOAccelSurfaceConnect.h`: create, shape, lock, read, flush), plus a private client for the GLD and the 2D plug-in.
 - **Debug client (root only):** reads and writes registers and GPU memory, so most hardware questions are answered by a program, not a new kext.
@@ -306,13 +310,13 @@ All checks are R0 over SSH unless marked.
 
    One script, `tools/host/gpu-dev.sh`, does all of it, including the import check against the booting kexts (the import rule applies from the first build, so phase 6 has no surprises).
 
-## Phase 1: kernel core (R2 for each change)
+## Phase 1: kernel core (`XenosGPU` once per boot; its user-space clients without reboot)
 
-1. Load and unload: take the GPU from XenonPE, bring the ring up with the checked reset from 0.0.5d46, present the desktop with the GPU (stop XenonPE's CPU refresh with `PlatformStopFB`), and give the display back on unload (`PlatformStartFB`). Pass: 20 load and unload cycles with the desktop up, and a clean `say` while `XenosGPU` is loaded (on `gpudev` the CPU refresh makes audio glitchy).
+1. Load once per boot: take the GPU from XenonPE, bring the ring up with the checked reset from 0.0.5d46, present the desktop with the GPU (stop XenonPE's CPU refresh with `PlatformStopFB`), and give the display back on unload (`PlatformStartFB`). A second load in the same boot declines and keeps the CPU refresh. Pass: one session of at least 10 minutes with no stall, a clean `say` while `XenosGPU` is loaded (on `gpudev` the CPU refresh makes audio glitchy), a clean unload, and a second load that declines. (The first pass criterion, 20 load and unload cycles, is not reachable; see the log.)
 2. Debug client, fence page and the GPU interrupt. Pass: a fence wait by interrupt, plus a VBlank count that matches 60 Hz.
 3. GPU memory manager. Pass: allocate, map, free and exit with memory still held, without leaks (heap counters back at their start values).
 4. Command submission with the address check, and the FIFO queue across clients. Pass: the existing clear, triangle and texture tests as user programs, run from several processes at once, fences in order.
-5. Hang recovery. Pass: a deliberately bad command buffer resets the GPU, the client gets an error, the desktop keeps running, and the next submission works.
+5. Hang recovery. Pass: a deliberately bad command buffer is rejected by the address check; a stall is detected, the client gets an error, and the desktop keeps running on the CPU refresh. Recovering the GPU itself needs a reboot until a working reset is found (side topic: study XeLL's GPU and EDRAM initialization in its source, without trial runs).
 6. Display: check whether the display controller can scan out a linear surface (debug client, no rebuild).
    - If it can, the desktop needs no copy at all.
    - If not, copy only the changed areas instead of the whole screen every 15 ms.
