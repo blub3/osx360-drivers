@@ -34,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load once per boot, present, display handback | in progress | Claude | `c89ef99` | Passes except two gaps: session 9 min 14 s (criterion 10 min), Ethernet checked only after unload. Audio clean (owner), clean unload, second load declines. Confirm both at the next boot |
+| 1.1 Load once per boot, present, display handback | done | Claude | `c89ef99` (code), this commit | 10 min 21 s without a stall (41,452 frames), Ethernet and audio clean while loaded, clean unload, second load declines |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -67,6 +67,13 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26 07:48–07:59, Claude: **step 1.1 done.** Confirmation run with `c89ef99` after a fresh boot (`gpudev`):
+  - **Session:** `XenosGPU` presented from about 07:48:35 to 07:58:56 (**10 min 21 s, 41,452 frames**, no stall; markers, the page-crossing marker and the CP start passed on attempt 1).
+  - **Ethernet while loaded:** the 10 MiB file, size checked on the Xbox, matched both ways: 2.35 s up and 1.49 s down, against 7.0 s and 3.5 s with the CPU refresh.
+  - **Audio:** `say` at 07:48:37; the owner heard it clean and complete.
+  - **Unload and reload:** the unload quiesced (marker ok, `RBBM_STATUS` `0x00040110` before and after the halt) and restarted the CPU refresh. A second load declined.
+  - **System:** desktop up, no panic.
+  - **Next:** step 1.2, the debug client, the fence page and the GPU interrupt. These are user clients of the loaded `XenosGPU`; the client programs can be restarted without a reboot, changes to `XenosGPU` itself cannot.
 - 2026-11-26 07:30–07:41, Claude: step 1.1 run with `c89ef99` after a fresh boot (`gpudev`).
   - **Session:** `XenosGPU` loaded at about 07:30:58 (both markers and the page-crossing marker passed, CPU refresh stopped) and was unloaded at about 07:40:12, about **9 min 14 s**, with **36,561 frames** (about 66 per second) and no stall (`system.log` stall count unchanged). Idle CPU 87–90% free.
   - **Audio:** `say` at 07:31:05 while `XenosGPU` presented; **the owner heard it clean.** The GPU presentation removes the glitches the CPU refresh causes.
