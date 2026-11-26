@@ -34,7 +34,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load once per boot, present, display handback | in progress | Claude | `2da01e8` | First session after boot works (4,127 frames); a second start in the same boot stalls the GPU, so `XenosGPU` starts once per boot (guard tested); long session and audio check pending |
+| 1.1 Load once per boot, present, display handback | in progress | Claude | `c89ef99` | Passes except two gaps: session 9 min 14 s (criterion 10 min), Ethernet checked only after unload. Audio clean (owner), clean unload, second load declines. Confirm both at the next boot |
 | 1.2 Debug client, fence page, GPU interrupt | open | | | |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
@@ -67,6 +67,13 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26 07:30–07:41, Claude: step 1.1 run with `c89ef99` after a fresh boot (`gpudev`).
+  - **Session:** `XenosGPU` loaded at about 07:30:58 (both markers and the page-crossing marker passed, CPU refresh stopped) and was unloaded at about 07:40:12, about **9 min 14 s**, with **36,561 frames** (about 66 per second) and no stall (`system.log` stall count unchanged). Idle CPU 87–90% free.
+  - **Audio:** `say` at 07:31:05 while `XenosGPU` presented; **the owner heard it clean.** The GPU presentation removes the glitches the CPU refresh causes.
+  - **Unload:** quiesce marker ok, `RBBM_STATUS` `0x00040110` before and after the halt, CPU refresh restarted.
+  - **Second load:** declined ("the GPU was already started in this boot"); the desktop stayed on the CPU refresh, no panic.
+  - **Ethernet:** the check during the session is invalid. The scratchpad test file had been cleared, so both checksums were of empty data. Repeated after the unload with a new 10 MiB file, it matched both ways.
+  - **Open for the next boot:** a session of at least 10 minutes with an Ethernet round trip while `XenosGPU` is loaded. Then step 1.1 is done.
 - 2026-11-26, Claude: **decision with the owner: `XenosGPU` starts the GPU once per boot.**
   - **The guard:** the first start in a boot writes a mark (magic `XGPU` plus the time base) at heap offset `0xF000`, and a later load in the same boot declines before touching the GPU. A power-off clears the RAM; after a restart the time base starts again near zero. `XenosGPUAllowRestart` overrides it.
   - **Tested on the stalled GPU:** the first load failed at the 3D reset as expected and wrote the mark; the second declined ("the GPU was already started in this boot"). The desktop stayed up, no panic.
