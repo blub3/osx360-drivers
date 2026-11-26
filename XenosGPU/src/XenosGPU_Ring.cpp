@@ -94,6 +94,7 @@ static const UInt32 kHeapRing      = 0x0000;
 static const UInt32 kHeapMarker    = 0x8000;
 static const UInt32 kHeapTexCoords = 0x9000;
 static const UInt32 kHeapQuad      = 0xA000;
+static const UInt32 kHeapFence     = 0xB000;
 static const UInt32 kHeapUsed      = 0x10000;
 
 static void copyWords(volatile UInt8 *dst, const void *src, UInt32 length) {
@@ -128,6 +129,12 @@ IOReturn XenosGPU::allocateHeapBuffers(void) {
   _texCoordsPhys = phys + kHeapTexCoords;
   copyWords(virt + kHeapQuad, sQuad, sizeof(sQuad));
   _quadPhys = phys + kHeapQuad;
+  _fence = (volatile UInt32 *)(virt + kHeapFence);
+  _fencePhys = phys + kHeapFence;
+  for (UInt32 i = 0; i < PAGE_SIZE / 4; i++) {
+    _fence[i] = 0;
+  }
+  _fenceDesc = IODeviceMemory::withRange(_fencePhys, PAGE_SIZE);
   for (UInt32 i = 0; i < kRingBytes / 4; i++) {
     ((volatile UInt32 *)_ring)[i] = 0;
   }
@@ -182,6 +189,11 @@ IOReturn XenosGPU::allocateBuffers(void) {
 }
 
 void XenosGPU::releaseBuffers(void) {
+  if (_fenceDesc != NULL) {
+    _fenceDesc->release();
+    _fenceDesc = NULL;
+  }
+  _fence = NULL;
   if (_heapMap != NULL) {
     _heapMap->release();
     _heapMap = NULL;

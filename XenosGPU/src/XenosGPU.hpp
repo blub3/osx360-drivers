@@ -16,9 +16,12 @@
 #include <IOKit/IOBufferMemoryDescriptor.h>
 #include <IOKit/IOTimerEventSource.h>
 #include <IOKit/IOWorkLoop.h>
+#include <IOKit/IOCommandGate.h>
+#include <IOKit/IOFilterInterruptEventSource.h>
 
 #include "XenonCommon.hpp"
 #include "XenosRegs.hpp"
+#include "XenosGPUDebugProtocol.h"
 
 static inline UInt32 XenosFloatBits(float f) {
   union {
@@ -44,6 +47,16 @@ public:
   bool start(IOService *provider);
   void stop(IOService *provider);
   void free(void);
+
+  // Debug client (XenosGPU_Debug.cpp, step 1.2).
+  IOReturn debugRead(UInt32 offset, UInt32 *value);
+  IOReturn debugWrite(UInt32 offset, UInt32 value);
+  IOReturn submitFence(UInt32 *sequence);
+  IOReturn waitFence(UInt32 sequence, UInt32 timeoutMS, UInt32 *elapsedUS, UInt32 *completed);
+  void debugStatistics(UInt32 *frames, UInt32 *busyTicks, UInt32 *fencesSubmitted, UInt32 *fenceCompleted,
+                       UInt32 *interrupts, UInt32 *lastStatus);
+  IOReturn setInterrupt(bool enable);
+  IOMemoryDescriptor *fenceMemory(void);
 
 private:
   // MMIO and display.
@@ -72,6 +85,21 @@ private:
   IOPhysicalAddress         _texCoordsPhys;
   IOBufferMemoryDescriptor  *_quadDesc;
   IOPhysicalAddress         _quadPhys;
+
+  // Fences, command gate and the GPU interrupt (step 1.2).
+  IOCommandGate             *_gate;
+  volatile UInt32           *_fence;
+  IOPhysicalAddress         _fencePhys;
+  IOMemoryDescriptor        *_fenceDesc;
+  UInt32                    _fenceSubmitted;
+  IOFilterInterruptEventSource *_interruptSource;
+  volatile UInt32           _interrupts;
+  volatile UInt32           _lastInterruptStatus;
+  volatile UInt32           _lastInterruptRbbm;
+  static IOReturn fenceAction(OSObject *owner, void *sequence, void *, void *, void *);
+  static IOReturn stopPresentingAction(OSObject *owner, void *, void *, void *, void *);
+  static bool interruptFilter(OSObject *owner, IOFilterInterruptEventSource *source);
+  static void interruptHandler(OSObject *owner, IOInterruptEventSource *source, int count);
 
   // Presentation.
   IOWorkLoop                *_workLoop;

@@ -34,8 +34,8 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.4 Panic path, panic text, GPU interrupt line | done | Claude | `ec90e3e` | `docs/gpu-panic-and-interrupts.md`: hook `XenonPE::savePanicInfo`; GPU vector `0x58` is unrouted and panics on thread 0 |
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
-| 1.1 Load once per boot, present, display handback | done | Claude | `c89ef99` (code), this commit | 10 min 21 s without a stall (41,452 frames), Ethernet and audio clean while loaded, clean unload, second load declines |
-| 1.2 Debug client, fence page, GPU interrupt | open | | | |
+| 1.1 Load once per boot, present, display handback | done | Claude | `c89ef99` (code), `d5c1614` | 10 min 21 s without a stall (41,452 frames), Ethernet and audio clean while loaded, clean unload, second load declines |
+| 1.2 Debug client, fence page, GPU interrupt | in progress | Claude | this commit | 1.2a (debug client, fences, VBlank) passes; unload with the client not yet tested; 1.2b (GPU interrupt) open |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
 | 1.5 Hang recovery | open | | | |
@@ -67,6 +67,15 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26, Claude: step 1.2a on a fresh `gpudev` boot.
+  - **The pieces:** `XenosGPU` has a root-only debug client (`XenosGPUDebugClient`, protocol in `XenosGPU/src/XenosGPUDebugProtocol.h`) and a fence page at heap `+0xB000`, mapped read-only and uncached into the client. Fences are a `CP_MEM_WRITE` of an increasing sequence under the work loop's command gate. The GPU interrupt is registered only on request. The test tool is `tools/gpu/xenos-gpu` (`read`, `regs`, `write`, `fence`, `stats`, `vblank`, `irq`; built on the G5 with the 10.4 SDK and `-std=c99`, installed as `~/xenos-gpu` on the Xbox). The kernel imports pass `--strict`: `IODeviceMemory::withRange` for the fence page and the time base for timing, instead of three imports outside the `main6` set.
+  - **Results:**
+    - presentation as in 1.1;
+    - non-root open refused (`0xE00002C2`); a write to `RBBM_SOFT_RESET` refused (`0xE00002E2`);
+    - `read 0x1740` returned `0x00040110`;
+    - **105 of 105 fences completed**, the mapped page showing each sequence; the GPU had finished each before the wait began, so the latency is the system call.
+  - **VBlank:** `xenos-gpu vblank` sampled 21 display registers about 4,060 times in 1 s. **`0x6534` bit 12 toggles 120 times per second (60 Hz VBlank status)**, `0x6544` bit 4 likewise, `0x6530` is the current scanline (wraps 60 times per second; `0x652C` = `0x438` = 1080). No frame counter among the candidates.
+  - **Not yet tested:** unloading with the debug client's gate and fence page. `XenosGPU` stays loaded for 1.2b.
 - 2026-11-26 07:48–07:59, Claude: **step 1.1 done.** Confirmation run with `c89ef99` after a fresh boot (`gpudev`):
   - **Session:** `XenosGPU` presented from about 07:48:35 to 07:58:56 (**10 min 21 s, 41,452 frames**, no stall; markers, the page-crossing marker and the CP start passed on attempt 1).
   - **Ethernet while loaded:** the 10 MiB file, size checked on the Xbox, matched both ways: 2.35 s up and 1.49 s down, against 7.0 s and 3.5 s with the CPU refresh.
@@ -327,7 +336,9 @@ All checks are R0 over SSH unless marked.
 ## Phase 1: kernel core (`XenosGPU` once per boot; its user-space clients without reboot)
 
 1. Load once per boot: take the GPU from XenonPE, bring the ring up with the checked reset from 0.0.5d46, present the desktop with the GPU (stop XenonPE's CPU refresh with `PlatformStopFB`), and give the display back on unload (`PlatformStartFB`). A second load in the same boot declines and keeps the CPU refresh. Pass: one session of at least 10 minutes with no stall, a clean `say` while `XenosGPU` is loaded (on `gpudev` the CPU refresh makes audio glitchy), a clean unload, and a second load that declines. (The first pass criterion, 20 load and unload cycles, is not reachable; see the log.)
-2. Debug client, fence page and the GPU interrupt. Pass: a fence wait by interrupt, plus a VBlank count that matches 60 Hz.
+2. Debug client, fence page and the GPU interrupt, in two parts.
+   - **1.2a:** root-only debug client (register reads, writes to the interrupt registers only), fence page mapped into the client, fences by polling, the VBlank status bit. Pass: fences complete, and the VBlank bit toggles at 60 Hz.
+   - **1.2b:** find which register targets the GPU interrupt at a CPU thread and which source holds it asserted, acknowledge it, then route it to thread 0. Pass: a fence wait by interrupt.
 3. GPU memory manager. Pass: allocate, map, free and exit with memory still held, without leaks (heap counters back at their start values).
 4. Command submission with the address check, and the FIFO queue across clients. Pass: the existing clear, triangle and texture tests as user programs, run from several processes at once, fences in order.
 5. Hang recovery. Pass: a deliberately bad command buffer is rejected by the address check; a stall is detected, the client gets an error, and the desktop keeps running on the CPU refresh. Recovering the GPU itself needs a reboot until a working reset is found (side topic: study XeLL's GPU and EDRAM initialization in its source, without trial runs).

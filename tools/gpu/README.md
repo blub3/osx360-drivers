@@ -6,3 +6,4 @@ Run on the PC with Python 3. They read Apple binaries copied off the Xbox; keep 
 - `annotate-ppc.py <binary> <otool -tV output>` adds the strings and CFStrings that position-independent PowerPC code loads (`bcl`/`mflr` base plus `addis` and `addi`/`lwz`) to an `otool -arch ppc -tV` listing made on the G5.
 
 Example and results: `docs/gpu-tiger-gl-stack.md`.
+- `xenos-gpu.c`: the user-space debug tool for XenosGPU's debug client (register reads, interrupt register writes, fences, statistics, VBlank search, GPU interrupt on/off). Build line in the file header; run as root on the Xbox while XenosGPU is loaded.

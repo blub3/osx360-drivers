@@ -41,6 +41,12 @@ bool XenosGPU::start(IOService *provider) {
   _forceReset = (getProperty("XenosGPUForceReset") == kOSBooleanTrue);
   _workLoop = NULL;
   _timer = NULL;
+  _gate = NULL;
+  _fence = NULL;
+  _fenceDesc = NULL;
+  _fenceSubmitted = 0;
+  _interruptSource = NULL;
+  _interrupts = _lastInterruptStatus = _lastInterruptRbbm = 0;
   _presenting = _platformStopped = false;
   _frames = _busyTicks = _busyRun = 0;
   _stallLogged = false;
@@ -49,7 +55,8 @@ bool XenosGPU::start(IOService *provider) {
     return false;
   }
   _presentMS = (getProperty("XenosGPUSlowPresent") == kOSBooleanTrue) ? 50 : kPresentIntervalMS;
-  IOLog("XenosGPU: start (step 1.1: GPU presentation every %lu ms)\n", (unsigned long)_presentMS);
+  IOLog("XenosGPU: start (step 1.2: GPU presentation every %lu ms, debug client, fences)\n",
+        (unsigned long)_presentMS);
 
   IODeviceMemory *mmio = IODeviceMemory::withRange(kXenosMmioBase, kXenosMmioSize);
   if (mmio != NULL) {
@@ -105,6 +112,12 @@ bool XenosGPU::start(IOService *provider) {
   _presenting = true;
   _timer->enable();
   _timer->setTimeoutMS(_presentMS);
+  _gate = IOCommandGate::commandGate(this);
+  if (_gate != NULL && _workLoop->addEventSource(_gate) != kIOReturnSuccess) {
+    _gate->release();
+    _gate = NULL;
+  }
+  setProperty("IOUserClientClass", "XenosGPUDebugClient");
   registerService();
   return true;
 }
@@ -117,6 +130,12 @@ void XenosGPU::stop(IOService *provider) {
           "CF_EVENT_ADDR=0x%08lx scratch word=0x%08lx\n", (unsigned long)readReg(0x1818),
           (unsigned long)readReg(0x181C), (unsigned long)readReg(0x1804), (unsigned long)readReg(0x182C),
           (unsigned long)(_marker != NULL ? _marker[0x100 / 4] : 0));
+  }
+  if (_interruptSource != NULL) {
+    setInterrupt(false);
+  }
+  if (_gate != NULL) {
+    _gate->runAction(&XenosGPU::stopPresentingAction);
   }
   _presenting = false;
   if (_timer != NULL) {
@@ -142,7 +161,19 @@ void XenosGPU::stop(IOService *provider) {
   super::stop(provider);
 }
 
+IOReturn XenosGPU::stopPresentingAction(OSObject *owner, void *, void *, void *, void *) {
+  ((XenosGPU *)owner)->_presenting = false;
+  return kIOReturnSuccess;
+}
+
 void XenosGPU::free(void) {
+  if (_gate != NULL) {
+    if (_workLoop != NULL) {
+      _workLoop->removeEventSource(_gate);
+    }
+    _gate->release();
+    _gate = NULL;
+  }
   if (_timer != NULL) {
     _timer->release();
     _timer = NULL;
