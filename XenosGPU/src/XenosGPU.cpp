@@ -38,6 +38,7 @@ bool XenosGPU::start(IOService *provider) {
   _libxenonInit = (getProperty("XenosGPULibxenonInit") == kOSBooleanTrue);
   _pageCheck = (getProperty("XenosGPUNoPageCheck") != kOSBooleanTrue);
   _psEvent = (getProperty("XenosGPUPsEvent") == kOSBooleanTrue);
+  _forceReset = (getProperty("XenosGPUForceReset") == kOSBooleanTrue);
   _workLoop = NULL;
   _timer = NULL;
   _presenting = _platformStopped = false;

@@ -67,6 +67,12 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26, Claude: step 1.1, two more tests after fresh boots.
+  - **Quiesce at unload** (`78abf83`): session 0 ran 1,462 frames. The stop marker arrived and the GPU was idle before and after the halt (`RBBM_STATUS` `0x00040110`), yet session 1 stalled at frame 72 (`rptr=0x081F`). A clean, idle stop is not enough.
+  - **XeLL's values** of the registers libxenon's `Xe_pInit1` writes, unchanged between sessions: `0x01A8` = 0, `0x0E6C` = `0x00F00F0C` (libxenon `0xC0F0000`), `0x3300` = `0x3A22`, `0x3400` = `0x40400`, `0x340C` = 0 (libxenon `0x1003F1F`), `0x00F4` = `0x1E`.
+  - **Forced 3D reset with snapshot and restore** of 23 configuration registers (`XenosGPUForceReset`, now opt-in): on a fresh GPU the reset changed **none** of them, and the GPU still stalled at frame 74.
+  - **Conclusion so far:** the libxenon 3D reset, like a completed session plus a CP reset, leaves the GPU in a state no readable configuration register shows, and from that state the next roughly 72 resolves complete and then the pipeline stalls. Only XeLL's initialization at boot gives a GPU that runs indefinitely. XenonCoreGraphics also started only once per boot. Hypothesis: a counter or credit between the CP and the render back end that a partial reset leaves mismatched.
+  - **Open:** a reset that resets the CP and the 3D blocks in one write (`0x1 | 0x8064 | 0x11800`), or XeLL's own GPU and EDRAM initialization; both risk a console hang.
 - 2026-11-26 00:05, Claude: stopped for the day at the owner's request; the Xbox was shut down over SSH. **Where to continue:**
   1. Boot `gpudev` (the stick's default).
   2. `tools/host/gpu-dev.sh XenosGPU load --wait 20`, then `unload`. The installed build `78abf83` quiesces before halting the CP; check the "quiesce:" and "command processor halted, RBBM_STATUS" lines.

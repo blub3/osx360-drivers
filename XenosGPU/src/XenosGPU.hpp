@@ -67,6 +67,7 @@ private:
   bool                      _libxenonInit;
   bool                      _pageCheck;
   bool                      _psEvent;
+  bool                      _forceReset;
   IOBufferMemoryDescriptor  *_texCoordsDesc;
   IOPhysicalAddress         _texCoordsPhys;
   IOBufferMemoryDescriptor  *_quadDesc;

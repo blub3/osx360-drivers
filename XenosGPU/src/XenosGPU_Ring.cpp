@@ -456,12 +456,31 @@ void XenosGPU::initDisplayState(void) {
 // clear. These values leave out bit 0 (CP) and bits 3 and 4. Writing all ones hangs the whole console
 // (2026-11-25). Bounded to 100 rounds. Returns false if the pipeline stays busy.
 //
+//
+// Configuration registers the 3D block reset may clear. libxenon's Xe_pInit1 rewrites some of them
+// after its reset, but with values that differ from XeLL's (0x0E6C, 0x340C). So the driver takes a
+// snapshot before the reset and writes back whatever the reset changed. CP registers are left out
+// (startCommandProcessor programs them anyway), as are status, performance and fault registers.
+//
+static const UInt16 kConfigRegisters[] = {
+  0x00EC, 0x00F4, 0x01A8, 0x0E6C,                 // RBBM_CNTL, 0x00F4, 0x01A8, RBBM_DEBUG
+  0x0100, 0x0104, 0x0108, 0x0118, 0x011C,         // MH_MMU_CONFIG, VA_RANGE, PT_BASE, MPU_BASE/END
+  0x2900, 0x2908,                                 // MH_ARBITER_CONFIG, MH_INTERRUPT_MASK
+  0x2054, 0x2154, 0x3214, 0x3294, 0x3300, 0x3400, 0x3408, 0x340C,
+  0x3C10, 0x3C40, 0x87E4, 0x6110
+};
+
 bool XenosGPU::resetGraphicsBlocks(const char *when) {
   UInt32 before = readReg(kXenosRegRbbmStatus);
-  // Only when the pipeline is busy: on an idle GPU the reset (without libxenon's Xe_pInit1 register
-  // set) was followed by a stall at frame 71-73 in every run, while the one long run (2,089 frames,
-  // 2026-11-25 22:47) started without it.
-  if (!(before & 0x80000000)) {
+  const UInt32 count = sizeof(kConfigRegisters) / sizeof(kConfigRegisters[0]);
+  UInt32 snapshot[sizeof(kConfigRegisters) / sizeof(kConfigRegisters[0])];
+  for (UInt32 i = 0; i < count; i++) {
+    snapshot[i] = readReg(kConfigRegisters[i]);
+  }
+  // Only a busy pipeline is reset, unless the personality key XenosGPUForceReset is set. A forced
+  // reset on a fresh GPU changed none of the configuration registers and still stalled the GPU at
+  // frame 74 (2026-11-26): the reset leaves a state no readable register shows.
+  if (!_forceReset && !(before & 0x80000000)) {
     IOLog("XenosGPU: 3D block reset %s skipped, pipeline idle (RBBM_STATUS 0x%08lx)\n", when,
           (unsigned long)before);
     return true;
@@ -483,6 +502,19 @@ bool XenosGPU::resetGraphicsBlocks(const char *when) {
   UInt32 config = readReg(kXenosRegConfigControl);
   IOLog("XenosGPU: 3D block reset %s: RBBM_STATUS 0x%08lx -> 0x%08lx after %lu rounds, 0x00E0 = 0x%08lx\n",
         when, (unsigned long)before, (unsigned long)after, (unsigned long)rounds, (unsigned long)config);
+  UInt32 restored = 0;
+  for (UInt32 i = 0; i < count; i++) {
+    UInt32 now = readReg(kConfigRegisters[i]);
+    if (now != snapshot[i]) {
+      writeReg(kConfigRegisters[i], snapshot[i]);
+      IOLog("XenosGPU: reset changed 0x%04x: 0x%08lx -> 0x%08lx, restored (now 0x%08lx)\n",
+            (unsigned)kConfigRegisters[i], (unsigned long)snapshot[i], (unsigned long)now,
+            (unsigned long)readReg(kConfigRegisters[i]));
+      restored++;
+    }
+  }
+  IOLog("XenosGPU: 3D block reset %s: %lu of %lu configuration registers restored\n", when,
+        (unsigned long)restored, (unsigned long)count);
   return !(after & 0x80000000);
 }
 
