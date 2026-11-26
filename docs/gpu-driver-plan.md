@@ -39,6 +39,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 1.2b GPU interrupt routing | deferred | | | Research topic: interrupt target register unknown, experiments can freeze the console; polling fences suffice for now |
 | 1.3 GPU memory manager | done | Claude | `964c708` | `mem test` 0 failures, `mem exhaust` PASS, leak freed on exit, counters back at start; presenting, fences, Ethernet and audio clean |
 | 1.4 Command submission with address check | open | | | |
+| 1.4b Test window (`XenosTestBench`) | open | | | Clear, triangle and texture tests visible in a desktop window, results saved as PNG |
 | 1.5 Hang recovery | open | | | |
 | 1.6 Display: linear scanout or damage copy, flips, modes | open | | | |
 | 2.1 `libxenos` | open | | | |
@@ -67,6 +68,8 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 ## Log
 
 Newest first.
+
+- 2026-11-26, Claude: the owner asked to see the 2D and 3D tests while they run. Added step 1.4b, a test window (`XenosTestBench`), after 1.4's command submission. Phase 2's visual tests (2.2 and 2.5) run in it too, and each result is saved as a PNG and compared with a reference. Plan only; nothing built yet.
 
 - 2026-11-26, Claude: **step 1.3 done** on a fresh boot (`gpudev`, XenosGPU loaded by hand at 08:25), all six pass criteria met:
   1. Load log: `GPU memory manager: 0x08210000, 32240 pages (125 MiB)`.
@@ -370,6 +373,13 @@ All checks are R0 over SSH unless marked.
    - **1.2b:** find which register targets the GPU interrupt at a CPU thread and which source holds it asserted, acknowledge it, then route it to thread 0. Pass: a fence wait by interrupt.
 3. GPU memory manager. Pass: allocate, map, free and exit with memory still held, without leaks (heap counters back at their start values).
 4. Command submission with the address check, and the FIFO queue across clients. Pass: the existing clear, triangle and texture tests as user programs, run from several processes at once, fences in order.
+   - **1.4b, test window (`XenosTestBench`, owner's request):** a Tiger Cocoa app with its own desktop window that shows the visual tests while they run.
+     - It allocates a render target in the GPU heap through client type 1 (step 1.3), maps it, submits the test's commands, waits for the fence, and copies the target into its window several times a second. Start with 512 × 512 at 32 bits per pixel, about 1 MiB per copy, uncached.
+     - A side panel shows the test name, its current step, pass or fail, timings and the fence sequence.
+     - Each result is saved as a PNG, so it can be compared pixel by pixel with a reference image on the host. A test passes only when its picture matches, not only when no error is reported.
+     - User space only: change and restart it without a reboot. Build it on the G5 with the 10.4 SDK, like `xenos-gpu`.
+     - Pass: the clear, triangle and texture tests are visible in the window, the owner confirms what they see, the saved PNGs match their references, and the desktop and audio stay clean while it runs.
+     - Tests with nothing to show (memory, fences, errors) stay in the log and `xenos-gpu`.
 5. Hang recovery. Pass: a deliberately bad command buffer is rejected by the address check; a stall is detected, the client gets an error, and the desktop keeps running on the CPU refresh. Recovering the GPU itself needs a reboot until a working reset is found (side topic: study XeLL's GPU and EDRAM initialization in its source, without trial runs).
 6. Display: check whether the display controller can scan out a linear surface (debug client, no rebuild).
    - If it can, the desktop needs no copy at all.
@@ -380,10 +390,10 @@ All checks are R0 over SSH unless marked.
 ## Phase 2: user-space library and tests (R0)
 
 1. `libxenos`.
-2. Port every earlier GPU milestone to a user-space test: clears, triangles, textures, filtering, blending, depth, stencil, scissor, render-to-texture, flips. All of them in one regression run of a few minutes, instead of one cold boot each.
+2. Port every earlier GPU milestone to a user-space test: clears, triangles, textures, filtering, blending, depth, stencil, scissor, render-to-texture, flips. All of them in one regression run of a few minutes, instead of one cold boot each. Every visual test runs in the test window from 1.4b, which shows it, and its PNG is checked against a reference.
 3. Host tools: PM4 decoder, shader assembler and disassembler, capture and replay.
 4. EDRAM manager: full-screen 1080p render targets with depth, through tiling (10 MiB EDRAM; 1080p colour alone is about 8 MiB).
-5. 2D operations: fill, copy, blit with format conversion, alpha compositing.
+5. 2D operations: fill, copy, blit with format conversion, alpha compositing. These also run as visual tests in the test window (1.4b).
 
 ## Phase 3: 2D acceleration in WindowServer (R1)
 
