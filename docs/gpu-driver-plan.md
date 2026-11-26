@@ -37,7 +37,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 1.1 Load once per boot, present, display handback | done | Claude | `c89ef99` (code), `d5c1614` | 10 min 21 s without a stall (41,452 frames), Ethernet and audio clean while loaded, clean unload, second load declines |
 | 1.2 Debug client, fence page, GPU interrupt | done (1.2a) | Claude | `d59841c`, `c92e50c` | Debug client, 105/105 fences by polling, 60 Hz VBlank bit, clean unload |
 | 1.2b GPU interrupt routing | deferred | | | Research topic: interrupt target register unknown, experiments can freeze the console; polling fences suffice for now |
-| 1.3 GPU memory manager | built, hardware test pending | Claude | | Client type 1 (any user), 4 KiB pages, first fit, 1,024 handles; pass criteria in the log |
+| 1.3 GPU memory manager | done | Claude | `964c708` | `mem test` 0 failures, `mem exhaust` PASS, leak freed on exit, counters back at start; presenting, fences, Ethernet and audio clean |
 | 1.4 Command submission with address check | open | | | |
 | 1.5 Hang recovery | open | | | |
 | 1.6 Display: linear scanout or damage copy, flips, modes | open | | | |
@@ -67,6 +67,16 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 ## Log
 
 Newest first.
+
+- 2026-11-26, Claude: **step 1.3 done** on a fresh boot (`gpudev`, XenosGPU loaded by hand at 08:25), all six pass criteria met:
+  1. Load log: `GPU memory manager: 0x08210000, 32240 pages (125 MiB)`.
+  2. `mem stats` without sudo: heap and free 128,960 KiB, 0 allocations, largest 128,960 KiB. The debug client refused non-root (`0xe00002e2`).
+  3. `sudo mem test`: PASS, 0 failures. The six blocks went to `0x08210000`–`0x09324000` without overlap; 17,488 KiB were zeroed, written and read back from the CPU in 2.26 s (uncached); GPU writes landed at the first and last word of every block. Free while mapped returned `kIOReturnBusy` (`0xe00002d5`); after unmapping, every free succeeded; reused pages came back zeroed; counters returned to their start values.
+  4. `mem leak` held 3 blocks (6 MiB, mapped) and exited; the log shows `client closed holding 3 allocations; freed`; `mem stats` showed the start values.
+  5. `mem exhaust`: 125 × 1 MiB in 1.32 s, then `kIOReturnNoMemory`; 1,024 pages, then `kIOReturnNoResources`; counters back.
+  6. Frames rose (2,162 → 8,015), `fence 100` 100/100, 112 fences in total, no panic; SSH, WindowServer, Finder, Dock and coreaudiod running; a 32 MiB Ethernet transfer matched its md5 (5.5 s); the owner heard the spoken test sentence clean and complete.
+  - **Known limit for 1.4:** a client that calls `IOServiceClose` while it still has blocks mapped gets them freed at close, but its mappings last until IOKit tears them down. Step 1.4 should check that the pages cannot be handed out again before then.
+  - Next: step 1.4, command submission with an address check.
 
 - 2026-11-26, Claude: step 1.3 built (`--strict` clean), not yet run on hardware; it needs a fresh boot because `XenosGPU` starts the GPU once per boot.
   - **Design:** `XenosGPU_Memory.cpp` manages the GPU heap from `XenosGPUHeapBase + 64 KiB` (the first 64 KiB stay `XenosGPU`'s own: ring, marker, vertices, fences, boot mark) to its end, 125 MiB, in 4 KiB pages: a bitmap, first fit, at most 1,024 allocations. Each allocation is zeroed (uncached word loop, no `bzero`), has a handle, a GPU address and an owner, and is described by its own `IODeviceMemory`.
