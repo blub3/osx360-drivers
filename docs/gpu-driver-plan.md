@@ -39,7 +39,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 1.2b GPU interrupt routing | deferred | | | Research topic: interrupt target register unknown, experiments can freeze the console; polling fences suffice for now |
 | 1.3 GPU memory manager | done | Claude | `964c708` | `mem test` 0 failures, `mem exhaust` PASS, leak freed on exit, counters back at start; presenting, fences, Ethernet and audio clean |
 | 1.4 Command submission with address check | open | | | |
-| 1.4b Test window (`XenosTestBench`) | open | | | Clear, triangle and texture tests visible in a desktop window, results saved as PNG |
+| 1.4b Test window (`XenosTestBench`) | open | | | Test library app: every 2D and 3D test with an explanation, run or rerun any of them, history of past runs with their pictures |
 | 1.5 Hang recovery | open | | | |
 | 1.6 Display: linear scanout or damage copy, flips, modes | open | | | |
 | 2.1 `libxenos` | open | | | |
@@ -68,6 +68,8 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 ## Log
 
 Newest first.
+
+- 2026-11-26, Claude: by the owner's request, the test window (1.4b) became a test library app. It lists every 2D and 3D test, runs or reruns any of them, keeps the history of past runs with their pictures and driver versions, and explains for each test what it checks and why a driver needs it. It is built in two parts. Plan only.
 
 - 2026-11-26, Claude: the owner asked to see the 2D and 3D tests while they run. Added step 1.4b, a test window (`XenosTestBench`), after 1.4's command submission. Phase 2's visual tests (2.2 and 2.5) run in it too, and each result is saved as a PNG and compared with a reference. Plan only; nothing built yet.
 
@@ -373,12 +375,18 @@ All checks are R0 over SSH unless marked.
    - **1.2b:** find which register targets the GPU interrupt at a CPU thread and which source holds it asserted, acknowledge it, then route it to thread 0. Pass: a fence wait by interrupt.
 3. GPU memory manager. Pass: allocate, map, free and exit with memory still held, without leaks (heap counters back at their start values).
 4. Command submission with the address check, and the FIFO queue across clients. Pass: the existing clear, triangle and texture tests as user programs, run from several processes at once, fences in order.
-   - **1.4b, test window (`XenosTestBench`, owner's request):** a Tiger Cocoa app with its own desktop window that shows the visual tests while they run.
-     - It allocates a render target in the GPU heap through client type 1 (step 1.3), maps it, submits the test's commands, waits for the fence, and copies the target into its window several times a second. Start with 512 × 512 at 32 bits per pixel, about 1 MiB per copy, uncached.
-     - A side panel shows the test name, its current step, pass or fail, timings and the fence sequence.
-     - Each result is saved as a PNG, so it can be compared pixel by pixel with a reference image on the host. A test passes only when its picture matches, not only when no error is reported.
-     - User space only: change and restart it without a reboot. Build it on the G5 with the 10.4 SDK, like `xenos-gpu`.
-     - Pass: the clear, triangle and texture tests are visible in the window, the owner confirms what they see, the saved PNGs match their references, and the desktop and audio stay clean while it runs.
+   - **1.4b, test window (`XenosTestBench`, owner's request):** a Tiger Cocoa app, the library of all 2D and 3D tests. The owner can watch them run, pick any of them again later, and learn from each one what it checks and why.
+     - **Window:**
+       - On the left, the test library, grouped into 2D and 3D, then by topic (clears, triangles, textures, blending, depth and so on). Each test shows its last result (pass, fail or never run) and the date.
+       - In the middle, the picture the GPU is drawing, live while a test runs. Next to it, the reference picture and, on a failure, a difference picture that marks the wrong pixels.
+       - On the right, the explanation: a few sentences on what the GPU does in this test, why a driver needs it (which part of the desktop, Quartz Extreme or OpenGL depends on it), and what a typical failure looks like. Below it, the current step, timings and the fence sequence.
+       - Buttons: run the selected test, run a whole group, run everything. A history list shows the test's previous runs; selecting one shows its saved picture, result and the driver version it ran on, so an old picture can be compared with today's.
+     - **Tests and explanations:** each test is one entry with its name, group, explanation text, reference PNG and run function. New tests from later steps (2.2, 2.5, phase 4 and 5) appear in the library automatically. The explanation is written together with the test, in plain language. That is a small extra cost per test and also helps whoever takes over.
+     - **Rendering:** the app allocates a render target in the GPU heap through client type 1 (step 1.3), maps it, submits the test's commands, waits for the fence, and copies the target into the window several times a second. Start with 512 × 512 at 32 bits per pixel, about 1 MiB per copy, uncached.
+     - **Results:** every run is kept in `~/Library/Application Support/XenosTestBench/` as a PNG and a small plist: test, date, result, timings, and the `XenosGPU` and app versions. The host can fetch the folder and compare the PNGs pixel by pixel with their references. A test passes only when its picture matches, not only when no error is reported.
+     - User space only: change and restart it without a reboot. Build it on the G5 with the 10.4 SDK, like `xenos-gpu`. Cocoa on Tiger has everything needed (split view, outline view, image view, text view); no Cocoa bindings, no newer APIs.
+     - **Effort:** the window and the history are a few days of work on top of 1.4's tests; the explanations are a few sentences per test. Build it in two parts: first the library, live picture, PNG and explanation for the clear, triangle and texture tests, then the history, the comparison view and "run everything".
+     - **Pass:** the clear, triangle and texture tests are in the library with their explanations, run and rerun from the window, and the owner confirms what they see. Their saved PNGs match the references, a previous run can be selected and shows its picture, and the desktop and audio stay clean while it runs.
      - Tests with nothing to show (memory, fences, errors) stay in the log and `xenos-gpu`.
 5. Hang recovery. Pass: a deliberately bad command buffer is rejected by the address check; a stall is detected, the client gets an error, and the desktop keeps running on the CPU refresh. Recovering the GPU itself needs a reboot until a working reset is found (side topic: study XeLL's GPU and EDRAM initialization in its source, without trial runs).
 6. Display: check whether the display controller can scan out a linear surface (debug client, no rebuild).
@@ -390,7 +398,7 @@ All checks are R0 over SSH unless marked.
 ## Phase 2: user-space library and tests (R0)
 
 1. `libxenos`.
-2. Port every earlier GPU milestone to a user-space test: clears, triangles, textures, filtering, blending, depth, stencil, scissor, render-to-texture, flips. All of them in one regression run of a few minutes, instead of one cold boot each. Every visual test runs in the test window from 1.4b, which shows it, and its PNG is checked against a reference.
+2. Port every earlier GPU milestone to a user-space test: clears, triangles, textures, filtering, blending, depth, stencil, scissor, render-to-texture, flips. All of them in one regression run of a few minutes, instead of one cold boot each. Every visual test is added to the test library from 1.4b, with its explanation and reference PNG, and runs there.
 3. Host tools: PM4 decoder, shader assembler and disassembler, capture and replay.
 4. EDRAM manager: full-screen 1080p render targets with depth, through tiling (10 MiB EDRAM; 1080p colour alone is about 8 MiB).
 5. 2D operations: fill, copy, blit with format conversion, alpha compositing. These also run as visual tests in the test window (1.4b).
