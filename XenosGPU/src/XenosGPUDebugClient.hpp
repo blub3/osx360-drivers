@@ -33,6 +33,7 @@ public:
   IOReturn statistics(void *frames, void *busyTicks, void *fencesSubmitted, void *fenceCompleted,
                       void *interrupts, void *lastStatus);
   IOReturn interruptControl(void *enable, void *, void *, void *, void *, void *);
+  IOReturn gpuWrite(void *address, void *value, void *, void *, void *, void *);
 
 private:
   XenosGPU *_gpu;

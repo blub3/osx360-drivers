@@ -22,6 +22,18 @@
 #include "XenonCommon.hpp"
 #include "XenosRegs.hpp"
 #include "XenosGPUDebugProtocol.h"
+#include "XenosGPUProtocol.h"
+
+class IODeviceMemory;
+
+// One GPU memory allocation (XenosGPU_Memory.cpp, step 1.3).
+struct XenosGPUAllocation {
+  UInt32            handle;
+  IOPhysicalAddress phys;
+  UInt32            pages;
+  void              *owner;
+  IODeviceMemory    *memory;
+};
 
 static inline UInt32 XenosFloatBits(float f) {
   union {
@@ -57,6 +69,17 @@ public:
                        UInt32 *interrupts, UInt32 *lastStatus);
   IOReturn setInterrupt(bool enable);
   IOMemoryDescriptor *fenceMemory(void);
+  IOReturn debugGPUWrite(UInt32 address, UInt32 value);
+
+  // GPU memory (XenosGPU_Memory.cpp, step 1.3).
+  IOReturn allocateMemory(void *owner, UInt32 bytes, UInt32 *handle, UInt32 *gpuAddress, UInt32 *allocated);
+  IOReturn freeMemory(void *owner, UInt32 handle, bool force = false);
+  UInt32 freeAllMemory(void *owner);
+  IODeviceMemory *memoryForHandle(void *owner, UInt32 handle);
+  void heapStatistics(UInt32 *heapBytes, UInt32 *freeBytes, UInt32 *allocations, UInt32 *largestFree);
+
+  // Client type 0: debug client (root), type 1: GPU client.
+  IOReturn newUserClient(task_t owningTask, void *securityID, UInt32 type, IOUserClient **handler);
 
 private:
   // MMIO and display.
@@ -100,6 +123,20 @@ private:
   static IOReturn stopPresentingAction(OSObject *owner, void *, void *, void *, void *);
   static bool interruptFilter(OSObject *owner, IOFilterInterruptEventSource *source);
   static void interruptHandler(OSObject *owner, IOInterruptEventSource *source, int count);
+
+  // GPU memory manager.
+  IOPhysicalAddress         _heapBase;
+  UInt32                    _heapPages;
+  UInt32                    _heapMapBytes;
+  UInt32                    _freePages;
+  UInt32                    _allocationCount;
+  UInt32                    _nextHandle;
+  UInt8                     *_pageMap;
+  XenosGPUAllocation        *_allocations;
+  IOLock                    *_heapLock;
+  IOReturn initHeap(void);
+  void freeHeap(void);
+  static IOReturn gpuWriteAction(OSObject *owner, void *address, void *value, void *, void *);
 
   // Presentation.
   IOWorkLoop                *_workLoop;

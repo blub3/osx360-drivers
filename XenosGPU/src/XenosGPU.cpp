@@ -6,6 +6,8 @@
 #include "XenosGPU.hpp"
 #include <IOKit/IOPlatformExpert.h>
 #include <IOKit/IODeviceMemory.h>
+#include "XenosGPUDebugClient.hpp"
+#include "XenosGPUClient.hpp"
 
 OSDefineMetaClassAndStructors(XenosGPU, IOService);
 
@@ -47,6 +49,10 @@ bool XenosGPU::start(IOService *provider) {
   _fenceSubmitted = 0;
   _interruptSource = NULL;
   _interrupts = _lastInterruptStatus = _lastInterruptRbbm = 0;
+  _pageMap = NULL;
+  _allocations = NULL;
+  _heapLock = NULL;
+  _heapPages = _freePages = _allocationCount = 0;
   _presenting = _platformStopped = false;
   _frames = _busyTicks = _busyRun = 0;
   _stallLogged = false;
@@ -55,7 +61,7 @@ bool XenosGPU::start(IOService *provider) {
     return false;
   }
   _presentMS = (getProperty("XenosGPUSlowPresent") == kOSBooleanTrue) ? 50 : kPresentIntervalMS;
-  IOLog("XenosGPU: start (step 1.2: GPU presentation every %lu ms, debug client, fences)\n",
+  IOLog("XenosGPU: start (step 1.3: GPU presentation every %lu ms, debug client, fences, GPU memory)\n",
         (unsigned long)_presentMS);
 
   IODeviceMemory *mmio = IODeviceMemory::withRange(kXenosMmioBase, kXenosMmioSize);
@@ -117,7 +123,9 @@ bool XenosGPU::start(IOService *provider) {
     _gate->release();
     _gate = NULL;
   }
-  setProperty("IOUserClientClass", "XenosGPUDebugClient");
+  if (initHeap() != kIOReturnSuccess) {
+    IOLog("XenosGPU: no GPU memory manager (no heap)\n");
+  }
   registerService();
   return true;
 }
@@ -166,7 +174,37 @@ IOReturn XenosGPU::stopPresentingAction(OSObject *owner, void *, void *, void *,
   return kIOReturnSuccess;
 }
 
+IOReturn XenosGPU::newUserClient(task_t owningTask, void *securityID, UInt32 type, IOUserClient **handler) {
+  IOUserClient *client = NULL;
+  if (type == kXenosGPUDebugClientType) {
+    client = new XenosGPUDebugClient;
+  } else if (type == kXenosGPUClientType) {
+    client = new XenosGPUClient;
+  } else {
+    return kIOReturnUnsupported;
+  }
+  if (client == NULL) {
+    return kIOReturnNoMemory;
+  }
+  if (!client->initWithTask(owningTask, securityID, type, NULL)) {
+    client->release();
+    return kIOReturnNotPermitted;
+  }
+  if (!client->attach(this)) {
+    client->release();
+    return kIOReturnError;
+  }
+  if (!client->start(this)) {
+    client->detach(this);
+    client->release();
+    return kIOReturnError;
+  }
+  *handler = client;
+  return kIOReturnSuccess;
+}
+
 void XenosGPU::free(void) {
+  freeHeap();
   if (_gate != NULL) {
     if (_workLoop != NULL) {
       _workLoop->removeEventSource(_gate);

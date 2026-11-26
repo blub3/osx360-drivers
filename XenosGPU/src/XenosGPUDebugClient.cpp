@@ -40,6 +40,7 @@ IOExternalMethod *XenosGPUDebugClient::getTargetAndMethodForIndex(IOService **ta
     { NULL, (IOMethod)&XenosGPUDebugClient::waitFence,        kIOUCScalarIScalarO, 2, 2 },
     { NULL, (IOMethod)&XenosGPUDebugClient::statistics,       kIOUCScalarIScalarO, 0, 6 },
     { NULL, (IOMethod)&XenosGPUDebugClient::interruptControl, kIOUCScalarIScalarO, 1, 0 },
+    { NULL, (IOMethod)&XenosGPUDebugClient::gpuWrite,         kIOUCScalarIScalarO, 2, 0 },
   };
   if (index >= kXenosGPUDebugMethodCount) {
     return NULL;
@@ -87,6 +88,10 @@ IOReturn XenosGPUDebugClient::statistics(void *frames, void *busyTicks, void *fe
   _gpu->debugStatistics((UInt32 *)frames, (UInt32 *)busyTicks, (UInt32 *)fencesSubmitted,
                         (UInt32 *)fenceCompleted, (UInt32 *)interrupts, (UInt32 *)lastStatus);
   return kIOReturnSuccess;
+}
+
+IOReturn XenosGPUDebugClient::gpuWrite(void *address, void *value, void *, void *, void *, void *) {
+  return _gpu->debugGPUWrite((UInt32)(uintptr_t)address, (UInt32)(uintptr_t)value);
 }
 
 IOReturn XenosGPUDebugClient::interruptControl(void *enable, void *, void *, void *, void *, void *) {

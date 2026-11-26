@@ -14,7 +14,8 @@ enum {
   kXenosGPUDebugStatistics      = 4,   // out: frames, busy ticks, fences submitted, fence word,
                                        //      interrupts, last CP_INT_STATUS
   kXenosGPUDebugInterrupt       = 5,   // in: 1 register and enable the GPU interrupt, 0 disable
-  kXenosGPUDebugMethodCount     = 6
+  kXenosGPUDebugGPUWrite        = 6,   // in: GPU address in the managed heap, value (CP_MEM_WRITE)
+  kXenosGPUDebugMethodCount     = 7
 };
 
 enum {

@@ -35,8 +35,9 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
 | 1.1 Load once per boot, present, display handback | done | Claude | `c89ef99` (code), `d5c1614` | 10 min 21 s without a stall (41,452 frames), Ethernet and audio clean while loaded, clean unload, second load declines |
-| 1.2 Debug client, fence page, GPU interrupt | in progress | Claude | `d59841c` | 1.2a (debug client, fences, VBlank) passes; unload with the client not yet tested; 1.2b (GPU interrupt) open |
-| 1.3 GPU memory manager | open | | | |
+| 1.2 Debug client, fence page, GPU interrupt | done (1.2a) | Claude | `d59841c`, `c92e50c` | Debug client, 105/105 fences by polling, 60 Hz VBlank bit, clean unload |
+| 1.2b GPU interrupt routing | deferred | | | Research topic: interrupt target register unknown, experiments can freeze the console; polling fences suffice for now |
+| 1.3 GPU memory manager | built, hardware test pending | Claude | | Client type 1 (any user), 4 KiB pages, first fit, 1,024 handles; pass criteria in the log |
 | 1.4 Command submission with address check | open | | | |
 | 1.5 Hang recovery | open | | | |
 | 1.6 Display: linear scanout or damage copy, flips, modes | open | | | |
@@ -67,6 +68,19 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26, Claude: step 1.3 built (`--strict` clean), not yet run on hardware; it needs a fresh boot because `XenosGPU` starts the GPU once per boot.
+  - **Design:** `XenosGPU_Memory.cpp` manages the GPU heap from `XenosGPUHeapBase + 64 KiB` (the first 64 KiB stay `XenosGPU`'s own: ring, marker, vertices, fences, boot mark) to its end, 125 MiB, in 4 KiB pages: a bitmap, first fit, at most 1,024 allocations. Each allocation is zeroed (uncached word loop, no `bzero`), has a handle, a GPU address and an owner, and is described by its own `IODeviceMemory`.
+  - **Interface:** a new client type 1 (`XenosGPUClient`, `XenosGPUProtocol.h`) for any process: allocate (size, flags 0 → handle, GPU address, size), free, heap statistics; `IOConnectMapMemory` with the handle as the memory type maps it uncached. Type 0 stays the root-only debug client, which gains method 6, a `CP_MEM_WRITE` to an address inside the managed heap.
+  - **Safety:** a free is refused (`kIOReturnBusy`) while the owner still has the block mapped, so no process keeps a mapping of pages handed to another. Closing or exiting frees everything the client holds.
+  - **Pass criteria (fixed before the run):**
+    1. The load log shows `GPU memory manager: 0x08210000, 32240 pages (125 MiB)`.
+    2. `xenos-gpu mem stats` without sudo: heap and free 128,960 KiB, 0 allocations, largest free 128,960 KiB.
+    3. `sudo xenos-gpu mem test`: PASS, 0 failures. It covers 6 sizes from 1 byte to 16 MiB, map sizes, no overlap, zeroed pages, CPU pattern write and read-back, GPU writes at the first and last word followed by a fence, refused GPU writes outside the heap or unaligned, ownership, bad handles and sizes, free while mapped refused, unmap and free, double free refused, reused pages zeroed again, and counters back at their start values.
+    4. `xenos-gpu mem leak`, then `mem stats`: start values; the log shows `client closed holding 3 allocations; freed`.
+    5. `xenos-gpu mem exhaust`: PASS (125 blocks of 1 MiB fill the heap; 1,024 handles fill the table; counters back).
+    6. Throughout: frames still rising, `fence 100` 100/100, no panic, SSH, WindowServer, Finder and Dock, Ethernet, and clean audio.
+
+- 2026-11-26, Claude: step 1.2 done as 1.2a. The unload with the debug client was clean: 14,750 frames, quiesced, `RBBM_STATUS` `0x00040110` before and after the halt, CPU refresh back, kext gone, no panic. **1.2b (GPU interrupt routing) is deferred** with the owner's agreement; fences by polling are enough for now. Next: step 1.3, the GPU memory manager.
 - 2026-11-26, Claude: step 1.2b, safe part (no handler registered, no routing changed).
   - **Interrupt status:** `CP_INT_CNTL`, `CP_INT_STATUS` and `RBBM_INT_CNTL` read 0. `RBBM_INT_STATUS` read `0x00080001`: GUI idle (bit 19) and **`RDERR` (bit 0, register read error)**; `MASTER_INT_SIGNAL` read 1 (RBBM).
   - **The read error:** `RBBM_READ_ERROR` read `0x400087E4`. The read error came from reading `0x87E4`, which `XenosGPU`'s register dump did at every load; libxenon only writes it. After acknowledging bit 0 it stayed clear, also through a VBlank scan. `0x87E4` is removed from the dump and from the reset snapshot (built, not yet loaded).
