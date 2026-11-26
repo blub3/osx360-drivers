@@ -479,7 +479,7 @@ static const UInt16 kConfigRegisters[] = {
   0x0100, 0x0104, 0x0108, 0x0118, 0x011C,         // MH_MMU_CONFIG, VA_RANGE, PT_BASE, MPU_BASE/END
   0x2900, 0x2908,                                 // MH_ARBITER_CONFIG, MH_INTERRUPT_MASK
   0x2054, 0x2154, 0x3214, 0x3294, 0x3300, 0x3400, 0x3408, 0x340C,
-  0x3C10, 0x3C40, 0x87E4, 0x6110
+  0x3C10, 0x3C40, 0x6110                          // not 0x87E4: reading it is a read error
 };
 
 bool XenosGPU::resetGraphicsBlocks(const char *when) {
@@ -562,10 +562,9 @@ bool XenosGPU::waitEdramIdle(UInt32 *value) {
 
 void XenosGPU::libxenonMasterInit(void) {
   IOLog("XenosGPU: libxenon master init before: 0x07D4=0x%08lx 0x2054=0x%08lx 0x2154=0x%08lx "
-        "0x3C10=0x%08lx 0x3C40=0x%08lx 0x3C4C=0x%08lx 0x87E4=0x%08lx\n",
+        "0x3C10=0x%08lx 0x3C40=0x%08lx 0x3C4C=0x%08lx\n",
         (unsigned long)readReg(0x07D4), (unsigned long)readReg(0x2054), (unsigned long)readReg(0x2154),
-        (unsigned long)readReg(0x3C10), (unsigned long)readReg(0x3C40), (unsigned long)readReg(0x3C4C),
-        (unsigned long)readReg(0x87E4));
+        (unsigned long)readReg(0x3C10), (unsigned long)readReg(0x3C40), (unsigned long)readReg(0x3C4C));
   writeReg(0x07D4, 0);
   writeReg(0x07D4, 1);
   writeReg(0x2054, 0x1E);
@@ -588,7 +587,8 @@ void XenosGPU::libxenonMasterInit(void) {
 // Register dump for comparing the GPU state a session starts from (2026-11-25: a first session after
 // boot runs, every later one stalls at frame 71). Only registers named in the a2xx headers, the ones
 // XeLL and libxenon set, and five EDRAM registers libxenon uses; no data ports or write-only
-// registers (PFP/ME RAM data, state debug data, INT_ACK, MMU invalidate).
+// registers (PFP/ME RAM data, state debug data, INT_ACK, MMU invalidate, and 0x87E4, whose read sets
+// RBBM_INT_STATUS RDERR with RBBM_READ_ERROR 0x400087E4, 2026-11-26).
 //
 static const UInt16 kDumpRegisters[] = {
   0x0004, 0x00E0, 0x00E4, 0x00E8, 0x00EC, 0x00F0, 0x00F4, 0x0100, 0x0104, 0x0108,
@@ -601,7 +601,7 @@ static const UInt16 kDumpRegisters[] = {
   0x1804, 0x1808, 0x180C, 0x1810, 0x1814, 0x1818, 0x181C, 0x1820, 0x1824, 0x1828,
   0x182C, 0x1830, 0x1834, 0x1838, 0x1848, 0x184C, 0x1850, 0x2054, 0x2154, 0x28A4,
   0x28A8, 0x28AC, 0x2900, 0x2908, 0x3214, 0x3294, 0x3300, 0x3400, 0x3408, 0x340C,
-  0x3C08, 0x3C10, 0x3C40, 0x3C44, 0x3C48, 0x3C4C, 0x6110, 0x8018, 0x87E4
+  0x3C08, 0x3C10, 0x3C40, 0x3C44, 0x3C48, 0x3C4C, 0x6110, 0x8018
 };
 
 void XenosGPU::dumpRegisters(const char *when) {

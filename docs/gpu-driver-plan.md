@@ -35,7 +35,7 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 | 0.5 Development boot profile `gpudev` (R4) | done | Claude | `542f003`, `06432f1` | Boots as stick default; heap, panic screen (owner read it) and vector `0x58` dispatch active; audio glitchy while the CPU refresh runs (fixed by step 1.1); `docs/gpu-dev-profile.md` |
 | 0.6 Development loop script `tools/host/gpu-dev.sh` | done | Claude | `663e46a` | Build, import check, install, load, log, unload in about 13 s; `--key`, `--gui-down`, `--strict` tested |
 | 1.1 Load once per boot, present, display handback | done | Claude | `c89ef99` (code), `d5c1614` | 10 min 21 s without a stall (41,452 frames), Ethernet and audio clean while loaded, clean unload, second load declines |
-| 1.2 Debug client, fence page, GPU interrupt | in progress | Claude | this commit | 1.2a (debug client, fences, VBlank) passes; unload with the client not yet tested; 1.2b (GPU interrupt) open |
+| 1.2 Debug client, fence page, GPU interrupt | in progress | Claude | `d59841c` | 1.2a (debug client, fences, VBlank) passes; unload with the client not yet tested; 1.2b (GPU interrupt) open |
 | 1.3 GPU memory manager | open | | | |
 | 1.4 Command submission with address check | open | | | |
 | 1.5 Hang recovery | open | | | |
@@ -67,6 +67,11 @@ States: `open`, `in progress`, `done`, `failed`, `skipped`. "By" is Claude or Ch
 
 Newest first.
 
+- 2026-11-26, Claude: step 1.2b, safe part (no handler registered, no routing changed).
+  - **Interrupt status:** `CP_INT_CNTL`, `CP_INT_STATUS` and `RBBM_INT_CNTL` read 0. `RBBM_INT_STATUS` read `0x00080001`: GUI idle (bit 19) and **`RDERR` (bit 0, register read error)**; `MASTER_INT_SIGNAL` read 1 (RBBM).
+  - **The read error:** `RBBM_READ_ERROR` read `0x400087E4`. The read error came from reading `0x87E4`, which `XenosGPU`'s register dump did at every load; libxenon only writes it. After acknowledging bit 0 it stayed clear, also through a VBlank scan. `0x87E4` is removed from the dump and from the reset snapshot (built, not yet loaded).
+  - **GUI idle** re-asserts immediately after an acknowledgement (the GPU idles between frames), so `MASTER_INT_SIGNAL` stays 1 with `RBBM_INT_CNTL` 0.
+  - **Open:** whether that, or the read error XeLL or XenonCoreGraphics left behind, is what held vector `0x58` toward PIR 2 in SMP stage 1a; and which register picks the target thread. Both need documentation or experiments that can freeze the console. Proposal: defer 1.2b (fences by polling work) and continue with 1.3.
 - 2026-11-26, Claude: step 1.2a on a fresh `gpudev` boot.
   - **The pieces:** `XenosGPU` has a root-only debug client (`XenosGPUDebugClient`, protocol in `XenosGPU/src/XenosGPUDebugProtocol.h`) and a fence page at heap `+0xB000`, mapped read-only and uncached into the client. Fences are a `CP_MEM_WRITE` of an increasing sequence under the work loop's command gate. The GPU interrupt is registered only on request. The test tool is `tools/gpu/xenos-gpu` (`read`, `regs`, `write`, `fence`, `stats`, `vblank`, `irq`; built on the G5 with the 10.4 SDK and `-std=c99`, installed as `~/xenos-gpu` on the Xbox). The kernel imports pass `--strict`: `IODeviceMemory::withRange` for the fence page and the time base for timing, instead of three imports outside the `main6` set.
   - **Results:**
